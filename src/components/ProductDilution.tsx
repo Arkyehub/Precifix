@@ -1,0 +1,205 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Droplet, Plus, Trash2 } from "lucide-react";
+
+export interface Product {
+  id: string;
+  name: string;
+  gallonPrice: number;
+  gallonVolume: number; // em ml
+  dilutionRatio: number; // ex: 10 para 1:10
+  usagePerVehicle: number; // em ml
+}
+
+interface ProductDilutionProps {
+  onProductsChange: (products: Product[], totalCost: number) => void;
+}
+
+export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    gallonPrice: "",
+    gallonVolume: "",
+    dilutionRatio: "",
+    usagePerVehicle: "",
+  });
+
+  const calculateProductCost = (product: Product) => {
+    const totalDilutedVolume = product.gallonVolume * (1 + product.dilutionRatio);
+    const costPerLiter = product.gallonPrice / (totalDilutedVolume / 1000);
+    const costPerApplication = (costPerLiter * product.usagePerVehicle) / 1000;
+    return costPerApplication;
+  };
+
+  const getTotalCost = () => {
+    return products.reduce((sum, product) => sum + calculateProductCost(product), 0);
+  };
+
+  const addProduct = () => {
+    if (!newProduct.name || !newProduct.gallonPrice || !newProduct.gallonVolume) return;
+
+    const product: Product = {
+      id: `product-${Date.now()}`,
+      name: newProduct.name,
+      gallonPrice: parseFloat(newProduct.gallonPrice),
+      gallonVolume: parseFloat(newProduct.gallonVolume),
+      dilutionRatio: parseFloat(newProduct.dilutionRatio) || 0,
+      usagePerVehicle: parseFloat(newProduct.usagePerVehicle) || 0,
+    };
+
+    const updated = [...products, product];
+    setProducts(updated);
+    onProductsChange(updated, getTotalCost() + calculateProductCost(product));
+    
+    setNewProduct({
+      name: "",
+      gallonPrice: "",
+      gallonVolume: "",
+      dilutionRatio: "",
+      usagePerVehicle: "",
+    });
+  };
+
+  const removeProduct = (id: string) => {
+    const updated = products.filter((p) => p.id !== id);
+    setProducts(updated);
+    const newTotal = updated.reduce((sum, p) => sum + calculateProductCost(p), 0);
+    onProductsChange(updated, newTotal);
+  };
+
+  return (
+    <Card className="p-6 bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-card)] border-border/50">
+      <div className="flex items-center gap-2 mb-4">
+        <Droplet className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-semibold text-foreground">Cálculo de Diluição de Produtos</h2>
+      </div>
+
+      {products.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {products.map((product) => {
+            const cost = calculateProductCost(product);
+            const totalDiluted = product.gallonVolume * (1 + product.dilutionRatio);
+            const costPerLiter = product.gallonPrice / (totalDiluted / 1000);
+
+            return (
+              <div
+                key={product.id}
+                className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-2"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-foreground">{product.name}</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                      <span>Galão: R$ {product.gallonPrice.toFixed(2)}</span>
+                      <span>Volume: {product.gallonVolume} ml</span>
+                      <span>Diluição: 1:{product.dilutionRatio}</span>
+                      <span>Uso: {product.usagePerVehicle} ml</span>
+                      <span className="text-primary font-medium col-span-2 mt-1">
+                        Custo/litro diluído: R$ {costPerLiter.toFixed(4)}
+                      </span>
+                      <span className="text-primary font-semibold col-span-2">
+                        Custo/aplicação: R$ {cost.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeProduct(product.id)}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+            <p className="text-sm font-medium text-foreground">
+              Custo Total dos Produtos:{" "}
+              <span className="text-lg text-primary font-bold">R$ {getTotalCost().toFixed(2)}</span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-4 pt-4 border-t border-border/50">
+        <h3 className="text-sm font-medium text-foreground">Adicionar Novo Produto</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="product-name" className="text-sm">Nome do Produto</Label>
+            <Input
+              id="product-name"
+              placeholder="Ex: Shampoo Neutro"
+              value={newProduct.name}
+              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+              className="bg-background"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gallon-price" className="text-sm">Preço do Galão (R$)</Label>
+            <Input
+              id="gallon-price"
+              type="number"
+              step="0.01"
+              placeholder="150.00"
+              value={newProduct.gallonPrice}
+              onChange={(e) => setNewProduct({ ...newProduct, gallonPrice: e.target.value })}
+              className="bg-background"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gallon-volume" className="text-sm">Volume do Galão (ml)</Label>
+            <Input
+              id="gallon-volume"
+              type="number"
+              placeholder="5000"
+              value={newProduct.gallonVolume}
+              onChange={(e) => setNewProduct({ ...newProduct, gallonVolume: e.target.value })}
+              className="bg-background"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dilution-ratio" className="text-sm">Proporção de Diluição (1:X)</Label>
+            <Input
+              id="dilution-ratio"
+              type="number"
+              placeholder="10"
+              value={newProduct.dilutionRatio}
+              onChange={(e) => setNewProduct({ ...newProduct, dilutionRatio: e.target.value })}
+              className="bg-background"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="usage-per-vehicle" className="text-sm">Quantidade Usada por Veículo (ml)</Label>
+            <Input
+              id="usage-per-vehicle"
+              type="number"
+              placeholder="200"
+              value={newProduct.usagePerVehicle}
+              onChange={(e) => setNewProduct({ ...newProduct, usagePerVehicle: e.target.value })}
+              className="bg-background"
+            />
+          </div>
+        </div>
+
+        <Button
+          onClick={addProduct}
+          className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[var(--shadow-elegant)]"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Produto
+        </Button>
+      </div>
+    </Card>
+  );
+}
