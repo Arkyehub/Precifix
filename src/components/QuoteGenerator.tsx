@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Save, Mail } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 
@@ -168,44 +168,6 @@ export const QuoteGenerator = ({
     });
   };
 
-  const handleSaveQuote = () => {
-    if (!clientName || !vehicle) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha o nome do cliente e o veículo.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const quote = {
-      clientName,
-      quoteDate,
-      vehicle,
-      selectedServices,
-      totalCost,
-      finalPrice,
-      executionTime,
-      observations,
-      createdAt: new Date().toISOString(),
-    };
-
-    const savedQuotes = JSON.parse(localStorage.getItem('quotes') || '[]');
-    savedQuotes.push(quote);
-    localStorage.setItem('quotes', JSON.stringify(savedQuotes));
-
-    toast({
-      title: "Orçamento salvo!",
-      description: "O orçamento foi armazenado com sucesso.",
-    });
-  };
-
-  const handleSendEmail = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O envio por e-mail estará disponível em breve.",
-    });
-  };
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -301,31 +263,13 @@ export const QuoteGenerator = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              onClick={generatePDF}
-              className="flex-1 min-w-[150px] bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Gerar PDF
-            </Button>
-            <Button 
-              onClick={handleSaveQuote}
-              variant="secondary"
-              className="flex-1 min-w-[150px]"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Orçamento
-            </Button>
-            <Button 
-              onClick={handleSendEmail}
-              variant="outline"
-              className="flex-1 min-w-[150px]"
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Enviar por E-mail
-            </Button>
-          </div>
+          <Button 
+            onClick={generatePDF}
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Gerar PDF
+          </Button>
         </div>
 
         <p className="text-xs text-muted-foreground text-center italic">

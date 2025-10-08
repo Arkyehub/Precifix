@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ServiceSelector } from "@/components/ServiceSelector";
+import { ProductCatalog } from "@/components/ProductCatalog";
 import { ProductDilution, Product } from "@/components/ProductDilution";
 import { OperationalCosts } from "@/components/OperationalCosts";
 import { Results } from "@/components/Results";
@@ -63,6 +64,8 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           <ServiceSelector onServicesChange={setSelectedServices} />
+
+          <ProductCatalog />
           
           <ProductDilution onProductsChange={handleProductsChange} />
           

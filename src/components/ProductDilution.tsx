@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Droplet, Plus, Trash2 } from "lucide-react";
+import type { CatalogProduct } from "./ProductCatalog";
 
 export interface Product {
   id: string;
@@ -20,6 +22,8 @@ interface ProductDilutionProps {
 
 export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newProduct, setNewProduct] = useState({
     name: "",
     gallonPrice: "",
@@ -27,6 +31,22 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     dilutionRatio: "",
     usagePerVehicle: "",
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('productCatalog');
+    if (saved) {
+      setCatalogProducts(JSON.parse(saved));
+    }
+
+    const interval = setInterval(() => {
+      const updated = localStorage.getItem('productCatalog');
+      if (updated) {
+        setCatalogProducts(JSON.parse(updated));
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const calculateProductCost = (product: Product) => {
     const totalDilutedVolume = product.gallonVolume * (1 + product.dilutionRatio);
@@ -37,6 +57,20 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
 
   const getTotalCost = () => {
     return products.reduce((sum, product) => sum + calculateProductCost(product), 0);
+  };
+
+  const loadFromCatalog = () => {
+    const catalogProduct = catalogProducts.find(p => p.id === selectedCatalogId);
+    if (catalogProduct) {
+      setNewProduct({
+        name: catalogProduct.name,
+        gallonPrice: catalogProduct.price.toString(),
+        gallonVolume: (catalogProduct.size * 1000).toString(), // convert liters to ml
+        dilutionRatio: "",
+        usagePerVehicle: "",
+      });
+      setSelectedCatalogId("");
+    }
   };
 
   const addProduct = () => {
@@ -129,6 +163,33 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
 
       <div className="space-y-4 pt-4 border-t border-border/50">
         <h3 className="text-sm font-medium text-foreground">Adicionar Novo Produto</h3>
+
+        {catalogProducts.length > 0 && (
+          <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-border/50">
+            <Label htmlFor="catalogSelect" className="text-sm">Selecionar do Catálogo</Label>
+            <div className="flex gap-2 mt-2">
+              <Select value={selectedCatalogId} onValueChange={setSelectedCatalogId}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Escolha um produto cadastrado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {catalogProducts.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - {product.size}L - R$ {product.price.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={loadFromCatalog}
+                disabled={!selectedCatalogId}
+                variant="secondary"
+              >
+                Carregar
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
