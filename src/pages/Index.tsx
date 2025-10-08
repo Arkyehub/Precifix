@@ -3,6 +3,7 @@ import { ServiceSelector } from "@/components/ServiceSelector";
 import { ProductDilution, Product } from "@/components/ProductDilution";
 import { OperationalCosts } from "@/components/OperationalCosts";
 import { Results } from "@/components/Results";
+import { QuoteGenerator } from "@/components/QuoteGenerator";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
@@ -37,6 +38,7 @@ const Index = () => {
 
   const laborCost = (executionTime / 60) * laborCostPerHour;
   const totalCost = productsCost + waterCost + energyCost + laborCost + otherCosts;
+  const finalPrice = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,6 +81,13 @@ const Index = () => {
             profitMargin={profitMargin}
             executionTime={executionTime}
             onMarginChange={setProfitMargin}
+          />
+          
+          <QuoteGenerator
+            selectedServices={selectedServices}
+            totalCost={totalCost}
+            finalPrice={finalPrice}
+            executionTime={executionTime}
           />
         </div>
       </main>
