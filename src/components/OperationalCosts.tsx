@@ -1,18 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calculator } from "lucide-react";
+import { DollarSign } from "lucide-react";
 
 interface OperationalCostsProps {
   productsCost: number;
-  waterCost: number;
-  energyCost: number;
   executionTime: number;
   laborCostPerHour: number;
   otherCosts: number;
   onCostsChange: (costs: {
-    waterCost: number;
-    energyCost: number;
     executionTime: number;
     laborCostPerHour: number;
     otherCosts: number;
@@ -21,20 +17,18 @@ interface OperationalCostsProps {
 
 export function OperationalCosts({
   productsCost,
-  waterCost,
-  energyCost,
   executionTime,
   laborCostPerHour,
   otherCosts,
   onCostsChange,
 }: OperationalCostsProps) {
   const laborCost = (executionTime / 60) * laborCostPerHour;
-  const totalCost = productsCost + waterCost + energyCost + laborCost + otherCosts;
+  const totalCost = productsCost + laborCost + otherCosts;
 
   return (
     <Card className="p-6 bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-card)] border-border/50">
       <div className="flex items-center gap-2 mb-4">
-        <Calculator className="h-5 w-5 text-primary" />
+        <DollarSign className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold text-foreground">Custos Operacionais</h2>
       </div>
 
@@ -46,46 +40,6 @@ export function OperationalCosts({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="water-cost" className="text-sm">Custo com Água (R$)</Label>
-            <Input
-              id="water-cost"
-              type="number"
-              step="0.01"
-              value={waterCost || ""}
-              onChange={(e) =>
-                onCostsChange({
-                  waterCost: parseFloat(e.target.value) || 0,
-                  energyCost,
-                  executionTime,
-                  laborCostPerHour,
-                  otherCosts,
-                })
-              }
-              className="bg-background"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="energy-cost" className="text-sm">Custo com Energia (R$)</Label>
-            <Input
-              id="energy-cost"
-              type="number"
-              step="0.01"
-              value={energyCost || ""}
-              onChange={(e) =>
-                onCostsChange({
-                  waterCost,
-                  energyCost: parseFloat(e.target.value) || 0,
-                  executionTime,
-                  laborCostPerHour,
-                  otherCosts,
-                })
-              }
-              className="bg-background"
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="execution-time" className="text-sm">Tempo de Execução (minutos)</Label>
             <Input
               id="execution-time"
@@ -93,8 +47,6 @@ export function OperationalCosts({
               value={executionTime || ""}
               onChange={(e) =>
                 onCostsChange({
-                  waterCost,
-                  energyCost,
                   executionTime: parseFloat(e.target.value) || 0,
                   laborCostPerHour,
                   otherCosts,
@@ -113,8 +65,6 @@ export function OperationalCosts({
               value={laborCostPerHour || ""}
               onChange={(e) =>
                 onCostsChange({
-                  waterCost,
-                  energyCost,
                   executionTime,
                   laborCostPerHour: parseFloat(e.target.value) || 0,
                   otherCosts,
@@ -122,6 +72,7 @@ export function OperationalCosts({
               }
               className="bg-background"
             />
+            <p className="text-xs text-muted-foreground">Inclui água, energia e outros custos fixos</p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -133,8 +84,6 @@ export function OperationalCosts({
               value={otherCosts || ""}
               onChange={(e) =>
                 onCostsChange({
-                  waterCost,
-                  energyCost,
                   executionTime,
                   laborCostPerHour,
                   otherCosts: parseFloat(e.target.value) || 0,

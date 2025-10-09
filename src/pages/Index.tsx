@@ -8,11 +8,9 @@ import { QuoteGenerator } from "@/components/QuoteGenerator";
 import { Sparkles } from "lucide-react";
 
 const Index = () => {
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsCost, setProductsCost] = useState(0);
-  const [waterCost, setWaterCost] = useState(0);
-  const [energyCost, setEnergyCost] = useState(0);
   const [executionTime, setExecutionTime] = useState(0);
   const [laborCostPerHour, setLaborCostPerHour] = useState(0);
   const [otherCosts, setOtherCosts] = useState(0);
@@ -24,21 +22,17 @@ const Index = () => {
   };
 
   const handleCostsChange = (costs: {
-    waterCost: number;
-    energyCost: number;
     executionTime: number;
     laborCostPerHour: number;
     otherCosts: number;
   }) => {
-    setWaterCost(costs.waterCost);
-    setEnergyCost(costs.energyCost);
     setExecutionTime(costs.executionTime);
     setLaborCostPerHour(costs.laborCostPerHour);
     setOtherCosts(costs.otherCosts);
   };
 
   const laborCost = (executionTime / 60) * laborCostPerHour;
-  const totalCost = productsCost + waterCost + energyCost + laborCost + otherCosts;
+  const totalCost = productsCost + laborCost + otherCosts;
   const finalPrice = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   return (
@@ -71,8 +65,6 @@ const Index = () => {
           
           <OperationalCosts
             productsCost={productsCost}
-            waterCost={waterCost}
-            energyCost={energyCost}
             executionTime={executionTime}
             laborCostPerHour={laborCostPerHour}
             otherCosts={otherCosts}
