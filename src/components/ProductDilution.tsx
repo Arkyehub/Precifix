@@ -14,6 +14,7 @@ export interface Product {
   gallonVolume: number; // em ml
   dilutionRatio: number; // ex: 10 para 1:10
   usagePerVehicle: number; // em ml
+  type: 'diluted' | 'ready-to-use'; // tipo do produto
 }
 
 interface ProductDilutionProps {
@@ -30,6 +31,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     gallonVolume: "",
     dilutionRatio: "",
     usagePerVehicle: "",
+    type: "diluted" as 'diluted' | 'ready-to-use',
   });
 
   useEffect(() => {
@@ -49,10 +51,17 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   }, []);
 
   const calculateProductCost = (product: Product) => {
-    const totalDilutedVolume = product.gallonVolume * (1 + product.dilutionRatio);
-    const costPerLiter = product.gallonPrice / (totalDilutedVolume / 1000);
-    const costPerApplication = (costPerLiter * product.usagePerVehicle) / 1000;
-    return costPerApplication;
+    if (product.type === 'ready-to-use') {
+      // Para produtos prontos para uso: (Preço / Volume total) * Quantidade usada
+      const costPerMl = product.gallonPrice / product.gallonVolume;
+      return costPerMl * product.usagePerVehicle;
+    } else {
+      // Para produtos diluídos: cálculo com diluição
+      const totalDilutedVolume = product.gallonVolume * (1 + product.dilutionRatio);
+      const costPerLiter = product.gallonPrice / (totalDilutedVolume / 1000);
+      const costPerApplication = (costPerLiter * product.usagePerVehicle) / 1000;
+      return costPerApplication;
+    }
   };
 
   const getTotalCost = () => {
@@ -68,6 +77,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         gallonVolume: (catalogProduct.size * 1000).toString(), // convert liters to ml
         dilutionRatio: "",
         usagePerVehicle: "",
+        type: "diluted",
       });
       setSelectedCatalogId("");
     }
@@ -83,6 +93,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       gallonVolume: parseFloat(newProduct.gallonVolume),
       dilutionRatio: parseFloat(newProduct.dilutionRatio) || 0,
       usagePerVehicle: parseFloat(newProduct.usagePerVehicle) || 0,
+      type: newProduct.type,
     };
 
     const updated = [...products, product];
@@ -95,6 +106,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       gallonVolume: "",
       dilutionRatio: "",
       usagePerVehicle: "",
+      type: "diluted",
     });
   };
 
@@ -116,9 +128,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         <div className="mb-6 space-y-3">
           {products.map((product) => {
             const cost = calculateProductCost(product);
-            const totalDiluted = product.gallonVolume * (1 + product.dilutionRatio);
-            const costPerLiter = product.gallonPrice / (totalDiluted / 1000);
-
+            
             return (
               <div
                 key={product.id}
@@ -126,15 +136,32 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{product.name}</h4>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-                      <span>Galão: R$ {product.gallonPrice.toFixed(2)}</span>
-                      <span>Volume: {product.gallonVolume} ml</span>
-                      <span>Diluição: 1:{product.dilutionRatio}</span>
-                      <span>Uso: {product.usagePerVehicle} ml</span>
-                      <span className="text-primary font-medium col-span-2 mt-1">
-                        Custo/litro diluído: R$ {costPerLiter.toFixed(4)}
+                    <h4 className="font-medium text-foreground">
+                      {product.name}
+                      <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
+                        {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
                       </span>
+                    </h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                      <span>Preço: R$ {product.gallonPrice.toFixed(2)}</span>
+                      <span>Volume: {product.gallonVolume} ml</span>
+                      {product.type === 'diluted' && (
+                        <>
+                          <span>Diluição: 1:{product.dilutionRatio}</span>
+                          <span>Uso: {product.usagePerVehicle} ml</span>
+                          <span className="text-primary font-medium col-span-2 mt-1">
+                            Custo/litro diluído: R$ {(product.gallonPrice / ((product.gallonVolume * (1 + product.dilutionRatio)) / 1000)).toFixed(4)}
+                          </span>
+                        </>
+                      )}
+                      {product.type === 'ready-to-use' && (
+                        <>
+                          <span>Uso: {product.usagePerVehicle} ml</span>
+                          <span className="text-primary font-medium col-span-2 mt-1">
+                            Custo/ml: R$ {(product.gallonPrice / product.gallonVolume).toFixed(4)}
+                          </span>
+                        </>
+                      )}
                       <span className="text-primary font-semibold col-span-2">
                         Custo/aplicação: R$ {cost.toFixed(2)}
                       </span>
@@ -191,6 +218,22 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
           </div>
         )}
         
+        <div className="space-y-2 mb-4">
+          <Label htmlFor="product-type" className="text-sm">Tipo de Produto</Label>
+          <Select 
+            value={newProduct.type} 
+            onValueChange={(value: 'diluted' | 'ready-to-use') => setNewProduct({ ...newProduct, type: value })}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="diluted">Produto Diluído</SelectItem>
+              <SelectItem value="ready-to-use">Produto Pronto Uso</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="product-name" className="text-sm">Nome do Produto</Label>
@@ -204,7 +247,9 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="gallon-price" className="text-sm">Preço do Galão (R$)</Label>
+            <Label htmlFor="gallon-price" className="text-sm">
+              {newProduct.type === 'ready-to-use' ? 'Preço do Produto (R$)' : 'Preço do Galão (R$)'}
+            </Label>
             <Input
               id="gallon-price"
               type="number"
@@ -217,7 +262,9 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="gallon-volume" className="text-sm">Volume do Galão (ml)</Label>
+            <Label htmlFor="gallon-volume" className="text-sm">
+              {newProduct.type === 'ready-to-use' ? 'Volume Total (ml)' : 'Volume do Galão (ml)'}
+            </Label>
             <Input
               id="gallon-volume"
               type="number"
@@ -228,17 +275,19 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="dilution-ratio" className="text-sm">Proporção de Diluição (1:X)</Label>
-            <Input
-              id="dilution-ratio"
-              type="number"
-              placeholder="10"
-              value={newProduct.dilutionRatio}
-              onChange={(e) => setNewProduct({ ...newProduct, dilutionRatio: e.target.value })}
-              className="bg-background"
-            />
-          </div>
+          {newProduct.type === 'diluted' && (
+            <div className="space-y-2">
+              <Label htmlFor="dilution-ratio" className="text-sm">Proporção de Diluição (1:X)</Label>
+              <Input
+                id="dilution-ratio"
+                type="number"
+                placeholder="10"
+                value={newProduct.dilutionRatio}
+                onChange={(e) => setNewProduct({ ...newProduct, dilutionRatio: e.target.value })}
+                className="bg-background"
+              />
+            </div>
+          )}
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="usage-per-vehicle" className="text-sm">Quantidade Usada por Veículo (ml)</Label>
