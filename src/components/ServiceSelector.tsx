@@ -25,7 +25,7 @@ const DEFAULT_SERVICES: Omit<Service, "selected">[] = [
   { id: "9", name: "Limpeza dos bancos de couro" },
 ];
 
-export function ServiceSelector({ onServicesChange }: { onServicesChange: (services: Service[]) => void }) {
+export function ServiceSelector({ onServicesChange }: { onServicesChange: (services: string[]) => void }) {
   const [services, setServices] = useState<Service[]>(
     DEFAULT_SERVICES.map((s) => ({ ...s, selected: false }))
   );
@@ -37,7 +37,7 @@ export function ServiceSelector({ onServicesChange }: { onServicesChange: (servi
       s.id === id ? { ...s, selected: !s.selected } : s
     );
     setServices(updated);
-    onServicesChange(updated);
+    onServicesChange(updated.filter(s => s.selected).map(s => s.name));
   };
 
   const addCustomService = () => {
@@ -53,7 +53,7 @@ export function ServiceSelector({ onServicesChange }: { onServicesChange: (servi
     
     const updated = [...services, newService];
     setServices(updated);
-    onServicesChange(updated);
+    onServicesChange(updated.filter(s => s.selected).map(s => s.name));
     setCustomName("");
     setCustomDescription("");
   };
