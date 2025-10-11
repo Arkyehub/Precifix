@@ -53,7 +53,7 @@ export const QuoteGenerator = ({
     let yPosition = 20;
 
     // Cabeçalho
-    doc.setFillColor(37, 99, 235);
+    doc.setFillColor(255, 204, 0); // Amarelo dourado
     doc.rect(0, 0, 210, 40, 'F');
     
     if (companyLogo) {
@@ -129,9 +129,9 @@ export const QuoteGenerator = ({
     yPosition += 8;
 
     // Total
-    doc.setFillColor(37, 99, 235);
+    doc.setFillColor(255, 204, 0); // Amarelo dourado
     doc.rect(15, yPosition - 5, 180, 12, 'F');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(0, 0, 0); // Texto preto para contraste
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3);
