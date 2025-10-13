@@ -24,6 +24,15 @@ interface ProductDilutionProps {
   onProductsChange: (products: Product[], totalCost: number) => void;
 }
 
+// Utility function to parse dilution ratio from "1:X" or "X" format
+const parseDilutionRatioInput = (input: string): number => {
+  const parts = input.split(':');
+  if (parts.length === 2 && parts[0].trim() === '1') {
+    return parseFloat(parts[1].trim()) || 0;
+  }
+  return parseFloat(input.trim()) || 0; // Fallback if not in "1:X" format
+};
+
 export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   const { user } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,7 +41,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     name: "",
     gallonPrice: "",
     gallonVolume: "",
-    dilutionRatio: "",
+    dilutionRatioInput: "", // Novo estado para a entrada de texto da diluição
     usagePerVehicle: "",
     type: "diluted" as 'diluted' | 'ready-to-use',
   });
@@ -86,7 +95,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         name: catalogProduct.name,
         gallonPrice: catalogProduct.price.toString(),
         gallonVolume: (catalogProduct.size * 1000).toString(), // convert liters to ml
-        dilutionRatio: "",
+        dilutionRatioInput: "", // Limpar ao carregar do catálogo
         usagePerVehicle: "",
         type: "diluted",
       });
@@ -97,12 +106,14 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   const addProduct = () => {
     if (!newProduct.name || !newProduct.gallonPrice || !newProduct.gallonVolume) return;
 
+    const dilutionRatio = newProduct.type === 'diluted' ? parseDilutionRatioInput(newProduct.dilutionRatioInput) : 0;
+
     const product: Product = {
       id: `product-${Date.now()}`,
       name: newProduct.name,
       gallonPrice: parseFloat(newProduct.gallonPrice),
       gallonVolume: parseFloat(newProduct.gallonVolume),
-      dilutionRatio: parseFloat(newProduct.dilutionRatio) || 0,
+      dilutionRatio: dilutionRatio,
       usagePerVehicle: parseFloat(newProduct.usagePerVehicle) || 0,
       type: newProduct.type,
     };
@@ -114,7 +125,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       name: "",
       gallonPrice: "",
       gallonVolume: "",
-      dilutionRatio: "",
+      dilutionRatioInput: "",
       usagePerVehicle: "",
       type: "diluted",
     });
@@ -288,10 +299,10 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
               <Label htmlFor="dilution-ratio" className="text-sm">Proporção de Diluição (1:X)</Label>
               <Input
                 id="dilution-ratio"
-                type="number"
-                placeholder="10"
-                value={newProduct.dilutionRatio}
-                onChange={(e) => setNewProduct({ ...newProduct, dilutionRatio: e.target.value })}
+                type="text" // Alterado para 'text'
+                placeholder="Ex: 1:100 ou 100" // Novo placeholder
+                value={newProduct.dilutionRatioInput} // Usando o novo estado
+                onChange={(e) => setNewProduct({ ...newProduct, dilutionRatioInput: e.target.value })}
                 className="bg-background"
               />
             </div>
