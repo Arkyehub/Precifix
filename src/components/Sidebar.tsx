@@ -21,18 +21,18 @@ export const Sidebar = () => {
           Calculadora
         </Link>
         <Link
-          to="/services" /* Link atualizado para a nova página de serviços */
+          to="/services"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
         >
           <Car className="h-4 w-4" />
           Gerenciar Serviços
         </Link>
         <Link
-          to="/"
+          to="/products" /* Link atualizado para a nova página de produtos */
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
         >
           <Package className="h-4 w-4" />
-          Catálogo de Produtos
+          Gerenciar Produtos {/* Texto do link atualizado */}
         </Link>
         <Link
           to="/"

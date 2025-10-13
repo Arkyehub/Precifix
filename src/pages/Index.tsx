@@ -1,6 +1,6 @@
 import { useState } from "react";
 // Removido ServiceSelector
-import { ProductCatalog } from "@/components/ProductCatalog";
+// Removido ProductCatalog
 import { ProductDilution, Product } from "@/components/ProductDilution";
 import { OperationalCosts } from "@/components/OperationalCosts";
 import { Results } from "@/components/Results";
@@ -39,9 +39,7 @@ const Index = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-6">
         {/* O ServiceSelector foi movido para a página /services */}
-        {/* <ServiceSelector onServicesChange={setSelectedServices} /> */}
-
-        <ProductCatalog />
+        {/* O ProductCatalog foi movido para a página /products */}
         
         <ProductDilution onProductsChange={handleProductsChange} />
         

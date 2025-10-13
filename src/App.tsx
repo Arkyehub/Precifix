@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import ServicesPage from "./pages/ServicesPage"; // Importar a nova página de serviços
+import ServicesPage from "./pages/ServicesPage";
+import ProductCatalogPage from "./pages/ProductCatalogPage"; // Importar a nova página de catálogo
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -34,6 +35,14 @@ const App = () => (
               element={
                 <Layout>
                   <ServicesPage />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/products" // Nova rota para o catálogo de produtos
+              element={
+                <Layout>
+                  <ProductCatalogPage />
                 </Layout>
               } 
             />
