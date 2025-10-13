@@ -6,8 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import ServicesPage from "./pages/ServicesPage"; // Importar a nova página de serviços
 import { SessionContextProvider } from "./components/SessionContextProvider";
-import { Layout } from "./components/Layout"; // Importar o Layout
+import { Layout } from "./components/Layout";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,14 @@ const App = () => (
               element={
                 <Layout>
                   <Index />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/services" 
+              element={
+                <Layout>
+                  <ServicesPage />
                 </Layout>
               } 
             />

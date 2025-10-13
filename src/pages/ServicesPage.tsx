@@ -1,0 +1,204 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus, Car, Pencil, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+const ServicesPage = () => {
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | undefined>(undefined);
+
+  const { data: services, isLoading, error } = useQuery<Service[]>({
+    queryKey: ['services', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('user_id', user.id);
+      if (servicesError) throw servicesError;
+
+      // Fetch associated products for each service
+      const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
+        const { data: linksData, error: linksError } = await supabase
+          .from('service_product_links')
+          .select('product_id')
+          .eq('service_id', service.id);
+        if (linksError) throw linksError;
+
+        const productIds = linksData.map(link => link.product_id);
+
+        if (productIds.length > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('product_catalog_items')
+            .select('id, name')
+            .in('id', productIds);
+          if (productsError) throw productsError;
+          return { ...service, products: productsData };
+        }
+        return { ...service, products: [] };
+      }));
+      
+      return servicesWithProducts;
+    },
+    enabled: !!user,
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id); // Ensure user can only delete their own services
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
+      toast({
+        title: "Serviço removido",
+        description: "O serviço foi excluído com sucesso.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao remover serviço",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddService = () => {
+    setEditingService(undefined);
+    setIsFormDialogOpen(true);
+  };
+
+  const handleEditService = (service: Service) => {
+    setEditingService(service);
+    setIsFormDialogOpen(true);
+  };
+
+  const handleDeleteService = (id: string) => {
+    deleteServiceMutation.mutate(id);
+  };
+
+  if (isLoading) return <p>Carregando serviços...</p>;
+  if (error) return <p>Erro ao carregar serviços: {error.message}</p>;
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+              <Car className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-foreground">Gerenciar Serviços</CardTitle>
+              <CardDescription>
+                Adicione, edite ou remova os serviços que você oferece.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Button 
+            onClick={handleAddService}
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Novo Serviço
+          </Button>
+
+          {services && services.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Serviços Cadastrados</h3>
+              <div className="space-y-2">
+                {services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-border/50"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{service.name}</p>
+                      {service.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
+                      )}
+                      <p className="text-sm text-primary font-semibold mt-1">R$ {service.price.toFixed(2)}</p>
+                      {service.products && service.products.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {service.products.map(product => (
+                            <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
+                              {product.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditService(service)}
+                        className="text-primary hover:bg-primary/10"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-card">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isso excluirá permanentemente o serviço "{service.name}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteService(service.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center italic py-4">
+              Nenhum serviço cadastrado ainda. Adicione seus serviços para começar!
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <ServiceFormDialog
+        isOpen={isFormDialogOpen}
+        onClose={() => setIsFormDialogOpen(false)}
+        service={editingService}
+      />
+    </div>
+  );
+};
+
+export default ServicesPage;

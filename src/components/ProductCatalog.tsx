@@ -5,16 +5,21 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Package, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface CatalogProduct {
   id: string;
   name: string;
   size: number; // em litros
   price: number; // em R$
+  user_id: string;
 }
 
 export const ProductCatalog = () => {
-  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const { user } = useSession();
+  const queryClient = useQueryClient();
   const [newProduct, setNewProduct] = useState({
     name: "",
     size: "",
@@ -22,18 +27,81 @@ export const ProductCatalog = () => {
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('productCatalog');
-    if (saved) {
-      setCatalogProducts(JSON.parse(saved));
+  const { data: catalogProducts, isLoading, error } = useQuery<CatalogProduct[]>({
+    queryKey: ['productCatalog', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('product_catalog_items')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const addProductMutation = useMutation({
+    mutationFn: async (product: Omit<CatalogProduct, 'id' | 'created_at'>) => {
+      const { data, error } = await supabase
+        .from('product_catalog_items')
+        .insert(product)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['productCatalog', user?.id] });
+      setNewProduct({ name: "", size: "", price: "" });
+      toast({
+        title: "Produto cadastrado!",
+        description: `${data.name} foi adicionado ao catálogo.`,
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao adicionar produto",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('product_catalog_items')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id); // Ensure user can only delete their own products
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productCatalog', user?.id] });
+      toast({
+        title: "Produto removido",
+        description: "O produto foi excluído do catálogo.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao remover produto",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddProduct = () => {
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para adicionar produtos.",
+        variant: "destructive",
+      });
+      return;
     }
-  }, []);
-
-  const saveToLocalStorage = (products: CatalogProduct[]) => {
-    localStorage.setItem('productCatalog', JSON.stringify(products));
-  };
-
-  const addProduct = () => {
     if (!newProduct.name || !newProduct.size || !newProduct.price) {
       toast({
         title: "Campos obrigatórios",
@@ -43,35 +111,20 @@ export const ProductCatalog = () => {
       return;
     }
 
-    const product: CatalogProduct = {
-      id: Date.now().toString(),
+    addProductMutation.mutate({
       name: newProduct.name,
       size: parseFloat(newProduct.size),
       price: parseFloat(newProduct.price),
-    };
-
-    const updatedProducts = [...catalogProducts, product];
-    setCatalogProducts(updatedProducts);
-    saveToLocalStorage(updatedProducts);
-
-    setNewProduct({ name: "", size: "", price: "" });
-
-    toast({
-      title: "Produto cadastrado!",
-      description: `${product.name} foi adicionado ao catálogo.`,
+      user_id: user.id,
     });
   };
 
-  const removeProduct = (id: string) => {
-    const updatedProducts = catalogProducts.filter((p) => p.id !== id);
-    setCatalogProducts(updatedProducts);
-    saveToLocalStorage(updatedProducts);
-
-    toast({
-      title: "Produto removido",
-      description: "O produto foi excluído do catálogo.",
-    });
+  const handleRemoveProduct = (id: string) => {
+    removeProductMutation.mutate(id);
   };
+
+  if (isLoading) return <p>Carregando catálogo...</p>;
+  if (error) return <p>Erro ao carregar catálogo: {error.message}</p>;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -129,14 +182,14 @@ export const ProductCatalog = () => {
         </div>
 
         <Button 
-          onClick={addProduct}
+          onClick={handleAddProduct}
           className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+          disabled={addProductMutation.isPending}
         >
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar ao Catálogo
+          {addProductMutation.isPending ? "Adicionando..." : <><Plus className="mr-2 h-4 w-4" /> Adicionar ao Catálogo</>}
         </Button>
 
-        {catalogProducts.length > 0 && (
+        {catalogProducts && catalogProducts.length > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Produtos Cadastrados</h3>
             <div className="space-y-2">
@@ -154,8 +207,9 @@ export const ProductCatalog = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => removeProduct(product.id)}
+                    onClick={() => handleRemoveProduct(product.id)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={removeProductMutation.isPending}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -165,7 +219,7 @@ export const ProductCatalog = () => {
           </div>
         )}
 
-        {catalogProducts.length === 0 && (
+        {catalogProducts && catalogProducts.length === 0 && (
           <p className="text-sm text-muted-foreground text-center italic py-4">
             Nenhum produto cadastrado ainda. Adicione produtos para facilitar seus cálculos!
           </p>

@@ -17,8 +17,15 @@ export const Sidebar = () => {
           to="/"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
         >
+          <DollarSign className="h-4 w-4" />
+          Calculadora
+        </Link>
+        <Link
+          to="/services" /* Link atualizado para a nova página de serviços */
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
           <Car className="h-4 w-4" />
-          Serviços
+          Gerenciar Serviços
         </Link>
         <Link
           to="/"
@@ -26,13 +33,6 @@ export const Sidebar = () => {
         >
           <Package className="h-4 w-4" />
           Catálogo de Produtos
-        </Link>
-        <Link
-          to="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-        >
-          <DollarSign className="h-4 w-4" />
-          Custos Operacionais
         </Link>
         <Link
           to="/"

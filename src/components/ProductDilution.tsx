@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Droplet, Plus, Trash2 } from "lucide-react";
-import type { CatalogProduct } from "./ProductCatalog";
+import type { CatalogProduct } from "./ProductCatalog"; // Importar o tipo CatalogProduct
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { useQuery } from "@tanstack/react-query";
 
 export interface Product {
   id: string;
@@ -22,8 +25,8 @@ interface ProductDilutionProps {
 }
 
 export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
+  const { user } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
-  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -34,21 +37,24 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     type: "diluted" as 'diluted' | 'ready-to-use',
   });
 
+  const { data: catalogProducts, isLoading: isLoadingCatalog } = useQuery<CatalogProduct[]>({
+    queryKey: ['productCatalog', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('product_catalog_items')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   useEffect(() => {
-    const saved = localStorage.getItem('productCatalog');
-    if (saved) {
-      setCatalogProducts(JSON.parse(saved));
-    }
-
-    const interval = setInterval(() => {
-      const updated = localStorage.getItem('productCatalog');
-      if (updated) {
-        setCatalogProducts(JSON.parse(updated));
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+    // Recalcular o custo total sempre que os produtos mudarem
+    onProductsChange(products, getTotalCost());
+  }, [products]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const calculateProductCost = (product: Product) => {
     if (product.type === 'ready-to-use') {
@@ -57,10 +63,15 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       return costPerMl * product.usagePerVehicle;
     } else {
       // Para produtos diluídos: cálculo com diluição
-      const totalDilutedVolume = product.gallonVolume * (1 + product.dilutionRatio);
-      const costPerLiter = product.gallonPrice / (totalDilutedVolume / 1000);
-      const costPerApplication = (costPerLiter * product.usagePerVehicle) / 1000;
-      return costPerApplication;
+      // Custo por ml do produto concentrado
+      const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
+      // Volume total diluído para 1ml de produto concentrado (1ml concentrado + X ml água)
+      // A proporção 1:X significa 1 parte de produto para X partes de água.
+      // Então, para cada 1ml de produto, temos (1 + X) ml de solução diluída.
+      // O custo de 1ml da solução diluída é o custo de 1ml de concentrado dividido pelo fator de diluição (1+X)
+      const costPerMlDilutedSolution = costPerMlConcentrated / (1 + product.dilutionRatio);
+      // Custo por aplicação é o custo por ml da solução diluída vezes a quantidade usada
+      return costPerMlDilutedSolution * product.usagePerVehicle;
     }
   };
 
@@ -69,7 +80,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   };
 
   const loadFromCatalog = () => {
-    const catalogProduct = catalogProducts.find(p => p.id === selectedCatalogId);
+    const catalogProduct = catalogProducts?.find(p => p.id === selectedCatalogId);
     if (catalogProduct) {
       setNewProduct({
         name: catalogProduct.name,
@@ -98,7 +109,6 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
 
     const updated = [...products, product];
     setProducts(updated);
-    onProductsChange(updated, getTotalCost() + calculateProductCost(product));
     
     setNewProduct({
       name: "",
@@ -113,8 +123,6 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   const removeProduct = (id: string) => {
     const updated = products.filter((p) => p.id !== id);
     setProducts(updated);
-    const newTotal = updated.reduce((sum, p) => sum + calculateProductCost(p), 0);
-    onProductsChange(updated, newTotal);
   };
 
   return (
@@ -150,7 +158,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                           <span>Diluição: 1:{product.dilutionRatio}</span>
                           <span>Uso: {product.usagePerVehicle} ml</span>
                           <span className="text-primary font-medium col-span-2 mt-1">
-                            Custo/litro diluído: R$ {(product.gallonPrice / ((product.gallonVolume * (1 + product.dilutionRatio)) / 1000)).toFixed(4)}
+                            Custo/ml diluído: R$ {(product.gallonPrice / (product.gallonVolume * (1 + product.dilutionRatio))).toFixed(4)}
                           </span>
                         </>
                       )}
@@ -191,7 +199,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       <div className="space-y-4 pt-4 border-t border-border/50">
         <h3 className="text-sm font-medium text-foreground">Adicionar Novo Produto</h3>
 
-        {catalogProducts.length > 0 && (
+        {catalogProducts && catalogProducts.length > 0 && (
           <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-border/50">
             <Label htmlFor="catalogSelect" className="text-sm">Selecionar do Catálogo</Label>
             <div className="flex gap-2 mt-2">
@@ -209,7 +217,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
               </Select>
               <Button 
                 onClick={loadFromCatalog}
-                disabled={!selectedCatalogId}
+                disabled={!selectedCatalogId || isLoadingCatalog}
                 variant="secondary"
               >
                 Carregar
