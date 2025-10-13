@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Importar useRef
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Car, Pencil, Trash2 } from "lucide-react";
@@ -24,6 +24,7 @@ const ServicesPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
+  const hasAddedDefaultServices = useRef(false); // Adicionar este ref para controlar a execução única
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -91,10 +92,18 @@ const ServicesPage = () => {
   });
 
   useEffect(() => {
-    if (!isLoading && !error && services && services.length === 0 && user) {
+    // Adicionar serviços padrão apenas se:
+    // 1. O usuário estiver logado
+    // 2. Os dados de serviços terminaram de carregar (não está isLoading)
+    // 3. Não houve erro ao carregar os serviços
+    // 4. A lista de serviços está vazia
+    // 5. A mutação para adicionar serviços padrão não está pendente
+    // 6. Ainda não tentamos adicionar os serviços padrão nesta sessão
+    if (user && !isLoading && !error && services && services.length === 0 && !addDefaultServicesMutation.isPending && !hasAddedDefaultServices.current) {
       addDefaultServicesMutation.mutate(user.id);
+      hasAddedDefaultServices.current = true; // Marcar como true para evitar execuções futuras
     }
-  }, [isLoading, error, services, user, addDefaultServicesMutation]);
+  }, [isLoading, error, services, user, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
