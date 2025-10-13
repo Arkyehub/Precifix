@@ -40,8 +40,8 @@ function Login() {
                     defaultButtonBorder: 'hsl(var(--secondary))',
                     defaultButtonText: 'hsl(var(--secondary-foreground))',
                     dividerBackground: 'hsl(var(--border))',
-                    anchorText: 'hsl(var(--primary))',
-                    anchorTextHover: 'hsl(var(--primary-glow))',
+                    anchorTextColor: 'hsl(var(--primary))',
+                    anchorTextHoverColor: 'hsl(var(--primary-glow))',
                   },
                 },
               },
@@ -55,9 +55,9 @@ function Login() {
                   email_input_placeholder: 'email@exemplo.com',
                   password_input_placeholder: '••••••••',
                   button_label: 'Entrar',
-                  social_auth_typography: 'Ou continue com',
+                  social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
-                  forgotten_password_link_text: 'Esqueceu sua senha?',
+                  // forgotten_password_link_text: 'Esqueceu sua senha?', // Removido daqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
@@ -65,7 +65,7 @@ function Login() {
                   email_input_placeholder: 'email@exemplo.com',
                   password_input_placeholder: '••••••••',
                   button_label: 'Criar conta',
-                  social_auth_typography: 'Ou continue com',
+                  social_provider_text: 'Ou continue com',
                   link_text: 'Não tem uma conta? Cadastre-se',
                 },
                 forgotten_password: {
