@@ -70,7 +70,8 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
     mutationFn: async (newProduct: Omit<CatalogProduct, 'id' | 'created_at'> & { id?: string }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      const parsedDilutionRatio = parseDilutionRatioInput(newProduct.dilution_ratio as any); // Parse input string
+      // A diluição já foi parseada para número no handleSubmit, então usamos diretamente newProduct.dilution_ratio
+      const finalDilutionRatio = newProduct.type === 'diluted' ? newProduct.dilution_ratio : 0;
 
       let productData;
       if (newProduct.id) {
@@ -82,7 +83,7 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
             size: newProduct.size, 
             price: newProduct.price,
             type: newProduct.type,
-            dilution_ratio: parsedDilutionRatio,
+            dilution_ratio: finalDilutionRatio, // Usando o valor já numérico
           })
           .eq('id', newProduct.id)
           .eq('user_id', user.id)
@@ -99,7 +100,7 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
             size: newProduct.size, 
             price: newProduct.price, 
             type: newProduct.type,
-            dilution_ratio: parsedDilutionRatio,
+            dilution_ratio: finalDilutionRatio, // Usando o valor já numérico
             user_id: user.id 
           })
           .select()
@@ -151,7 +152,8 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
       });
       return;
     }
-    if (type === 'diluted' && (!dilutionRatioInput || parseDilutionRatioInput(dilutionRatioInput) <= 0)) {
+    const parsedDilution = parseDilutionRatioInput(dilutionRatioInput);
+    if (type === 'diluted' && (!dilutionRatioInput || parsedDilution <= 0)) {
       toast({
         title: "Diluição inválida",
         description: "A proporção de diluição deve ser um número positivo (Ex: 1:100 ou 100).",
@@ -166,7 +168,7 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
       size: parseFloat(size),
       price: parseFloat(price),
       type,
-      dilution_ratio: parseDilutionRatioInput(dilutionRatioInput),
+      dilution_ratio: parsedDilution, // Aqui a diluição é parseada para número
       user_id: user!.id,
     });
   };
