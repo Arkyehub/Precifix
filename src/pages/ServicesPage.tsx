@@ -24,7 +24,7 @@ const ServicesPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
-  const [defaultServicesAdded, setDefaultServicesAdded] = useState(false); // Usar estado para controlar a adição única
+  const hasAddedDefaultServicesRef = useRef(false); // Usar useRef para controlar a adição única
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -97,12 +97,21 @@ const ServicesPage = () => {
     // 2. Os dados de serviços terminaram de carregar (não está isLoading)
     // 3. Não houve erro ao carregar os serviços
     // 4. A lista de serviços está vazia
-    // 5. Ainda não tentamos adicionar os serviços padrão nesta sessão (defaultServicesAdded é false)
-    if (user && !isLoading && !error && services && services.length === 0 && !defaultServicesAdded) {
+    // 5. A mutação para adicionar serviços padrão não está pendente
+    // 6. Ainda não tentamos adicionar os serviços padrão nesta sessão (usando useRef)
+    if (
+      user &&
+      !isLoading &&
+      !error &&
+      services &&
+      services.length === 0 &&
+      !addDefaultServicesMutation.isPending &&
+      !hasAddedDefaultServicesRef.current
+    ) {
+      hasAddedDefaultServicesRef.current = true; // Marcar como true ANTES de iniciar a mutação
       addDefaultServicesMutation.mutate(user.id);
-      setDefaultServicesAdded(true); // Marcar como true imediatamente após iniciar a mutação
     }
-  }, [isLoading, error, services, user, defaultServicesAdded, addDefaultServicesMutation]);
+  }, [isLoading, error, services, user, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
