@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser } from "lucide-react"; // Adicionado Eraser icon
+import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon } from "lucide-react"; // Adicionado Clock e DollarIcon
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -9,12 +9,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+// Utility function to format minutes to HH:MM
+const formatMinutesToHHMM = (totalMinutes: number): string => {
+  if (isNaN(totalMinutes) || totalMinutes < 0) return "00:00";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 const DEFAULT_SERVICES_TO_ADD = [
-  { name: "Lavagem Simples", description: "Limpeza externa básica do veículo.", price: 0 },
-  { name: "Lavagem Detalhada", description: "Limpeza completa externa e interna, com atenção aos detalhes.", price: 0 },
-  { name: "Higienização", description: "Limpeza profunda e desinfecção do interior do veículo.", price: 0 },
-  { name: "Polimento", description: "Remoção de riscos superficiais e restauração do brilho da pintura.", price: 0 },
-  { name: "Vitrificação", description: "Aplicação de camada protetora para maior durabilidade e brilho da pintura.", price: 0 },
+  { name: "Lavagem Simples", description: "Limpeza externa básica do veículo.", price: 50.00, labor_cost_per_hour: 30.00, execution_time_minutes: 30 },
+  { name: "Lavagem Detalhada", description: "Limpeza completa externa e interna, com atenção aos detalhes.", price: 120.00, labor_cost_per_hour: 40.00, execution_time_minutes: 90 },
+  { name: "Higienização Interna", description: "Limpeza profunda e desinfecção do interior do veículo.", price: 250.00, labor_cost_per_hour: 50.00, execution_time_minutes: 180 },
+  { name: "Polimento Comercial", description: "Remoção de riscos superficiais e restauração do brilho da pintura.", price: 400.00, labor_cost_per_hour: 60.00, execution_time_minutes: 240 },
+  { name: "Vitrificação de Pintura", description: "Aplicação de camada protetora para maior durabilidade e brilho da pintura.", price: 800.00, labor_cost_per_hour: 70.00, execution_time_minutes: 360 },
 ];
 
 const ServicesPage = () => {
@@ -24,7 +32,7 @@ const ServicesPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
-  const hasAddedDefaultServicesRef = useRef(false); // Usar useRef para controlar a adição única
+  const hasAddedDefaultServicesRef = useRef(false);
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -38,9 +46,7 @@ const ServicesPage = () => {
         console.error("Error fetching services in queryFn:", servicesError);
         throw servicesError;
       }
-      console.log("Services fetched from DB (inside queryFn):", servicesData); // Log para ver o que o DB retorna
       
-      // Fetch associated products for each service
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
@@ -86,7 +92,6 @@ const ServicesPage = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log("Default services added successfully. Data:", data); // Log para confirmar a adição
       queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
       toast({
         title: "Serviços de exemplo adicionados!",
@@ -94,7 +99,7 @@ const ServicesPage = () => {
       });
     },
     onError: (err) => {
-      console.error("Error adding default services:", err); // Log de erro na mutação
+      console.error("Error adding default services:", err);
       toast({
         title: "Erro ao adicionar serviços de exemplo",
         description: err.message,
@@ -104,37 +109,19 @@ const ServicesPage = () => {
   });
 
   useEffect(() => {
-    // Log current state for debugging
-    console.log("--- ServicesPage useEffect Debug ---");
-    console.log("User:", user?.id);
-    console.log("isLoading (query):", isLoading);
-    console.log("error (query):", error);
-    console.log("services (data):", services);
-    console.log("services.length:", services?.length);
-    console.log("addDefaultServicesMutation.isPending:", addDefaultServicesMutation.isPending);
-    console.log("hasAddedDefaultServicesRef.current (before check):", hasAddedDefaultServicesRef.current);
-
-    // Condition to add default services
     const shouldAddDefaults =
       user &&
-      !isLoading && // Query is not loading
-      !error && // No error in query
-      services && // Services data is available
-      services.length === 0 && // No services found for the user
-      !addDefaultServicesMutation.isPending && // Mutation is not already running
-      !hasAddedDefaultServicesRef.current; // We haven't attempted to add defaults in this component instance
+      !isLoading &&
+      !error &&
+      services &&
+      services.length === 0 &&
+      !addDefaultServicesMutation.isPending &&
+      !hasAddedDefaultServicesRef.current;
 
     if (shouldAddDefaults) {
-      console.log("Condition met: Attempting to add default services for user:", user.id);
-      hasAddedDefaultServicesRef.current = true; // Set ref to true immediately to prevent re-triggering in this mount
+      hasAddedDefaultServicesRef.current = true;
       addDefaultServicesMutation.mutate(user.id);
-    } else {
-      console.log("Condition NOT met. Skipping default service addition.");
     }
-
-    console.log("hasAddedDefaultServicesRef.current (after check):", hasAddedDefaultServicesRef.current);
-    console.log("----------------------------------");
-
   }, [user, isLoading, error, services, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
 
   const deleteServiceMutation = useMutation({
@@ -143,7 +130,7 @@ const ServicesPage = () => {
         .from('services')
         .delete()
         .eq('id', id)
-        .eq('user_id', user?.id); // Ensure user can only delete their own services
+        .eq('user_id', user?.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -154,7 +141,7 @@ const ServicesPage = () => {
       });
     },
     onError: (err) => {
-      console.error("Error deleting service:", err); // Log de erro na exclusão
+      console.error("Error deleting service:", err);
       toast({
         title: "Erro ao remover serviço",
         description: err.message,
@@ -163,13 +150,9 @@ const ServicesPage = () => {
     },
   });
 
-  // New mutation for clearing all services
   const clearAllServicesMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Usuário não autenticado.");
-      // First, delete all service_product_links for the user's services
-      // This is important because 'service_product_links' has a foreign key constraint
-      // to 'services', and we need to delete the children before the parent.
       const { data: userServices, error: fetchError } = await supabase
         .from('services')
         .select('id')
@@ -187,7 +170,6 @@ const ServicesPage = () => {
         if (deleteLinksError) throw deleteLinksError;
       }
 
-      // Then, delete all services for the user
       const { error } = await supabase
         .from('services')
         .delete()
@@ -200,7 +182,7 @@ const ServicesPage = () => {
         title: "Serviços limpos!",
         description: "Todos os seus serviços foram removidos.",
       });
-      hasAddedDefaultServicesRef.current = false; // Reset ref to allow default services to be added again
+      hasAddedDefaultServicesRef.current = false;
     },
     onError: (err) => {
       console.error("Error clearing all services:", err);
@@ -253,7 +235,7 @@ const ServicesPage = () => {
           {services && services.length > 0 ? (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground">Serviços Cadastrados</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Layout em duas colunas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {services.map((service) => (
                   <div
                     key={service.id}
@@ -265,6 +247,12 @@ const ServicesPage = () => {
                         <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
                       )}
                       <p className="text-sm text-primary font-semibold mt-1">R$ {service.price.toFixed(2)}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <DollarIcon className="h-3 w-3" />
+                        <span>Custo/Hora: R$ {service.labor_cost_per_hour.toFixed(2)}</span>
+                        <Clock className="h-3 w-3 ml-2" />
+                        <span>Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</span>
+                      </div>
                       {service.products && service.products.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {service.products.map(product => (
@@ -328,7 +316,6 @@ const ServicesPage = () => {
             Adicionar Novo Serviço
           </Button>
 
-          {/* Temporary button to clear all services */}
           {services && services.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
