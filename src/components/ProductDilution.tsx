@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Droplet, Plus, Trash2 } from "lucide-react";
-import type { CatalogProduct } from "./ProductCatalog"; // Importar o tipo CatalogProduct
+import type { CatalogProduct } from "./ProductFormDialog"; // Importar o tipo CatalogProduct atualizado
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -17,20 +17,16 @@ export interface Product {
   gallonVolume: number; // em ml
   dilutionRatio: number; // ex: 10 para 1:10
   usagePerVehicle: number; // em ml
-  type: 'diluted' | 'ready-to-use'; // tipo do produto
+  type: 'diluted' | 'ready-to-use'; // tipo do produto, agora vem do catálogo
 }
 
 interface ProductDilutionProps {
   onProductsChange: (products: Product[], totalCost: number) => void;
 }
 
-// Utility function to parse dilution ratio from "1:X" or "X" format
-const parseDilutionRatioInput = (input: string): number => {
-  const parts = input.split(':');
-  if (parts.length === 2 && parts[0].trim() === '1') {
-    return parseFloat(parts[1].trim()) || 0;
-  }
-  return parseFloat(input.trim()) || 0; // Fallback if not in "1:X" format
+// Utility function to format dilution ratio for display
+const formatDilutionRatio = (ratio: number): string => {
+  return ratio > 0 ? `1:${ratio}` : 'N/A';
 };
 
 export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
@@ -41,10 +37,10 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     name: "",
     gallonPrice: "",
     gallonVolume: "",
-    dilutionRatioInput: "", // Novo estado para a entrada de texto da diluição
     usagePerVehicle: "",
-    type: "diluted" as 'diluted' | 'ready-to-use',
   });
+  const [loadedCatalogProductDetails, setLoadedCatalogProductDetails] = useState<Omit<Product, 'id' | 'usagePerVehicle'> | null>(null);
+
 
   const { data: catalogProducts, isLoading: isLoadingCatalog } = useQuery<CatalogProduct[]>({
     queryKey: ['productCatalog', user?.id],
@@ -95,27 +91,30 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         name: catalogProduct.name,
         gallonPrice: catalogProduct.price.toString(),
         gallonVolume: (catalogProduct.size * 1000).toString(), // convert liters to ml
-        dilutionRatioInput: "", // Limpar ao carregar do catálogo
         usagePerVehicle: "",
-        type: "diluted",
+      });
+      setLoadedCatalogProductDetails({
+        name: catalogProduct.name,
+        gallonPrice: catalogProduct.price,
+        gallonVolume: catalogProduct.size * 1000,
+        dilutionRatio: catalogProduct.dilution_ratio,
+        type: catalogProduct.type,
       });
       setSelectedCatalogId("");
     }
   };
 
   const addProduct = () => {
-    if (!newProduct.name || !newProduct.gallonPrice || !newProduct.gallonVolume) return;
-
-    const dilutionRatio = newProduct.type === 'diluted' ? parseDilutionRatioInput(newProduct.dilutionRatioInput) : 0;
+    if (!newProduct.name || !newProduct.gallonPrice || !newProduct.gallonVolume || !loadedCatalogProductDetails) return;
 
     const product: Product = {
       id: `product-${Date.now()}`,
       name: newProduct.name,
       gallonPrice: parseFloat(newProduct.gallonPrice),
       gallonVolume: parseFloat(newProduct.gallonVolume),
-      dilutionRatio: dilutionRatio,
+      dilutionRatio: loadedCatalogProductDetails.dilutionRatio,
       usagePerVehicle: parseFloat(newProduct.usagePerVehicle) || 0,
-      type: newProduct.type,
+      type: loadedCatalogProductDetails.type,
     };
 
     const updated = [...products, product];
@@ -125,10 +124,9 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       name: "",
       gallonPrice: "",
       gallonVolume: "",
-      dilutionRatioInput: "",
       usagePerVehicle: "",
-      type: "diluted",
     });
+    setLoadedCatalogProductDetails(null);
   };
 
   const removeProduct = (id: string) => {
@@ -166,7 +164,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                       <span>Volume: {product.gallonVolume} ml</span>
                       {product.type === 'diluted' && (
                         <>
-                          <span>Diluição: 1:{product.dilutionRatio}</span>
+                          <span>Diluição: {formatDilutionRatio(product.dilutionRatio)}</span>
                           <span>Uso: {product.usagePerVehicle} ml</span>
                           <span className="text-primary font-medium col-span-2 mt-1">
                             Custo/ml diluído: R$ {(product.gallonPrice / (product.gallonVolume * (1 + product.dilutionRatio))).toFixed(4)}
@@ -208,7 +206,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       )}
 
       <div className="space-y-4 pt-4 border-t border-border/50">
-        <h3 className="text-sm font-medium text-foreground">Adicionar Novo Produto</h3>
+        <h3 className="text-sm font-medium text-foreground">Adicionar Produto</h3>
 
         {catalogProducts && catalogProducts.length > 0 && (
           <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-border/50">
@@ -222,6 +220,8 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                   {catalogProducts.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.name} - {product.size}L - R$ {product.price.toFixed(2)}
+                      {product.type === 'diluted' && ` (Diluição: ${formatDilutionRatio(product.dilution_ratio)})`}
+                      {product.type === 'ready-to-use' && ` (Pronto Uso)`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -237,78 +237,21 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
           </div>
         )}
         
-        <div className="space-y-2 mb-4">
-          <Label htmlFor="product-type" className="text-sm">Tipo de Produto</Label>
-          <Select 
-            value={newProduct.type} 
-            onValueChange={(value: 'diluted' | 'ready-to-use') => setNewProduct({ ...newProduct, type: value })}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="diluted">Produto Diluído</SelectItem>
-              <SelectItem value="ready-to-use">Produto Pronto Uso</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {loadedCatalogProductDetails && (
+          <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+            <p className="font-medium text-foreground">Produto Carregado: {loadedCatalogProductDetails.name}</p>
+            <p className="text-sm text-muted-foreground">
+              Preço: R$ {loadedCatalogProductDetails.gallonPrice.toFixed(2)} | Volume: {loadedCatalogProductDetails.gallonVolume} ml
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Tipo: {loadedCatalogProductDetails.type === 'diluted' ? 'Diluído' : 'Pronto Uso'}
+              {loadedCatalogProductDetails.type === 'diluted' && ` | Diluição: ${formatDilutionRatio(loadedCatalogProductDetails.dilutionRatio)}`}
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="product-name" className="text-sm">Nome do Produto</Label>
-            <Input
-              id="product-name"
-              placeholder="Ex: Shampoo Neutro"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-              className="bg-background"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gallon-price" className="text-sm">
-              {newProduct.type === 'ready-to-use' ? 'Preço do Produto (R$)' : 'Preço do Galão (R$)'}
-            </Label>
-            <Input
-              id="gallon-price"
-              type="number"
-              step="0.01"
-              placeholder="150.00"
-              value={newProduct.gallonPrice}
-              onChange={(e) => setNewProduct({ ...newProduct, gallonPrice: e.target.value })}
-              className="bg-background"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gallon-volume" className="text-sm">
-              {newProduct.type === 'ready-to-use' ? 'Volume Total (ml)' : 'Volume do Galão (ml)'}
-            </Label>
-            <Input
-              id="gallon-volume"
-              type="number"
-              placeholder="5000"
-              value={newProduct.gallonVolume}
-              onChange={(e) => setNewProduct({ ...newProduct, gallonVolume: e.target.value })}
-              className="bg-background"
-            />
-          </div>
-
-          {newProduct.type === 'diluted' && (
-            <div className="space-y-2">
-              <Label htmlFor="dilution-ratio" className="text-sm">Proporção de Diluição (1:X)</Label>
-              <Input
-                id="dilution-ratio"
-                type="text" // Alterado para 'text'
-                placeholder="Ex: 1:100 ou 100" // Novo placeholder
-                value={newProduct.dilutionRatioInput} // Usando o novo estado
-                onChange={(e) => setNewProduct({ ...newProduct, dilutionRatioInput: e.target.value })}
-                className="bg-background"
-              />
-            </div>
-          )}
-
-          <div className="space-y-2 md:col-span-2">
             <Label htmlFor="usage-per-vehicle" className="text-sm">Quantidade Usada por Veículo (ml)</Label>
             <Input
               id="usage-per-vehicle"
@@ -317,6 +260,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
               value={newProduct.usagePerVehicle}
               onChange={(e) => setNewProduct({ ...newProduct, usagePerVehicle: e.target.value })}
               className="bg-background"
+              disabled={!loadedCatalogProductDetails}
             />
           </div>
         </div>
@@ -324,9 +268,10 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         <Button
           onClick={addProduct}
           className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[var(--shadow-elegant)]"
+          disabled={!loadedCatalogProductDetails || !newProduct.usagePerVehicle}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Adicionar Produto
+          Adicionar Produto à Lista
         </Button>
       </div>
     </Card>

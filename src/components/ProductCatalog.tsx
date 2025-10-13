@@ -1,31 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Package, Trash2, Plus } from "lucide-react";
+import { Package, Trash2, Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar o novo diálogo e tipo
 
-export interface CatalogProduct {
-  id: string;
-  name: string;
-  size: number; // em litros
-  price: number; // em R$
-  user_id: string;
-}
+// Utility function to format dilution ratio for display
+const formatDilutionRatio = (ratio: number): string => {
+  return ratio > 0 ? `1:${ratio}` : 'N/A';
+};
 
 export const ProductCatalog = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    size: "",
-    price: "",
-  });
   const { toast } = useToast();
+
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<CatalogProduct | undefined>(undefined);
 
   const { data: catalogProducts, isLoading, error } = useQuery<CatalogProduct[]>({
     queryKey: ['productCatalog', user?.id],
@@ -39,33 +36,6 @@ export const ProductCatalog = () => {
       return data;
     },
     enabled: !!user,
-  });
-
-  const addProductMutation = useMutation({
-    mutationFn: async (product: Omit<CatalogProduct, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase
-        .from('product_catalog_items')
-        .insert(product)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['productCatalog', user?.id] });
-      setNewProduct({ name: "", size: "", price: "" });
-      toast({
-        title: "Produto cadastrado!",
-        description: `${data.name} foi adicionado ao catálogo.`,
-      });
-    },
-    onError: (err) => {
-      toast({
-        title: "Erro ao adicionar produto",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
   });
 
   const removeProductMutation = useMutation({
@@ -94,32 +64,16 @@ export const ProductCatalog = () => {
   });
 
   const handleAddProduct = () => {
-    if (!user) {
-      toast({
-        title: "Erro de autenticação",
-        description: "Você precisa estar logado para adicionar produtos.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!newProduct.name || !newProduct.size || !newProduct.price) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos do produto.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    addProductMutation.mutate({
-      name: newProduct.name,
-      size: parseFloat(newProduct.size),
-      price: parseFloat(newProduct.price),
-      user_id: user.id,
-    });
+    setEditingProduct(undefined);
+    setIsFormDialogOpen(true);
   };
 
-  const handleRemoveProduct = (id: string) => {
+  const handleEditProduct = (product: CatalogProduct) => {
+    setEditingProduct(product);
+    setIsFormDialogOpen(true);
+  };
+
+  const handleDeleteProduct = (id: string) => {
     removeProductMutation.mutate(id);
   };
 
@@ -142,57 +96,10 @@ export const ProductCatalog = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="productName">Nome do Produto</Label>
-            <Input
-              id="productName"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-              placeholder="Ex: Shampoo Automotivo"
-              className="bg-background/50"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="productSize">Tamanho (Litros)</Label>
-            <Input
-              id="productSize"
-              type="number"
-              step="0.1"
-              value={newProduct.size}
-              onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
-              placeholder="Ex: 5"
-              className="bg-background/50"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="productPrice">Preço (R$)</Label>
-            <Input
-              id="productPrice"
-              type="number"
-              step="0.01"
-              value={newProduct.price}
-              onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-              placeholder="Ex: 89.90"
-              className="bg-background/50"
-            />
-          </div>
-        </div>
-
-        <Button 
-          onClick={handleAddProduct}
-          className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-          disabled={addProductMutation.isPending}
-        >
-          {addProductMutation.isPending ? "Adicionando..." : <><Plus className="mr-2 h-4 w-4" /> Adicionar ao Catálogo</>}
-        </Button>
-
-        {catalogProducts && catalogProducts.length > 0 && (
+        {catalogProducts && catalogProducts.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Produtos Cadastrados</h3>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {catalogProducts.map((product) => (
                 <div
                   key={product.id}
@@ -203,28 +110,70 @@ export const ProductCatalog = () => {
                     <p className="text-sm text-muted-foreground">
                       {product.size}L - R$ {product.price.toFixed(2)}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tipo: {product.type === 'diluted' ? 'Diluído' : 'Pronto Uso'}
+                      {product.type === 'diluted' && ` | Diluição: ${formatDilutionRatio(product.dilution_ratio)}`}
+                    </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveProduct(product.id)}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    disabled={removeProductMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditProduct(product)}
+                      className="text-primary hover:bg-primary/10"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto "{product.name}".
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        {catalogProducts && catalogProducts.length === 0 && (
+        ) : (
           <p className="text-sm text-muted-foreground text-center italic py-4">
             Nenhum produto cadastrado ainda. Adicione produtos para facilitar seus cálculos!
           </p>
         )}
+
+        <Button 
+          onClick={handleAddProduct}
+          className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Novo Produto
+        </Button>
       </CardContent>
+
+      <ProductFormDialog
+        isOpen={isFormDialogOpen}
+        onClose={() => setIsFormDialogOpen(false)}
+        product={editingProduct}
+      />
     </Card>
   );
 };
