@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2 } from "lucide-react";
+import { Plus, Car, Pencil, Trash2, Eraser } from "lucide-react"; // Adicionado Eraser icon
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -163,6 +163,55 @@ const ServicesPage = () => {
     },
   });
 
+  // New mutation for clearing all services
+  const clearAllServicesMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      // First, delete all service_product_links for the user's services
+      // This is important because 'service_product_links' has a foreign key constraint
+      // to 'services', and we need to delete the children before the parent.
+      const { data: userServices, error: fetchError } = await supabase
+        .from('services')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (fetchError) throw fetchError;
+
+      const serviceIds = userServices.map(s => s.id);
+
+      if (serviceIds.length > 0) {
+        const { error: deleteLinksError } = await supabase
+          .from('service_product_links')
+          .delete()
+          .in('service_id', serviceIds);
+        if (deleteLinksError) throw deleteLinksError;
+      }
+
+      // Then, delete all services for the user
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
+      toast({
+        title: "Serviços limpos!",
+        description: "Todos os seus serviços foram removidos.",
+      });
+      hasAddedDefaultServicesRef.current = false; // Reset ref to allow default services to be added again
+    },
+    onError: (err) => {
+      console.error("Error clearing all services:", err);
+      toast({
+        title: "Erro ao limpar serviços",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddService = () => {
     setEditingService(undefined);
     setIsFormDialogOpen(true);
@@ -175,6 +224,10 @@ const ServicesPage = () => {
 
   const handleDeleteService = (id: string) => {
     deleteServiceMutation.mutate(id);
+  };
+
+  const handleClearAllServices = () => {
+    clearAllServicesMutation.mutate();
   };
 
   if (isLoading || addDefaultServicesMutation.isPending) return <p>Carregando serviços...</p>;
@@ -274,6 +327,36 @@ const ServicesPage = () => {
             <Plus className="mr-2 h-4 w-4" />
             Adicionar Novo Serviço
           </Button>
+
+          {/* Temporary button to clear all services */}
+          {services && services.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full mt-4 border-destructive text-destructive hover:bg-destructive/10"
+                  disabled={clearAllServicesMutation.isPending}
+                >
+                  <Eraser className="mr-2 h-4 w-4" />
+                  {clearAllServicesMutation.isPending ? "Limpando..." : "Limpar Todos os Serviços"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-card">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Tem certeza que deseja limpar TUDO?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível e excluirá permanentemente TODOS os seus serviços cadastrados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearAllServices} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Sim, Limpar Tudo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </CardContent>
       </Card>
 
