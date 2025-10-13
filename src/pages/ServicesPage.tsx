@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Car, Pencil, Trash2 } from "lucide-react";
@@ -8,6 +8,14 @@ import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+const DEFAULT_SERVICES_TO_ADD = [
+  { name: "Lavagem Simples", description: "Limpeza externa básica do veículo.", price: 0 },
+  { name: "Lavagem Detalhada", description: "Limpeza completa externa e interna, com atenção aos detalhes.", price: 0 },
+  { name: "Higienização", description: "Limpeza profunda e desinfecção do interior do veículo.", price: 0 },
+  { name: "Polimento", description: "Remoção de riscos superficiais e restauração do brilho da pintura.", price: 0 },
+  { name: "Vitrificação", description: "Aplicação de camada protetora para maior durabilidade e brilho da pintura.", price: 0 },
+];
 
 const ServicesPage = () => {
   const { user } = useSession();
@@ -53,6 +61,41 @@ const ServicesPage = () => {
     enabled: !!user,
   });
 
+  const addDefaultServicesMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const servicesToInsert = DEFAULT_SERVICES_TO_ADD.map(service => ({
+        ...service,
+        user_id: userId,
+      }));
+      const { data, error } = await supabase
+        .from('services')
+        .insert(servicesToInsert)
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
+      toast({
+        title: "Serviços de exemplo adicionados!",
+        description: "Você pode editá-los ou adicionar novos.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao adicionar serviços de exemplo",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoading && !error && services && services.length === 0 && user) {
+      addDefaultServicesMutation.mutate(user.id);
+    }
+  }, [isLoading, error, services, user, addDefaultServicesMutation]);
+
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -92,7 +135,7 @@ const ServicesPage = () => {
     deleteServiceMutation.mutate(id);
   };
 
-  if (isLoading) return <p>Carregando serviços...</p>;
+  if (isLoading || addDefaultServicesMutation.isPending) return <p>Carregando serviços...</p>;
   if (error) return <p>Erro ao carregar serviços: {error.message}</p>;
 
   return (
