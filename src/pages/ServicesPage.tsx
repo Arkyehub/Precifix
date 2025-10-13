@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Importar useRef
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Car, Pencil, Trash2 } from "lucide-react";
@@ -24,7 +24,7 @@ const ServicesPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
-  const hasAddedDefaultServices = useRef(false); // Adicionar este ref para controlar a execução única
+  const [defaultServicesAdded, setDefaultServicesAdded] = useState(false); // Usar estado para controlar a adição única
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -97,13 +97,12 @@ const ServicesPage = () => {
     // 2. Os dados de serviços terminaram de carregar (não está isLoading)
     // 3. Não houve erro ao carregar os serviços
     // 4. A lista de serviços está vazia
-    // 5. A mutação para adicionar serviços padrão não está pendente
-    // 6. Ainda não tentamos adicionar os serviços padrão nesta sessão
-    if (user && !isLoading && !error && services && services.length === 0 && !addDefaultServicesMutation.isPending && !hasAddedDefaultServices.current) {
+    // 5. Ainda não tentamos adicionar os serviços padrão nesta sessão (defaultServicesAdded é false)
+    if (user && !isLoading && !error && services && services.length === 0 && !defaultServicesAdded) {
       addDefaultServicesMutation.mutate(user.id);
-      hasAddedDefaultServices.current = true; // Marcar como true para evitar execuções futuras
+      setDefaultServicesAdded(true); // Marcar como true imediatamente após iniciar a mutação
     }
-  }, [isLoading, error, services, user, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
+  }, [isLoading, error, services, user, defaultServicesAdded, addDefaultServicesMutation]);
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -164,18 +163,10 @@ const ServicesPage = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Button 
-            onClick={handleAddService}
-            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Novo Serviço
-          </Button>
-
           {services && services.length > 0 ? (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground">Serviços Cadastrados</h3>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Layout em duas colunas */}
                 {services.map((service) => (
                   <div
                     key={service.id}
@@ -241,6 +232,14 @@ const ServicesPage = () => {
               Nenhum serviço cadastrado ainda. Adicione seus serviços para começar!
             </p>
           )}
+
+          <Button 
+            onClick={handleAddService}
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Novo Serviço
+          </Button>
         </CardContent>
       </Card>
 
