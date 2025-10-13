@@ -5,7 +5,10 @@ import { ProductDilution, Product } from "@/components/ProductDilution";
 import { OperationalCosts } from "@/components/OperationalCosts";
 import { Results } from "@/components/Results";
 import { QuoteGenerator } from "@/components/QuoteGenerator";
-import { Sparkles } from "lucide-react";
+import { Sparkles, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -15,6 +18,7 @@ const Index = () => {
   const [laborCostPerHour, setLaborCostPerHour] = useState(0);
   const [otherCosts, setOtherCosts] = useState(0);
   const [profitMargin, setProfitMargin] = useState(40);
+  const navigate = useNavigate();
 
   const handleProductsChange = (updatedProducts: Product[], totalCost: number) => {
     setProducts(updatedProducts);
@@ -29,6 +33,11 @@ const Index = () => {
     setExecutionTime(costs.executionTime);
     setLaborCostPerHour(costs.laborCostPerHour);
     setOtherCosts(costs.otherCosts);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
   };
 
   const laborCost = (executionTime / 60) * laborCostPerHour;
@@ -90,9 +99,17 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 mt-16 py-6 bg-muted/30">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-4">
             Seu negócio está no caminho certo. Continue precificando com estratégia! 🚗✨
           </p>
+          <Button 
+            onClick={handleLogout} 
+            variant="outline" 
+            className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Encerrar Sessão
+          </Button>
         </div>
       </footer>
     </div>
