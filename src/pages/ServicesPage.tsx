@@ -34,15 +34,22 @@ const ServicesPage = () => {
         .from('services')
         .select('*')
         .eq('user_id', user.id);
-      if (servicesError) throw servicesError;
-
+      if (servicesError) {
+        console.error("Error fetching services in queryFn:", servicesError);
+        throw servicesError;
+      }
+      console.log("Services fetched from DB (inside queryFn):", servicesData); // Log para ver o que o DB retorna
+      
       // Fetch associated products for each service
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
           .select('product_id')
           .eq('service_id', service.id);
-        if (linksError) throw linksError;
+        if (linksError) {
+          console.error(`Error fetching product links for service ${service.id}:`, linksError);
+          throw linksError;
+        }
 
         const productIds = linksData.map(link => link.product_id);
 
@@ -51,7 +58,10 @@ const ServicesPage = () => {
             .from('product_catalog_items')
             .select('id, name')
             .in('id', productIds);
-          if (productsError) throw productsError;
+          if (productsError) {
+            console.error(`Error fetching products for service ${service.id}:`, productsError);
+            throw productsError;
+          }
           return { ...service, products: productsData };
         }
         return { ...service, products: [] };
@@ -75,7 +85,8 @@ const ServicesPage = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Default services added successfully. Data:", data); // Log para confirmar a adição
       queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
       toast({
         title: "Serviços de exemplo adicionados!",
@@ -83,6 +94,7 @@ const ServicesPage = () => {
       });
     },
     onError: (err) => {
+      console.error("Error adding default services:", err); // Log de erro na mutação
       toast({
         title: "Erro ao adicionar serviços de exemplo",
         description: err.message,
@@ -92,26 +104,38 @@ const ServicesPage = () => {
   });
 
   useEffect(() => {
-    // Adicionar serviços padrão apenas se:
-    // 1. O usuário estiver logado
-    // 2. Os dados de serviços terminaram de carregar (não está isLoading)
-    // 3. Não houve erro ao carregar os serviços
-    // 4. A lista de serviços está vazia
-    // 5. A mutação para adicionar serviços padrão não está pendente
-    // 6. Ainda não tentamos adicionar os serviços padrão nesta sessão (usando useRef)
-    if (
+    // Log current state for debugging
+    console.log("--- ServicesPage useEffect Debug ---");
+    console.log("User:", user?.id);
+    console.log("isLoading (query):", isLoading);
+    console.log("error (query):", error);
+    console.log("services (data):", services);
+    console.log("services.length:", services?.length);
+    console.log("addDefaultServicesMutation.isPending:", addDefaultServicesMutation.isPending);
+    console.log("hasAddedDefaultServicesRef.current (before check):", hasAddedDefaultServicesRef.current);
+
+    // Condition to add default services
+    const shouldAddDefaults =
       user &&
-      !isLoading &&
-      !error &&
-      services &&
-      services.length === 0 &&
-      !addDefaultServicesMutation.isPending &&
-      !hasAddedDefaultServicesRef.current
-    ) {
-      hasAddedDefaultServicesRef.current = true; // Marcar como true ANTES de iniciar a mutação
+      !isLoading && // Query is not loading
+      !error && // No error in query
+      services && // Services data is available
+      services.length === 0 && // No services found for the user
+      !addDefaultServicesMutation.isPending && // Mutation is not already running
+      !hasAddedDefaultServicesRef.current; // We haven't attempted to add defaults in this component instance
+
+    if (shouldAddDefaults) {
+      console.log("Condition met: Attempting to add default services for user:", user.id);
+      hasAddedDefaultServicesRef.current = true; // Set ref to true immediately to prevent re-triggering in this mount
       addDefaultServicesMutation.mutate(user.id);
+    } else {
+      console.log("Condition NOT met. Skipping default service addition.");
     }
-  }, [isLoading, error, services, user, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
+
+    console.log("hasAddedDefaultServicesRef.current (after check):", hasAddedDefaultServicesRef.current);
+    console.log("----------------------------------");
+
+  }, [user, isLoading, error, services, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -130,6 +154,7 @@ const ServicesPage = () => {
       });
     },
     onError: (err) => {
+      console.error("Error deleting service:", err); // Log de erro na exclusão
       toast({
         title: "Erro ao remover serviço",
         description: err.message,
