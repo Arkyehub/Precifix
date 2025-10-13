@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/Login"; // Importar a página de Login
-import { SessionContextProvider } from "./components/SessionContextProvider"; // Importar o provedor de sessão
+import Login from "./pages/Login";
+import { SessionContextProvider } from "./components/SessionContextProvider";
+import { Layout } from "./components/Layout"; // Importar o Layout
 
 const queryClient = new QueryClient();
 
@@ -16,10 +17,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <SessionContextProvider> {/* Envolver as rotas com o provedor de sessão */}
+        <SessionContextProvider>
           <Routes>
-            <Route path="/login" element={<Login />} /> {/* Adicionar a rota de login */}
-            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route 
+              path="/" 
+              element={
+                <Layout>
+                  <Index />
+                </Layout>
+              } 
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
