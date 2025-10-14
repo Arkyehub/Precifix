@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --primary: 45 100% 51%;
     --primary-foreground: 0 0% 0%;
     --primary-glow: 43 100% 65%;
-    --primary-strong: 45 100% 40%; /* Laranja mais forte */
+    --primary-strong: 25 75% 47%; /* Laranja mais forte: #D2691E */
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 96%;
@@ -58,7 +58,7 @@ All colors MUST be HSL.
     --primary: 45 100% 51%;
     --primary-foreground: 0 0% 0%;
     --primary-glow: 43 100% 65%;
-    --primary-strong: 45 100% 40%; /* Laranja mais forte para o tema escuro */
+    --primary-strong: 25 75% 47%; /* Laranja mais forte para o tema escuro: #D2691E */
     --secondary: 0 0% 98%;
     --secondary-foreground: 0 0% 10%;
     --muted: 0 0% 15%;
