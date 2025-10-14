@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,25 +9,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar o novo diálogo e tipo
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Novo import
-import { useNavigate } from "react-router-dom"; // Importar useNavigate
+import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useNavigate } from "react-router-dom";
 
 // Utility function to format dilution ratio for display
 const formatDilutionRatio = (ratio: number): string => {
   return ratio > 0 ? `1:${ratio}` : 'N/A';
 };
 
+interface OperationalCost {
+  id: string;
+  description: string;
+  value: number;
+  type: 'fixed' | 'variable';
+  user_id: string;
+  created_at: string;
+}
+
 export const ProductCatalog = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const navigate = useNavigate(); // Inicializar useNavigate
+  const navigate = useNavigate();
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | undefined>(undefined);
-  const [productCostCalculationMethod, setProductCostCalculationMethod] = useState<'per-service' | 'monthly-average'>('per-service'); // Estado para o método de cálculo
 
+  // Query para buscar os produtos do catálogo
   const { data: catalogProducts, isLoading, error } = useQuery<CatalogProduct[]>({
     queryKey: ['productCatalog', user?.id],
     queryFn: async () => {
@@ -42,13 +51,36 @@ export const ProductCatalog = () => {
     enabled: !!user,
   });
 
+  // Query para verificar a existência de "Produtos Gastos no Mês"
+  const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost, refetch: refetchMonthlyCostItem } = useQuery<OperationalCost | null>({
+    queryKey: ['productsMonthlyCostItem', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('operational_costs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('description', 'Produtos Gastos no Mês')
+        .single();
+      if (error && (error as any).code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error("Error fetching products monthly cost item:", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Estado derivado para o método de cálculo
+  const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
+
   const removeProductMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('product_catalog_items')
         .delete()
         .eq('id', id)
-        .eq('user_id', user?.id); // Ensure user can only delete their own products
+        .eq('user_id', user?.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -61,6 +93,39 @@ export const ProductCatalog = () => {
     onError: (err) => {
       toast({
         title: "Erro ao remover produto",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addProductsMonthlyCostMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase
+        .from('operational_costs')
+        .insert({
+          description: 'Produtos Gastos no Mês',
+          value: 0, // Valor inicial 0
+          type: 'variable',
+          user_id: userId,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] }); // Invalida custos operacionais
+      refetchMonthlyCostItem(); // Refetch para atualizar o estado do radio
+      toast({
+        title: "Item de custo de produtos adicionado!",
+        description: "Um item 'Produtos Gastos no Mês' foi adicionado aos seus custos variáveis.",
+      });
+    },
+    onError: (err) => {
+      console.error("Error adding products monthly cost item:", err);
+      toast({
+        title: "Erro ao adicionar custo de produtos",
         description: err.message,
         variant: "destructive",
       });
@@ -81,20 +146,46 @@ export const ProductCatalog = () => {
     removeProductMutation.mutate(id);
   };
 
-  const handleCalculationMethodChange = (value: 'per-service' | 'monthly-average') => {
-    setProductCostCalculationMethod(value);
-    if (value === 'monthly-average') {
-      navigate('/manage-costs', { 
-        state: { 
-          openAddCostDialog: true, 
-          defaultDescription: 'Produtos Gastos no Mês', 
-          defaultType: 'variable' 
-        } 
+  const handleCalculationMethodChange = async (value: 'per-service' | 'monthly-average') => {
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para alterar o método de cálculo.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    if (value === 'monthly-average') {
+      if (!productsMonthlyCostItem) {
+        // Se o item não existe, adiciona e depois navega
+        await addProductsMonthlyCostMutation.mutateAsync(user.id);
+        navigate('/manage-costs', {
+          state: {
+            openAddCostDialog: true,
+            defaultDescription: 'Produtos Gastos no Mês',
+            defaultType: 'variable',
+          },
+        });
+      } else {
+        // Se o item já existe, apenas navega
+        navigate('/manage-costs', {
+          state: {
+            openAddCostDialog: true,
+            defaultDescription: 'Produtos Gastos no Mês',
+            defaultType: 'variable',
+          },
+        });
+      }
+    } else {
+      // Se o usuário seleciona "Cálculo Detalhado por Serviço", não faz nada além de atualizar o estado local
+      // A remoção do "Produtos Gastos no Mês" deve ser feita manualmente na página de custos.
+      // O estado do radio button será atualizado automaticamente pela query `productsMonthlyCostItem`
+      // quando o item for removido da tabela `operational_costs`.
     }
   };
 
-  if (isLoading) return <p>Carregando catálogo...</p>;
+  if (isLoading || isLoadingMonthlyCost) return <p>Carregando catálogo...</p>;
   if (error) return <p>Erro ao carregar catálogo: {error.message}</p>;
 
   return (
@@ -177,7 +268,7 @@ export const ProductCatalog = () => {
           </p>
         )}
 
-        <Button 
+        <Button
           onClick={handleAddProduct}
           className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
         >
@@ -201,7 +292,7 @@ export const ProductCatalog = () => {
 
           <RadioGroup
             value={productCostCalculationMethod}
-            onValueChange={handleCalculationMethodChange} // Usar a nova função
+            onValueChange={handleCalculationMethodChange}
             className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
