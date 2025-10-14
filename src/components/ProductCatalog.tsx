@@ -35,6 +35,7 @@ export const ProductCatalog = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | undefined>(undefined);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false); // Novo estado para o diálogo de confirmação
 
   // Query para buscar os produtos do catálogo
   const { data: catalogProducts, isLoading, error } = useQuery<CatalogProduct[]>({
@@ -132,6 +133,36 @@ export const ProductCatalog = () => {
     },
   });
 
+  // Nova mutação para deletar o custo mensal de produtos
+  const deleteProductsMonthlyCostMutation = useMutation({
+    mutationFn: async (costId: string) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      const { error } = await supabase
+        .from('operational_costs')
+        .delete()
+        .eq('id', costId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
+      refetchMonthlyCostItem(); // Atualiza o estado do radio button
+      toast({
+        title: "Fórmula de cálculo alterada!",
+        description: "O custo 'Produtos Gastos no Mês' foi removido da tabela de custos variáveis.",
+      });
+      setIsConfirmDialogOpen(false); // Fecha o diálogo de confirmação
+    },
+    onError: (err) => {
+      console.error("Error deleting products monthly cost item:", err);
+      toast({
+        title: "Erro ao alterar fórmula de cálculo",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddProduct = () => {
     setEditingProduct(undefined);
     setIsFormDialogOpen(true);
@@ -146,6 +177,12 @@ export const ProductCatalog = () => {
     removeProductMutation.mutate(id);
   };
 
+  const handleConfirmSwitchToPerService = () => {
+    if (productsMonthlyCostItem?.id) {
+      deleteProductsMonthlyCostMutation.mutate(productsMonthlyCostItem.id);
+    }
+  };
+
   const handleCalculationMethodChange = async (value: 'per-service' | 'monthly-average') => {
     if (!user) {
       toast({
@@ -158,7 +195,6 @@ export const ProductCatalog = () => {
 
     if (value === 'monthly-average') {
       if (!productsMonthlyCostItem) {
-        // Se o item não existe, adiciona e depois navega
         await addProductsMonthlyCostMutation.mutateAsync(user.id);
         navigate('/manage-costs', {
           state: {
@@ -168,7 +204,6 @@ export const ProductCatalog = () => {
           },
         });
       } else {
-        // Se o item já existe, apenas navega
         navigate('/manage-costs', {
           state: {
             openAddCostDialog: true,
@@ -177,11 +212,13 @@ export const ProductCatalog = () => {
           },
         });
       }
-    } else {
-      // Se o usuário seleciona "Cálculo Detalhado por Serviço", não faz nada além de atualizar o estado local
-      // A remoção do "Produtos Gastos no Mês" deve ser feita manualmente na página de custos.
-      // O estado do radio button será atualizado automaticamente pela query `productsMonthlyCostItem`
-      // quando o item for removido da tabela `operational_costs`.
+    } else { // Tentando mudar para 'per-service'
+      if (productsMonthlyCostItem) {
+        // Se 'Produtos Gastos no Mês' existe, abre o diálogo de confirmação
+        setIsConfirmDialogOpen(true);
+      }
+      // Se não existe, o estado já é 'per-service', nenhuma ação é necessária.
+      // O estado derivado `productCostCalculationMethod` já lida com a atualização visual.
     }
   };
 
@@ -323,6 +360,30 @@ export const ProductCatalog = () => {
         onClose={() => setIsFormDialogOpen(false)}
         product={editingProduct}
       />
+
+      {/* Diálogo de Confirmação para mudar para Cálculo Detalhado por Serviço */}
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Alteração da Fórmula de Cálculo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ao mudar para "Cálculo Detalhado por Serviço", o registro "Produtos Gastos no Mês" será
+              <span className="font-bold text-destructive"> permanentemente apagado</span> da sua tabela de custos variáveis.
+              Você realmente deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteProductsMonthlyCostMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmSwitchToPerService} 
+              disabled={deleteProductsMonthlyCostMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteProductsMonthlyCostMutation.isPending ? "Continuando..." : "Continuar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
