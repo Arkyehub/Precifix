@@ -270,7 +270,6 @@ const ServicesPage = () => {
                           </div>
                           {service.products && service.products.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              <span className="text-xs font-medium text-muted-foreground">Produtos:</span>
                               {service.products.map(product => (
                                 <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
                                   {product.name}
