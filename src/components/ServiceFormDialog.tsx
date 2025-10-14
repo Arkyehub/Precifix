@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MultiSelect } from './ui/multi-select';
+import { LoadHourlyCostButton } from './LoadHourlyCostButton'; // Importar o novo componente
 
 export interface Service {
   id: string;
@@ -241,14 +242,17 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
           </div>
           <div className="space-y-2">
             <Label htmlFor="labor-cost-per-hour">Custo da Hora de Trabalho (R$) *</Label>
-            <Input 
-              id="labor-cost-per-hour" 
-              type="number" 
-              step="0.01" 
-              value={laborCostPerHour} 
-              onChange={(e) => setLaborCostPerHour(e.target.value)} 
-              className="bg-background" 
-            />
+            <div className="flex gap-2">
+              <Input 
+                id="labor-cost-per-hour" 
+                type="number" 
+                step="0.01" 
+                value={laborCostPerHour} 
+                onChange={(e) => setLaborCostPerHour(e.target.value)} 
+                className="flex-1 bg-background" 
+              />
+              <LoadHourlyCostButton onLoad={(cost) => setLaborCostPerHour(cost.toFixed(2))} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="execution-time">Tempo de Execução do Serviço (HH:MM) *</Label>
