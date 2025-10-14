@@ -7,7 +7,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ServicesPage from "./pages/ServicesPage";
-import ProductCatalogPage from "./pages/ProductCatalogPage"; // Importar a nova página de catálogo
+import ProductCatalogPage from "./pages/ProductCatalogPage";
+import ManageCostsPage from "./pages/ManageCostsPage"; // Importar a nova página de custos
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -31,18 +32,26 @@ const App = () => (
               } 
             />
             <Route 
-              path="/services" 
+              path="/manage-costs" // Nova rota para gerenciar custos
               element={
                 <Layout>
-                  <ServicesPage />
+                  <ManageCostsPage />
                 </Layout>
               } 
             />
             <Route 
-              path="/products" // Nova rota para o catálogo de produtos
+              path="/products"
               element={
                 <Layout>
                   <ProductCatalogPage />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/services" 
+              element={
+                <Layout>
+                  <ServicesPage />
                 </Layout>
               } 
             />

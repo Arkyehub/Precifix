@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Package, DollarSign, FileText, Sparkles } from 'lucide-react';
+import { Car, Package, DollarSign, FileText, Sparkles, Settings } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const Sidebar = () => {
@@ -20,19 +20,27 @@ export const Sidebar = () => {
           <DollarSign className="h-4 w-4" />
           Calculadora
         </Link>
+        {/* Novo link para Gerenciar Custos */}
+        <Link
+          to="/manage-costs"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
+          <Settings className="h-4 w-4" /> {/* Ícone para Gerenciar Custos */}
+          Gerenciar Custos
+        </Link>
+        <Link
+          to="/products"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
+          <Package className="h-4 w-4" />
+          Gerenciar Produtos
+        </Link>
         <Link
           to="/services"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
         >
           <Car className="h-4 w-4" />
           Gerenciar Serviços
-        </Link>
-        <Link
-          to="/products" /* Link atualizado para a nova página de produtos */
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-        >
-          <Package className="h-4 w-4" />
-          Gerenciar Produtos {/* Texto do link atualizado */}
         </Link>
         <Link
           to="/"
