@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, Pencil, Trash2, CalendarDays, Clock } from 'lucide-react'; // Adicionado Clock
+import { DollarSign, Plus, Pencil, Trash2, CalendarDays, Clock } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CostFormDialog, OperationalCost } from "@/components/CostFormDialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input'; // Importar Input
+import { Input } from '@/components/ui/input';
 
 interface OperationalDays {
   id?: string;
@@ -280,13 +280,19 @@ const ManageCostsPage = () => {
   };
 
   const handleDayToggle = (day: keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>) => {
-    setSelectedDays(prev => ({ ...prev, [day]: !prev[day] }));
-  };
-
-  const handleSaveOperationalDays = () => {
-    if (user) {
-      upsertOperationalDaysMutation.mutate({ ...selectedDays, user_id: user.id });
-    }
+    setSelectedDays(prevDays => {
+      const newSelectedDays = { ...prevDays, [day]: !prevDays[day] };
+      
+      // If the day is being unchecked, clear its hours
+      if (!newSelectedDays[day]) {
+        setOperationalHours(prevHours => ({
+          ...prevHours,
+          [`${day}_start`]: '',
+          [`${day}_end`]: '',
+        }));
+      }
+      return newSelectedDays;
+    });
   };
 
   const handleHourChange = (day: string, type: 'start' | 'end', value: string) => {
@@ -296,9 +302,23 @@ const ManageCostsPage = () => {
     }));
   };
 
+  const handleSaveOperationalDays = () => {
+    if (user) {
+      upsertOperationalDaysMutation.mutate({ ...selectedDays, user_id: user.id });
+    }
+  };
+
   const handleSaveOperationalHours = () => {
     if (user) {
-      upsertOperationalHoursMutation.mutate({ ...operationalHours, user_id: user.id });
+      // Filter out hours for unselected days before saving
+      const hoursToSave = { ...operationalHours };
+      daysOfWeek.forEach(day => {
+        if (!selectedDays[day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>]) {
+          (hoursToSave as any)[`${day.key}_start`] = '';
+          (hoursToSave as any)[`${day.key}_end`] = '';
+        }
+      });
+      upsertOperationalHoursMutation.mutate({ ...hoursToSave, user_id: user.id });
     }
   };
 
@@ -522,22 +542,24 @@ const ManageCostsPage = () => {
               </div>
               <div className="space-y-3">
                 {daysOfWeek.map(day => (
-                  <div key={day.key} className="flex items-center gap-2">
-                    <Label className="w-12">{day.label}:</Label>
-                    <Input
-                      type="time"
-                      value={operationalHours[`${day.key}_start` as keyof typeof operationalHours]}
-                      onChange={(e) => handleHourChange(day.key, 'start', e.target.value)}
-                      className="flex-1 bg-background"
-                    />
-                    <span className="text-muted-foreground">-</span>
-                    <Input
-                      type="time"
-                      value={operationalHours[`${day.key}_end` as keyof typeof operationalHours]}
-                      onChange={(e) => handleHourChange(day.key, 'end', e.target.value)}
-                      className="flex-1 bg-background"
-                    />
-                  </div>
+                  selectedDays[day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>] && (
+                    <div key={day.key} className="flex items-center gap-2">
+                      <Label className="w-12">{day.label}:</Label>
+                      <Input
+                        type="time"
+                        value={operationalHours[`${day.key}_start` as keyof typeof operationalHours]}
+                        onChange={(e) => handleHourChange(day.key, 'start', e.target.value)}
+                        className="flex-1 bg-background"
+                      />
+                      <span className="text-muted-foreground">-</span>
+                      <Input
+                        type="time"
+                        value={operationalHours[`${day.key}_end` as keyof typeof operationalHours]}
+                        onChange={(e) => handleHourChange(day.key, 'end', e.target.value)}
+                        className="flex-1 bg-background"
+                      />
+                    </div>
+                  )
                 ))}
               </div>
               <Button 
