@@ -15,8 +15,8 @@ export interface Service {
   name: string;
   description?: string;
   price: number;
-  labor_cost_per_hour: number; // Novo campo
-  execution_time_minutes: number; // Novo campo
+  labor_cost_per_hour: number;
+  execution_time_minutes: number;
   user_id: string;
   products?: { id: string; name: string }[];
 }
@@ -53,8 +53,8 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
   const [name, setName] = useState(service?.name || '');
   const [description, setDescription] = useState(service?.description || '');
   const [price, setPrice] = useState(service?.price.toString() || '');
-  const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toString() || ''); // Novo estado
-  const [executionTimeHHMM, setExecutionTimeHHMM] = useState(formatMinutesToHHMM(service?.execution_time_minutes || 0)); // Novo estado formatado
+  const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toString() || '');
+  const [executionTimeHHMM, setExecutionTimeHHMM] = useState(formatMinutesToHHMM(service?.execution_time_minutes || 0));
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(service?.products?.map(p => p.id) || []);
 
   useEffect(() => {
@@ -62,15 +62,15 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       setName(service.name);
       setDescription(service.description || '');
       setPrice(service.price.toString());
-      setLaborCostPerHour(service.labor_cost_per_hour.toString()); // Inicializa o novo estado
-      setExecutionTimeHHMM(formatMinutesToHHMM(service.execution_time_minutes)); // Inicializa o novo estado formatado
+      setLaborCostPerHour(service.labor_cost_per_hour.toString());
+      setExecutionTimeHHMM(formatMinutesToHHMM(service.execution_time_minutes));
       setSelectedProductIds(service.products?.map(p => p.id) || []);
     } else {
       setName('');
       setDescription('');
       setPrice('');
-      setLaborCostPerHour(''); // Limpa o novo estado
-      setExecutionTimeHHMM('00:00'); // Limpa o novo estado
+      setLaborCostPerHour('');
+      setExecutionTimeHHMM('00:00');
       setSelectedProductIds([]);
     }
   }, [service, isOpen]);
@@ -93,7 +93,8 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
     mutationFn: async (newService: Omit<Service, 'id' | 'created_at' | 'products'> & { id?: string }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      const executionTimeMinutes = parseHHMMToMinutes(newService.execution_time_minutes as any); // Parse HH:MM to minutes
+      // execution_time_minutes já é um número aqui, não precisa de parseHHMMToMinutes novamente
+      const finalExecutionTimeMinutes = newService.execution_time_minutes;
 
       let serviceData;
       if (newService.id) {
@@ -104,8 +105,8 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
             name: newService.name, 
             description: newService.description, 
             price: newService.price,
-            labor_cost_per_hour: newService.labor_cost_per_hour, // Inclui o novo campo
-            execution_time_minutes: executionTimeMinutes, // Inclui o novo campo
+            labor_cost_per_hour: newService.labor_cost_per_hour,
+            execution_time_minutes: finalExecutionTimeMinutes,
           })
           .eq('id', newService.id)
           .eq('user_id', user.id)
@@ -121,8 +122,8 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
             name: newService.name, 
             description: newService.description, 
             price: newService.price, 
-            labor_cost_per_hour: newService.labor_cost_per_hour, // Inclui o novo campo
-            execution_time_minutes: executionTimeMinutes, // Inclui o novo campo
+            labor_cost_per_hour: newService.labor_cost_per_hour,
+            execution_time_minutes: finalExecutionTimeMinutes,
             user_id: user.id 
           })
           .select()
@@ -211,8 +212,8 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       name,
       description,
       price: parseFloat(price),
-      labor_cost_per_hour: parseFloat(laborCostPerHour), // Envia o novo campo
-      execution_time_minutes: parsedExecutionTime, // Envia o novo campo (já convertido para minutos)
+      labor_cost_per_hour: parseFloat(laborCostPerHour),
+      execution_time_minutes: parsedExecutionTime, // Já é um número aqui
       user_id: user!.id,
     });
   };
@@ -253,7 +254,7 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
             <Label htmlFor="execution-time">Tempo de Execução do Serviço (HH:MM) *</Label>
             <Input 
               id="execution-time" 
-              type="text" // Changed to text to allow HH:MM format
+              type="text"
               placeholder="Ex: 01:30 (1 hora e 30 minutos)"
               value={executionTimeHHMM} 
               onChange={(e) => setExecutionTimeHHMM(e.target.value)} 
