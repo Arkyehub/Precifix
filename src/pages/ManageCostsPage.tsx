@@ -9,9 +9,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { CostFormDialog, OperationalCost } from "@/components/CostFormDialog";
-import { FixedCostsTable } from '@/components/costs/FixedCostsTable';
-import { VariableCostsTable } from '@/components/costs/VariableCostsTable';
-import { OperationalHoursForm } from '@/components/costs/OperationalHoursForm';
+import FixedCostsTable from '@/components/costs/FixedCostsTable';
+import VariableCostsTable from '@/components/costs/VariableCostsTable';
+import OperationalHoursForm from '@/components/costs/OperationalHoursForm';
 import { CostAnalysisSummary } from '@/components/costs/CostAnalysisSummary';
 import { OperationalHours, daysOfWeek } from '@/types/costs';
 import { timeToMinutes } from '@/lib/cost-calculations'; // Importar do utilitário
