@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, Pencil, Trash2, Clock } from 'lucide-react'; // Removido CalendarDays
+import { DollarSign, Plus, Pencil, Trash2, Clock, BarChart3 } from 'lucide-react'; // Adicionado BarChart3
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -241,9 +241,9 @@ const ManageCostsPage = () => {
   const fixedCosts = operationalCosts?.filter(cost => cost.type === 'fixed') || [];
   const variableCosts = operationalCosts?.filter(cost => cost.type === 'variable') || [];
 
-  if (isLoadingCosts || isLoadingHours) return <p>Carregando custos e horários operacionais...</p>;
-  if (costsError) return <p>Erro ao carregar custos: {costsError.message}</p>;
-  if (hoursError && (hoursError as any).code !== 'PGRST116') return <p>Erro ao carregar horários operacionais: {hoursError.message}</p>;
+  const sumFixedCosts = fixedCosts.reduce((sum, cost) => sum + cost.value, 0);
+  const sumVariableCosts = variableCosts.reduce((sum, cost) => sum + cost.value, 0);
+  const totalMonthlyExpenses = sumFixedCosts + sumVariableCosts;
 
   const daysOfWeek = [
     { key: 'monday', label: 'Seg' },
@@ -254,6 +254,59 @@ const ManageCostsPage = () => {
     { key: 'saturday', label: 'Sáb' },
     { key: 'sunday', label: 'Dom' },
   ];
+
+  // Calculate total working days in month
+  const totalWorkingDaysInMonth = Object.values(selectedDays).filter(Boolean).length * 4; // Assuming 4 weeks in a month
+
+  // Calculate average daily working hours (excluding 1 hour for lunch)
+  const timeToMinutes = (time: string): number => {
+    if (!time) return 0;
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  let totalWorkingMinutesPerWeek = 0;
+  let daysWithActualHours = 0;
+
+  daysOfWeek.forEach(day => {
+    if (selectedDays[day.key]) {
+      const startKey = `${day.key}_start` as keyof typeof operationalHours;
+      const endKey = `${day.key}_end` as keyof typeof operationalHours;
+      const startTime = operationalHours[startKey];
+      const endTime = operationalHours[endKey];
+
+      if (startTime && endTime) {
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
+        let duration = endMinutes - startMinutes;
+        
+        // Subtract 1 hour (60 minutes) for lunch if duration is more than 1 hour
+        if (duration > 60) {
+          duration -= 60;
+        } else {
+          duration = 0; // If less than or equal to 1 hour, assume no work or no lunch break needed
+        }
+
+        if (duration > 0) {
+          totalWorkingMinutesPerWeek += duration;
+          daysWithActualHours++;
+        }
+      }
+    }
+  });
+
+  const averageDailyWorkingHours = daysWithActualHours > 0 ? (totalWorkingMinutesPerWeek / daysWithActualHours) / 60 : 0;
+
+  // Calculate Custo Diário
+  const dailyCost = totalWorkingDaysInMonth > 0 ? totalMonthlyExpenses / totalWorkingDaysInMonth : 0;
+
+  // Calculate Custo Hora
+  const hourlyCost = averageDailyWorkingHours > 0 ? dailyCost / averageDailyWorkingHours : 0;
+
+
+  if (isLoadingCosts || isLoadingHours) return <p>Carregando custos e horários operacionais...</p>;
+  if (costsError) return <p>Erro ao carregar custos: {costsError.message}</p>;
+  if (hoursError && (hoursError as any).code !== 'PGRST116') return <p>Erro ao carregar horários operacionais: {hoursError.message}</p>;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -443,6 +496,55 @@ const ManageCostsPage = () => {
             >
               {upsertOperationalHoursMutation.isPending ? "Salvando..." : "Salvar Horários"}
             </Button>
+          </div>
+
+          {/* Nova Seção: Análise dos Custos */}
+          <div className="space-y-4 pt-6 border-t border-border/50">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h3 className="text-xl font-semibold text-foreground">Análise dos Custos</h3>
+            </div>
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary/30 space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Total de Gastos no Mês (sem produtos):
+              </p>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Despesas Fixas:</span>
+                <span className="font-medium text-foreground">R$ {sumFixedCosts.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Despesas Variáveis:</span>
+                <span className="font-medium text-foreground">R$ {sumVariableCosts.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                <span className="font-bold text-foreground">Total Mensal:</span>
+                <span className="text-lg font-bold text-primary">R$ {totalMonthlyExpenses.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Custo Diário</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">R$ {dailyCost.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Baseado em {totalWorkingDaysInMonth} dias trabalhados/mês
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10 border border-secondary/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-secondary" />
+                  <span className="text-sm text-secondary/80 font-medium">Custo por Hora</span>
+                </div>
+                <p className="text-2xl font-bold text-secondary">R$ {hourlyCost.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Considerando {averageDailyWorkingHours.toFixed(1)}h líquidas/dia
+                </p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
