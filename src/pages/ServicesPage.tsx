@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon } from "lucide-react"; // Adicionado Clock e DollarIcon
+import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff } from "lucide-react"; // Adicionado Eye e EyeOff
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -33,6 +33,7 @@ const ServicesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
   const hasAddedDefaultServicesRef = useRef(false);
+  const [showDetails, setShowDetails] = useState(false); // Novo estado para controlar a visibilidade dos detalhes
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -219,16 +220,27 @@ const ServicesPage = () => {
     <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
-              <Car className="h-5 w-5 text-primary-foreground" />
+          <div className="flex items-center justify-between"> {/* Adicionado justify-between */}
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+                <Car className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-foreground">Gerenciar Serviços</CardTitle>
+                <CardDescription>
+                  Adicione, edite ou remova os serviços que você oferece.
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-foreground">Gerenciar Serviços</CardTitle>
-              <CardDescription>
-                Adicione, edite ou remova os serviços que você oferece.
-              </CardDescription>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-muted-foreground hover:text-primary"
+              title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+            >
+              {showDetails ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -243,24 +255,29 @@ const ServicesPage = () => {
                   >
                     <div className="flex-1">
                       <p className="font-medium text-foreground">{service.name}</p>
-                      {service.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
-                      )}
                       <p className="text-sm text-primary font-semibold mt-1">R$ {service.price.toFixed(2)}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <DollarIcon className="h-3 w-3" />
-                        <span>Custo/Hora: R$ {service.labor_cost_per_hour.toFixed(2)}</span>
-                        <Clock className="h-3 w-3 ml-2" />
-                        <span>Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</span>
-                      </div>
-                      {service.products && service.products.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {service.products.map(product => (
-                            <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
-                              {product.name}
-                            </span>
-                          ))}
-                        </div>
+                      
+                      {showDetails && (
+                        <>
+                          {service.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
+                          )}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <DollarIcon className="h-3 w-3" />
+                            <span>Custo/Hora: R$ {service.labor_cost_per_hour.toFixed(2)}</span>
+                            <Clock className="h-3 w-3 ml-2" />
+                            <span>Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</span>
+                          </div>
+                          {service.products && service.products.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {service.products.map(product => (
+                                <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
+                                  {product.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="flex gap-2">
