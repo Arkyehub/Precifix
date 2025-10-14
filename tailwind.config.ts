@@ -70,6 +70,10 @@ export default {
           DEFAULT: "hsl(210 76% 48%)", // Um azul mais vibrante
           foreground: "hsl(210 76% 10%)",
         },
+        mediumslateblue: { // Nova cor para destaque de custo de produtos
+          DEFAULT: "hsl(248 53% 64%)", // #7B68EE
+          foreground: "hsl(248 53% 10%)", 
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

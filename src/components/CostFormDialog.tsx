@@ -22,16 +22,18 @@ interface CostFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
   cost?: OperationalCost; // Opcional para edição
+  defaultDescription?: string; // Nova prop para descrição padrão
+  defaultType?: 'fixed' | 'variable'; // Nova prop para tipo padrão
 }
 
-export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) => {
+export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defaultType }: CostFormDialogProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [description, setDescription] = useState(cost?.description || '');
+  const [description, setDescription] = useState(cost?.description || defaultDescription || '');
   const [value, setValue] = useState(cost?.value.toString() || '');
-  const [type, setType] = useState<'fixed' | 'variable'>(cost?.type || 'fixed');
+  const [type, setType] = useState<'fixed' | 'variable'>(cost?.type || defaultType || 'fixed');
 
   useEffect(() => {
     if (cost) {
@@ -39,17 +41,18 @@ export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) =
       setValue(cost.value.toString());
       setType(cost.type);
     } else {
-      setDescription('');
+      // Se não estiver editando, use os defaults ou valores vazios
+      setDescription(defaultDescription || '');
       setValue('');
-      setType('fixed');
+      setType(defaultType || 'fixed');
     }
-  }, [cost, isOpen]);
+  }, [cost, isOpen, defaultDescription, defaultType]);
 
   const upsertCostMutation = useMutation({
     mutationFn: async (newCost: Omit<OperationalCost, 'id' | 'created_at'> & { id?: string }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      let costData;
+      let costData; // Declarando costData aqui
       if (newCost.id) {
         // Update existing cost
         const { data, error } = await supabase
@@ -64,7 +67,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) =
           .select()
           .single();
         if (error) throw error;
-        costData = data;
+        costData = data; // Atribuindo a costData
       } else {
         // Insert new cost
         const { data, error } = await supabase
@@ -78,9 +81,9 @@ export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) =
           .select()
           .single();
         if (error) throw error;
-        costData = data;
+        costData = data; // Atribuindo a costData
       }
-      return costData;
+      return costData; // Retornando costData
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
@@ -135,7 +138,13 @@ export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) =
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="description">Descrição *</Label>
-            <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-background" />
+            <Input 
+              id="description" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              className="bg-background" 
+              readOnly={!!defaultDescription} // Tornar read-only se houver defaultDescription
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="value">Valor (R$) *</Label>
@@ -143,7 +152,11 @@ export const CostFormDialog = ({ isOpen, onClose, cost }: CostFormDialogProps) =
           </div>
           <div className="space-y-2">
             <Label htmlFor="cost-type" className="text-sm">Tipo de Custo</Label>
-            <Select value={type} onValueChange={(value: 'fixed' | 'variable') => setType(value)}>
+            <Select 
+              value={type} 
+              onValueChange={(value: 'fixed' | 'variable') => setType(value)}
+              disabled={!!defaultType} // Desabilitar se houver defaultType
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>

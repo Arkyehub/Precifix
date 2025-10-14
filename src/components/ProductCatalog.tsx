@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar o novo diálogo e tipo
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Novo import
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 // Utility function to format dilution ratio for display
 const formatDilutionRatio = (ratio: number): string => {
@@ -21,6 +22,7 @@ export const ProductCatalog = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate(); // Inicializar useNavigate
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | undefined>(undefined);
@@ -77,6 +79,19 @@ export const ProductCatalog = () => {
 
   const handleDeleteProduct = (id: string) => {
     removeProductMutation.mutate(id);
+  };
+
+  const handleCalculationMethodChange = (value: 'per-service' | 'monthly-average') => {
+    setProductCostCalculationMethod(value);
+    if (value === 'monthly-average') {
+      navigate('/manage-costs', { 
+        state: { 
+          openAddCostDialog: true, 
+          defaultDescription: 'Produtos Gastos no Mês', 
+          defaultType: 'variable' 
+        } 
+      });
+    }
   };
 
   if (isLoading) return <p>Carregando catálogo...</p>;
@@ -186,7 +201,7 @@ export const ProductCatalog = () => {
 
           <RadioGroup
             value={productCostCalculationMethod}
-            onValueChange={(value: 'per-service' | 'monthly-average') => setProductCostCalculationMethod(value)}
+            onValueChange={handleCalculationMethodChange} // Usar a nova função
             className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">

@@ -12,6 +12,7 @@ import { CostFormDialog, OperationalCost } from "@/components/CostFormDialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useLocation, useNavigate } from 'react-router-dom'; // Importar useLocation e useNavigate
 
 interface OperationalHours {
   id?: string;
@@ -46,9 +47,12 @@ const ManageCostsPage = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const location = useLocation(); // Hook para acessar o estado da navegação
+  const navigate = useNavigate(); // Hook para navegar e substituir o estado
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<OperationalCost | undefined>(undefined);
+  const [newCostDefaults, setNewCostDefaults] = useState<{ description?: string; type?: 'fixed' | 'variable' } | undefined>(undefined); // Novo estado para defaults de novo custo
   const [selectedDays, setSelectedDays] = useState<{ [key: string]: boolean }>({
     monday: false,
     tuesday: false,
@@ -59,6 +63,20 @@ const ManageCostsPage = () => {
     sunday: false,
   });
   const [operationalHours, setOperationalHours] = useState<Omit<OperationalHours, 'id' | 'user_id' | 'created_at'>>(initialHoursState);
+
+  // Efeito para lidar com o estado de navegação
+  useEffect(() => {
+    if (location.state?.openAddCostDialog) {
+      setIsFormDialogOpen(true);
+      setEditingCost(undefined); // Garantir que é um novo custo
+      setNewCostDefaults({
+        description: location.state.defaultDescription,
+        type: location.state.defaultType,
+      });
+      // Limpar o estado da navegação para evitar que o diálogo abra novamente
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   // Fetch operational costs
   const { data: operationalCosts, isLoading: isLoadingCosts, error: costsError } = useQuery<OperationalCost[]>({
@@ -197,11 +215,13 @@ const ManageCostsPage = () => {
 
   const handleAddCost = () => {
     setEditingCost(undefined);
+    setNewCostDefaults(undefined); // Limpar defaults ao abrir manualmente
     setIsFormDialogOpen(true);
   };
 
   const handleEditCost = (cost: OperationalCost) => {
     setEditingCost(cost);
+    setNewCostDefaults(undefined); // Limpar defaults ao editar
     setIsFormDialogOpen(true);
   };
 
@@ -400,8 +420,12 @@ const ManageCostsPage = () => {
                     {variableCosts.length > 0 ? (
                       variableCosts.map((cost) => (
                         <TableRow key={cost.id}>
-                          <TableCell className="font-medium">{cost.description}</TableCell>
-                          <TableCell className="text-right">R$ {cost.value.toFixed(2)}</TableCell>
+                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'font-medium text-mediumslateblue' : 'font-medium'}>
+                            {cost.description}
+                          </TableCell>
+                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'text-right text-mediumslateblue font-bold' : 'text-right'}>
+                            R$ {cost.value.toFixed(2)}
+                          </TableCell>
                           <TableCell className="flex justify-center gap-2">
                             <Button variant="ghost" size="icon" onClick={() => handleEditCost(cost)} className="text-primary hover:bg-primary/10">
                               <Pencil className="h-4 w-4" />
@@ -551,8 +575,13 @@ const ManageCostsPage = () => {
 
       <CostFormDialog
         isOpen={isFormDialogOpen}
-        onClose={() => setIsFormDialogOpen(false)}
+        onClose={() => {
+          setIsFormDialogOpen(false);
+          setNewCostDefaults(undefined); // Limpar defaults ao fechar
+        }}
         cost={editingCost}
+        defaultDescription={newCostDefaults?.description}
+        defaultType={newCostDefaults?.type}
       />
     </div>
   );
