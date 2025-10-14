@@ -420,10 +420,10 @@ const ManageCostsPage = () => {
                     {variableCosts.length > 0 ? (
                       variableCosts.map((cost) => (
                         <TableRow key={cost.id}>
-                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'font-medium text-mediumslateblue' : 'font-medium'}>
+                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'font-medium text-primary-strong' : 'font-medium'}>
                             {cost.description}
                           </TableCell>
-                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'text-right text-mediumslateblue font-bold' : 'text-right'}>
+                          <TableCell className={cost.description === 'Produtos Gastos no Mês' ? 'text-right text-primary-strong font-bold' : 'text-right'}>
                             R$ {cost.value.toFixed(2)}
                           </TableCell>
                           <TableCell className="flex justify-center gap-2">
