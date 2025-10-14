@@ -36,3 +36,9 @@ export const parseHHMMToMinutes = (hhmm: string): number => {
   if (isNaN(hours) || isNaN(minutes) || hours < 0 || minutes < 0 || minutes >= 60) return 0;
   return hours * 60 + minutes;
 };
+
+export const timeToMinutes = (time: string): number => {
+  if (!time) return 0;
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
