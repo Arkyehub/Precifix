@@ -64,20 +64,6 @@ const ManageCostsPage = () => {
   });
   const [operationalHours, setOperationalHours] = useState<Omit<OperationalHours, 'id' | 'user_id' | 'created_at'>>(initialHoursState);
 
-  // Efeito para lidar com o estado de navegação
-  useEffect(() => {
-    if (location.state?.openAddCostDialog) {
-      setIsFormDialogOpen(true);
-      setEditingCost(undefined); // Garantir que é um novo custo
-      setNewCostDefaults({
-        description: location.state.defaultDescription,
-        type: location.state.defaultType,
-      });
-      // Limpar o estado da navegação para evitar que o diálogo abra novamente
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state, location.pathname, navigate]);
-
   // Fetch operational costs
   const { data: operationalCosts, isLoading: isLoadingCosts, error: costsError } = useQuery<OperationalCost[]>({
     queryKey: ['operationalCosts', user?.id],
@@ -92,6 +78,29 @@ const ManageCostsPage = () => {
     },
     enabled: !!user,
   });
+
+  // Efeito para lidar com o estado de navegação
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.openAddCostDialog) {
+        setIsFormDialogOpen(true);
+        setEditingCost(undefined); // Garantir que é um novo custo
+        setNewCostDefaults({
+          description: location.state.defaultDescription,
+          type: location.state.defaultType,
+        });
+      } else if (location.state.editingCostId && operationalCosts) {
+        const costToEdit = operationalCosts.find(cost => cost.id === location.state.editingCostId);
+        if (costToEdit) {
+          setEditingCost(costToEdit);
+          setNewCostDefaults(undefined); // Limpar defaults ao editar
+          setIsFormDialogOpen(true);
+        }
+      }
+      // Limpar o estado da navegação para evitar que o diálogo abra novamente
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate, operationalCosts]); // Adicionado operationalCosts como dependência
 
   // Fetch operational hours
   const { data: fetchedOperationalHours, isLoading: isLoadingHours, error: hoursError } = useQuery<OperationalHours | null>({
@@ -198,6 +207,8 @@ const ManageCostsPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
+      // Invalida também a query de productsMonthlyCostItem para atualizar o estado do radio na ProductCatalogPage
+      queryClient.invalidateQueries({ queryKey: ['productsMonthlyCostItem', user?.id] });
       toast({
         title: "Custo removido",
         description: "O custo foi excluído com sucesso.",

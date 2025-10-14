@@ -100,38 +100,8 @@ export const ProductCatalog = () => {
     },
   });
 
-  const addProductsMonthlyCostMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const { data, error } = await supabase
-        .from('operational_costs')
-        .insert({
-          description: 'Produtos Gastos no Mês',
-          value: 0, // Valor inicial 0
-          type: 'variable',
-          user_id: userId,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] }); // Invalida custos operacionais
-      refetchMonthlyCostItem(); // Refetch para atualizar o estado do radio
-      toast({
-        title: "Item de custo de produtos adicionado!",
-        description: "Um item 'Produtos Gastos no Mês' foi adicionado aos seus custos variáveis.",
-      });
-    },
-    onError: (err) => {
-      console.error("Error adding products monthly cost item:", err);
-      toast({
-        title: "Erro ao adicionar custo de produtos",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
+  // A mutação addProductsMonthlyCostMutation não será mais chamada diretamente daqui.
+  // A criação do item 'Produtos Gastos no Mês' será feita pelo formulário na ManageCostsPage.
 
   // Nova mutação para deletar o custo mensal de produtos
   const deleteProductsMonthlyCostMutation = useMutation({
@@ -194,16 +164,15 @@ export const ProductCatalog = () => {
     }
 
     if (value === 'monthly-average') {
-      if (!productsMonthlyCostItem) {
-        await addProductsMonthlyCostMutation.mutateAsync(user.id);
+      if (productsMonthlyCostItem) {
+        // Se o item já existe, navega para editar
         navigate('/manage-costs', {
           state: {
-            openAddCostDialog: true,
-            defaultDescription: 'Produtos Gastos no Mês',
-            defaultType: 'variable',
+            editingCostId: productsMonthlyCostItem.id,
           },
         });
       } else {
+        // Se o item não existe, navega para adicionar com defaults
         navigate('/manage-costs', {
           state: {
             openAddCostDialog: true,
