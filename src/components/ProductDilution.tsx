@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Droplet, Plus, Trash2 } from "lucide-react";
-import type { CatalogProduct } from "./ProductFormDialog"; // Importar o tipo CatalogProduct atualizado
+import type { CatalogProduct } from "./ProductFormDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
+import { calculateProductCost, formatDilutionRatio, ProductForCalculation } from "@/lib/cost-calculations"; // Importar do utilitário
 
 export interface Product {
   id: string;
@@ -23,11 +24,6 @@ export interface Product {
 interface ProductDilutionProps {
   onProductsChange: (products: Product[], totalCost: number) => void;
 }
-
-// Utility function to format dilution ratio for display
-const formatDilutionRatio = (ratio: number): string => {
-  return ratio > 0 ? `1:${ratio}` : 'N/A';
-};
 
 export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
   const { user } = useSession();
@@ -61,27 +57,19 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     onProductsChange(products, getTotalCost());
   }, [products]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const calculateProductCost = (product: Product) => {
-    if (product.type === 'ready-to-use') {
-      // Para produtos prontos para uso: (Preço / Volume total) * Quantidade usada
-      const costPerMl = product.gallonPrice / product.gallonVolume;
-      return costPerMl * product.usagePerVehicle;
-    } else {
-      // Para produtos diluídos: cálculo com diluição
-      // Custo por ml do produto concentrado
-      const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
-      // Volume total diluído para 1ml de produto concentrado (1ml concentrado + X ml água)
-      // A proporção 1:X significa 1 parte de produto para X partes de água.
-      // Então, para cada 1ml de produto, temos (1 + X) ml de solução diluída.
-      // O custo de 1ml da solução diluída é o custo de 1ml de concentrado dividido pelo fator de diluição (1+X)
-      const costPerMlDilutedSolution = costPerMlConcentrated / (1 + product.dilutionRatio);
-      // Custo por aplicação é o custo por ml da solução diluída vezes a quantidade usada
-      return costPerMlDilutedSolution * product.usagePerVehicle;
-    }
+  const getProductCost = (product: Product) => {
+    const productForCalc: ProductForCalculation = {
+      gallonPrice: product.gallonPrice,
+      gallonVolume: product.gallonVolume,
+      dilutionRatio: product.dilutionRatio,
+      usagePerVehicle: product.usagePerVehicle,
+      type: product.type,
+    };
+    return calculateProductCost(productForCalc);
   };
 
   const getTotalCost = () => {
-    return products.reduce((sum, product) => sum + calculateProductCost(product), 0);
+    return products.reduce((sum, product) => sum + getProductCost(product), 0);
   };
 
   const loadFromCatalog = () => {
@@ -144,7 +132,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
       {products.length > 0 && (
         <div className="mb-6 space-y-3">
           {products.map((product) => {
-            const cost = calculateProductCost(product);
+            const cost = getProductCost(product);
             
             return (
               <div

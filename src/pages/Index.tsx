@@ -1,14 +1,10 @@
 import { useState } from "react";
-// Removido ServiceSelector
-// Removido ProductCatalog
 import { ProductDilution, Product } from "@/components/ProductDilution";
 import { OperationalCosts } from "@/components/OperationalCosts";
 import { Results } from "@/components/Results";
-import { QuoteGenerator } from "@/components/QuoteGenerator";
-// Removido Sparkles, LogOut, Button, supabase, useNavigate pois agora estão no Header/Layout
+// Removido QuoteGenerator
 
 const Index = () => {
-  const [selectedServices, setSelectedServices] = useState<string[]>([]); // Manter para QuoteGenerator, mas será preenchido de outra forma
   const [products, setProducts] = useState<Product[]>([]);
   const [productsCost, setProductsCost] = useState(0);
   const [executionTime, setExecutionTime] = useState(0);
@@ -38,9 +34,6 @@ const Index = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-6">
-        {/* O ServiceSelector foi movido para a página /services */}
-        {/* O ProductCatalog foi movido para a página /products */}
-        
         <ProductDilution onProductsChange={handleProductsChange} />
         
         <OperationalCosts
@@ -58,12 +51,7 @@ const Index = () => {
           onMarginChange={setProfitMargin}
         />
         
-        <QuoteGenerator
-          selectedServices={selectedServices} // Este precisará ser ajustado para buscar serviços do DB
-          totalCost={totalCost}
-          finalPrice={finalPrice}
-          executionTime={executionTime}
-        />
+        {/* O QuoteGenerator foi movido para a página /generate-quote */}
       </div>
     </div>
   );

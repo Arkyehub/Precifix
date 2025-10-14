@@ -8,7 +8,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ServicesPage from "./pages/ServicesPage";
 import ProductCatalogPage from "./pages/ProductCatalogPage";
-import ManageCostsPage from "./pages/ManageCostsPage"; // Importar a nova página de custos
+import ManageCostsPage from "./pages/ManageCostsPage";
+import QuoteGenerationPage from "./pages/QuoteGenerationPage"; // Importar a nova página de geração de orçamento
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -32,7 +33,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/manage-costs" // Nova rota para gerenciar custos
+              path="/manage-costs"
               element={
                 <Layout>
                   <ManageCostsPage />
@@ -52,6 +53,14 @@ const App = () => (
               element={
                 <Layout>
                   <ServicesPage />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/generate-quote" // Nova rota para a página de geração de orçamento
+              element={
+                <Layout>
+                  <QuoteGenerationPage />
                 </Layout>
               } 
             />
