@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, Pencil, Trash2, Clock, BarChart3 } from 'lucide-react'; // Adicionado BarChart3
+import { DollarSign, Plus, Pencil, Trash2, Clock, BarChart3, CalendarDays } from 'lucide-react'; // Adicionado CalendarDays
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -523,23 +523,23 @@ const ManageCostsPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 border border-border/50">
+              <div className="p-4 rounded-lg bg-gradient-to-br from-success/20 to-success/10 border border-success/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Custo Diário</span>
+                  <CalendarDays className="h-4 w-4 text-success" />
+                  <span className="text-sm text-success/80 font-medium">Custo Diário</span>
                 </div>
-                <p className="text-2xl font-bold text-foreground">R$ {dailyCost.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-success">R$ {dailyCost.toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Baseado em {totalWorkingDaysInMonth} dias trabalhados/mês
                 </p>
               </div>
 
-              <div className="p-4 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10 border border-secondary/30">
+              <div className="p-4 rounded-lg bg-gradient-to-br from-info/20 to-info/10 border border-info/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-secondary" />
-                  <span className="text-sm text-secondary/80 font-medium">Custo por Hora</span>
+                  <Clock className="h-4 w-4 text-info" />
+                  <span className="text-sm text-info/80 font-medium">Custo por Hora</span>
                 </div>
-                <p className="text-2xl font-bold text-secondary">R$ {hourlyCost.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-info">R$ {hourlyCost.toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Considerando {averageDailyWorkingHours.toFixed(1)}h líquidas/dia
                 </p>

@@ -60,6 +60,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Novas cores para análise de custos
+        success: {
+          DEFAULT: "hsl(142 76% 36%)", // Um verde mais vibrante
+          foreground: "hsl(142 76% 10%)",
+        },
+        info: {
+          DEFAULT: "hsl(210 76% 48%)", // Um azul mais vibrante
+          foreground: "hsl(210 76% 10%)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
