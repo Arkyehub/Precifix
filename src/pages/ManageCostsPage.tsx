@@ -518,7 +518,7 @@ const ManageCostsPage = () => {
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-border/50">
                 <span className="font-bold text-foreground">Total Mensal:</span>
-                <span className="text-lg font-bold text-primary">R$ {totalMonthlyExpenses.toFixed(2)}</span>
+                <span className="text-lg font-bold text-primary-strong">R$ {totalMonthlyExpenses.toFixed(2)}</span>
               </div>
             </div>
 
