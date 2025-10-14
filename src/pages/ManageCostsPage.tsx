@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, Pencil, Trash2, CalendarDays, Clock } from 'lucide-react';
+import { DollarSign, Plus, Pencil, Trash2, Clock } from 'lucide-react'; // Removido CalendarDays
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -12,18 +12,6 @@ import { CostFormDialog, OperationalCost } from "@/components/CostFormDialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-
-interface OperationalDays {
-  id?: string;
-  user_id: string;
-  monday: boolean;
-  tuesday: boolean;
-  wednesday: boolean;
-  thursday: boolean;
-  friday: boolean;
-  saturday: boolean;
-  sunday: boolean;
-}
 
 interface OperationalHours {
   id?: string;
@@ -61,7 +49,7 @@ const ManageCostsPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<OperationalCost | undefined>(undefined);
-  const [selectedDays, setSelectedDays] = useState<Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>>({
+  const [selectedDays, setSelectedDays] = useState<{ [key: string]: boolean }>({
     monday: false,
     tuesday: false,
     wednesday: false,
@@ -87,25 +75,6 @@ const ManageCostsPage = () => {
     enabled: !!user,
   });
 
-  // Fetch operational days
-  const { data: fetchedOperationalDays, isLoading: isLoadingDays, error: daysError } = useQuery<OperationalDays | null>({
-    queryKey: ['operationalDays', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from('operational_days')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      if (error && (error as any).code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error("Error fetching operational days:", error);
-        throw error;
-      }
-      return data;
-    },
-    enabled: !!user,
-  });
-
   // Fetch operational hours
   const { data: fetchedOperationalHours, isLoading: isLoadingHours, error: hoursError } = useQuery<OperationalHours | null>({
     queryKey: ['operationalHours', user?.id],
@@ -126,20 +95,6 @@ const ManageCostsPage = () => {
   });
 
   useEffect(() => {
-    if (fetchedOperationalDays) {
-      setSelectedDays({
-        monday: fetchedOperationalDays.monday,
-        tuesday: fetchedOperationalDays.tuesday,
-        wednesday: fetchedOperationalDays.wednesday,
-        thursday: fetchedOperationalDays.thursday,
-        friday: fetchedOperationalDays.friday,
-        saturday: fetchedOperationalDays.saturday,
-        sunday: fetchedOperationalDays.sunday,
-      });
-    }
-  }, [fetchedOperationalDays]);
-
-  useEffect(() => {
     if (fetchedOperationalHours) {
       setOperationalHours({
         monday_start: fetchedOperationalHours.monday_start || '', monday_end: fetchedOperationalHours.monday_end || '',
@@ -150,61 +105,36 @@ const ManageCostsPage = () => {
         saturday_start: fetchedOperationalHours.saturday_start || '', saturday_end: fetchedOperationalHours.saturday_end || '',
         sunday_start: fetchedOperationalHours.sunday_start || '', sunday_end: fetchedOperationalHours.sunday_end || '',
       });
+
+      // Initialize selectedDays based on fetched hours
+      const initialSelectedDays: { [key: string]: boolean } = {};
+      daysOfWeek.forEach(day => {
+        const startKey = `${day.key}_start` as keyof typeof fetchedOperationalHours;
+        const endKey = `${day.key}_end` as keyof typeof fetchedOperationalHours;
+        initialSelectedDays[day.key] = !!(fetchedOperationalHours[startKey] || fetchedOperationalHours[endKey]);
+      });
+      setSelectedDays(initialSelectedDays);
     }
   }, [fetchedOperationalHours]);
-
-  const upsertOperationalDaysMutation = useMutation({
-    mutationFn: async (days: Omit<OperationalDays, 'created_at'>) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      if (fetchedOperationalDays?.id) {
-        // Update existing entry
-        const { data, error } = await supabase
-          .from('operational_days')
-          .update(days)
-          .eq('id', fetchedOperationalDays.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-        if (error) throw error;
-        return data;
-      } else {
-        // Insert new entry
-        const { data, error } = await supabase
-          .from('operational_days')
-          .insert({ ...days, user_id: user.id })
-          .select()
-          .single();
-        if (error) throw error;
-        return data;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['operationalDays', user?.id] });
-      toast({
-        title: "Dias operacionais salvos!",
-        description: "Seus dias de trabalho foram atualizados.",
-      });
-    },
-    onError: (err) => {
-      console.error("Error saving operational days:", err);
-      toast({
-        title: "Erro ao salvar dias operacionais",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const upsertOperationalHoursMutation = useMutation({
     mutationFn: async (hours: Omit<OperationalHours, 'created_at'>) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
+      // Filter out hours for unselected days before saving
+      const hoursToSave = { ...hours };
+      daysOfWeek.forEach(day => {
+        if (!selectedDays[day.key]) {
+          (hoursToSave as any)[`${day.key}_start`] = '';
+          (hoursToSave as any)[`${day.key}_end`] = '';
+        }
+      });
+
       if (fetchedOperationalHours?.id) {
         // Update existing entry
         const { data, error } = await supabase
           .from('operational_hours')
-          .update(hours)
+          .update(hoursToSave)
           .eq('id', fetchedOperationalHours.id)
           .eq('user_id', user.id)
           .select()
@@ -215,7 +145,7 @@ const ManageCostsPage = () => {
         // Insert new entry
         const { data, error } = await supabase
           .from('operational_hours')
-          .insert({ ...hours, user_id: user.id })
+          .insert({ ...hoursToSave, user_id: user.id })
           .select()
           .single();
         if (error) throw error;
@@ -279,16 +209,16 @@ const ManageCostsPage = () => {
     deleteCostMutation.mutate(id);
   };
 
-  const handleDayToggle = (day: keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>) => {
+  const handleDayCheckboxToggle = (dayKey: string) => {
     setSelectedDays(prevDays => {
-      const newSelectedDays = { ...prevDays, [day]: !prevDays[day] };
+      const newSelectedDays = { ...prevDays, [dayKey]: !prevDays[dayKey] };
       
       // If the day is being unchecked, clear its hours
-      if (!newSelectedDays[day]) {
+      if (!newSelectedDays[dayKey]) {
         setOperationalHours(prevHours => ({
           ...prevHours,
-          [`${day}_start`]: '',
-          [`${day}_end`]: '',
+          [`${dayKey}_start`]: '',
+          [`${dayKey}_end`]: '',
         }));
       }
       return newSelectedDays;
@@ -302,41 +232,18 @@ const ManageCostsPage = () => {
     }));
   };
 
-  const handleSaveOperationalDays = () => {
-    if (user) {
-      upsertOperationalDaysMutation.mutate({ ...selectedDays, user_id: user.id });
-    }
-  };
-
   const handleSaveOperationalHours = () => {
     if (user) {
-      // Filter out hours for unselected days before saving
-      const hoursToSave = { ...operationalHours };
-      daysOfWeek.forEach(day => {
-        if (!selectedDays[day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>]) {
-          (hoursToSave as any)[`${day.key}_start`] = '';
-          (hoursToSave as any)[`${day.key}_end`] = '';
-        }
-      });
-      upsertOperationalHoursMutation.mutate({ ...hoursToSave, user_id: user.id });
+      upsertOperationalHoursMutation.mutate({ ...operationalHours, user_id: user.id });
     }
-  };
-
-  const calculateTotalOperationalDays = () => {
-    const daysPerWeek = Object.values(selectedDays).filter(Boolean).length;
-    // Assuming roughly 4 weeks in a month
-    return daysPerWeek * 4;
   };
 
   const fixedCosts = operationalCosts?.filter(cost => cost.type === 'fixed') || [];
   const variableCosts = operationalCosts?.filter(cost => cost.type === 'variable') || [];
 
-  if (isLoadingCosts || isLoadingDays || isLoadingHours) return <p>Carregando custos e dias operacionais...</p>;
+  if (isLoadingCosts || isLoadingHours) return <p>Carregando custos e horários operacionais...</p>;
   if (costsError) return <p>Erro ao carregar custos: {costsError.message}</p>;
-  if (daysError && (daysError as any).code !== 'PGRST116') return <p>Erro ao carregar dias operacionais: {daysError.message}</p>;
   if (hoursError && (hoursError as any).code !== 'PGRST116') return <p>Erro ao carregar horários operacionais: {hoursError.message}</p>;
-
-  const totalOperationalDays = calculateTotalOperationalDays();
 
   const daysOfWeek = [
     { key: 'monday', label: 'Seg' },
@@ -491,85 +398,51 @@ const ManageCostsPage = () => {
             Adicionar Novo Custo
           </Button>
 
-          {/* Nova Seção: Dias Operacionais e Horas Trabalhadas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6 border-t border-border/50">
-            {/* Dias Operacionais */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-semibold text-foreground">Dias Operacionais</h3>
-              </div>
-              <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
-                <p className="text-sm font-medium text-foreground">
-                  Dias Trabalhados no Mês (estimado):{" "}
-                  <span className="text-lg text-primary font-bold">{totalOperationalDays}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  (Baseado em 4 semanas por mês)
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
-                {daysOfWeek.map(day => (
-                  <div key={day.key} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={day.key} 
-                      checked={selectedDays[day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>]} 
-                      onCheckedChange={() => handleDayToggle(day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>)} 
-                    />
-                    <Label htmlFor={day.key}>{day.label}</Label>
-                  </div>
-                ))}
-              </div>
-              <Button 
-                onClick={handleSaveOperationalDays}
-                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-                disabled={upsertOperationalDaysMutation.isPending}
-              >
-                {upsertOperationalDaysMutation.isPending ? "Salvando..." : "Salvar Dias Operacionais"}
-              </Button>
+          {/* Seção de Horas Trabalhadas (agora com seleção de dias integrada) */}
+          <div className="space-y-4 pt-6 border-t border-border/50">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <h3 className="text-xl font-semibold text-foreground">Horas Trabalhadas</h3>
             </div>
-
-            {/* Horas Trabalhadas */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-semibold text-foreground">Horas Trabalhadas</h3>
-              </div>
-              <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
-                <p className="text-sm font-medium text-foreground">
-                  Defina seus horários de funcionamento para cada dia.
-                </p>
-              </div>
-              <div className="space-y-3">
-                {daysOfWeek.map(day => (
-                  selectedDays[day.key as keyof Omit<OperationalDays, 'id' | 'user_id' | 'created_at'>] && (
-                    <div key={day.key} className="flex items-center gap-2">
-                      <Label className="w-12">{day.label}:</Label>
-                      <Input
-                        type="time"
-                        value={operationalHours[`${day.key}_start` as keyof typeof operationalHours]}
-                        onChange={(e) => handleHourChange(day.key, 'start', e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                      <span className="text-muted-foreground">-</span>
-                      <Input
-                        type="time"
-                        value={operationalHours[`${day.key}_end` as keyof typeof operationalHours]}
-                        onChange={(e) => handleHourChange(day.key, 'end', e.target.value)}
-                        className="flex-1 bg-background"
-                      />
-                    </div>
-                  )
-                ))}
-              </div>
-              <Button 
-                onClick={handleSaveOperationalHours}
-                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-                disabled={upsertOperationalHoursMutation.isPending}
-              >
-                {upsertOperationalHoursMutation.isPending ? "Salvando..." : "Salvar Horários"}
-              </Button>
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+              <p className="text-sm font-medium text-foreground">
+                Defina seus dias e horários de funcionamento.
+              </p>
             </div>
+            <div className="space-y-3">
+              {daysOfWeek.map(day => (
+                <div key={day.key} className="flex items-center gap-2">
+                  <Checkbox 
+                    id={day.key} 
+                    checked={selectedDays[day.key]} 
+                    onCheckedChange={() => handleDayCheckboxToggle(day.key)} 
+                  />
+                  <Label htmlFor={day.key} className="w-12">{day.label}:</Label>
+                  <Input
+                    type="time"
+                    value={operationalHours[`${day.key}_start` as keyof typeof operationalHours]}
+                    onChange={(e) => handleHourChange(day.key, 'start', e.target.value)}
+                    className="flex-1 bg-background"
+                    disabled={!selectedDays[day.key]}
+                  />
+                  <span className="text-muted-foreground">-</span>
+                  <Input
+                    type="time"
+                    value={operationalHours[`${day.key}_end` as keyof typeof operationalHours]}
+                    onChange={(e) => handleHourChange(day.key, 'end', e.target.value)}
+                    className="flex-1 bg-background"
+                    disabled={!selectedDays[day.key]}
+                  />
+                </div>
+              ))}
+            </div>
+            <Button 
+              onClick={handleSaveOperationalHours}
+              className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+              disabled={upsertOperationalHoursMutation.isPending}
+            >
+              {upsertOperationalHoursMutation.isPending ? "Salvando..." : "Salvar Horários"}
+            </Button>
           </div>
         </CardContent>
       </Card>
