@@ -35,6 +35,9 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
   const [value, setValue] = useState(cost?.value.toString() || '');
   const [type, setType] = useState<'fixed' | 'variable'>(cost?.type || defaultType || 'fixed');
 
+  // Determina se o custo é o "Produtos Gastos no Mês"
+  const isProductsCost = description === 'Produtos Gastos no Mês';
+
   useEffect(() => {
     if (cost) {
       setDescription(cost.description);
@@ -52,7 +55,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
     mutationFn: async (newCost: Omit<OperationalCost, 'id' | 'created_at'> & { id?: string }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      let costData; // Declarando costData aqui
+      let costData;
       if (newCost.id) {
         // Update existing cost
         const { data, error } = await supabase
@@ -67,7 +70,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
           .select()
           .single();
         if (error) throw error;
-        costData = data; // Atribuindo a costData
+        costData = data;
       } else {
         // Insert new cost
         const { data, error } = await supabase
@@ -81,9 +84,9 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
           .select()
           .single();
         if (error) throw error;
-        costData = data; // Atribuindo a costData
+        costData = data;
       }
-      return costData; // Retornando costData
+      return costData;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
@@ -120,11 +123,14 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       return;
     }
 
+    // Forçar o tipo para 'variable' se for "Produtos Gastos no Mês"
+    const finalType = isProductsCost ? 'variable' : type;
+
     upsertCostMutation.mutate({
       id: cost?.id,
       description,
       value: parseFloat(value),
-      type,
+      type: finalType,
       user_id: user!.id,
     });
   };
@@ -143,7 +149,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
               className="bg-background" 
-              readOnly={!!defaultDescription} // Tornar read-only se houver defaultDescription
+              readOnly={isProductsCost || !!defaultDescription} // Desabilitar se for "Produtos Gastos no Mês" ou se houver defaultDescription
             />
           </div>
           <div className="space-y-2">
@@ -155,7 +161,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
             <Select 
               value={type} 
               onValueChange={(value: 'fixed' | 'variable') => setType(value)}
-              disabled={!!defaultType} // Desabilitar se houver defaultType
+              disabled={isProductsCost || !!defaultType} // Desabilitar se for "Produtos Gastos no Mês" ou se houver defaultType
             >
               <SelectTrigger className="bg-background">
                 <SelectValue />
