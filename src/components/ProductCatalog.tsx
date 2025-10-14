@@ -10,6 +10,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar o novo diálogo e tipo
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Novo import
 
 // Utility function to format dilution ratio for display
 const formatDilutionRatio = (ratio: number): string => {
@@ -23,6 +24,7 @@ export const ProductCatalog = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | undefined>(undefined);
+  const [productCostCalculationMethod, setProductCostCalculationMethod] = useState<'per-service' | 'monthly-average'>('per-service'); // Estado para o método de cálculo
 
   const { data: catalogProducts, isLoading, error } = useQuery<CatalogProduct[]>({
     queryKey: ['productCatalog', user?.id],
@@ -167,6 +169,47 @@ export const ProductCatalog = () => {
           <Plus className="mr-2 h-4 w-4" />
           Adicionar Novo Produto
         </Button>
+
+        {/* Nova Seção: Método de Cálculo de Custo de Produtos */}
+        <div className="space-y-6 pt-6 border-t border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+              <Package className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-foreground">Método de Cálculo de Custo de Produtos</CardTitle>
+              <CardDescription>
+                Escolha como você deseja que o sistema calcule o custo dos produtos utilizados em seus serviços.
+              </CardDescription>
+            </div>
+          </div>
+
+          <RadioGroup
+            value={productCostCalculationMethod}
+            onValueChange={(value: 'per-service' | 'monthly-average') => setProductCostCalculationMethod(value)}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
+              <RadioGroupItem value="per-service" id="per-service" />
+              <Label htmlFor="per-service" className="flex-1 cursor-pointer">
+                <h4 className="font-medium text-foreground">Cálculo Detalhado por Serviço</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Atribua produtos específicos do seu catálogo e suas respectivas diluições a cada serviço. Ideal para uma precificação exata e controle minucioso.
+                </p>
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
+              <RadioGroupItem value="monthly-average" id="monthly-average" />
+              <Label htmlFor="monthly-average" className="flex-1 cursor-pointer">
+                <h4 className="font-medium text-foreground">Cálculo Médio Mensal</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Informe o valor total gasto com produtos por mês. O sistema calculará um custo médio por serviço com base nos seus custos operacionais e horas trabalhadas. Perfeito para simplificar a gestão.
+                </p>
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
       </CardContent>
 
       <ProductFormDialog
