@@ -14,6 +14,7 @@ function Login() {
               <Sparkles className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
+          <h2 className="text-4xl font-extrabold text-primary-strong mb-2">PrecifiCar</h2> {/* Adicionado aqui */}
           <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>
           <CardDescription className="text-muted-foreground">
             Faça login ou crie uma conta para continuar.
