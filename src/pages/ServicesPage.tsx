@@ -68,7 +68,7 @@ const ServicesPage = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle, dilution_ratio')
+          .select('product_id, usage_per_vehicle, dilution_ratio, container_size') // Buscar container_size
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -92,6 +92,7 @@ const ServicesPage = () => {
               ...product, 
               usage_per_vehicle: link?.usage_per_vehicle || 0,
               dilution_ratio: link?.dilution_ratio || 0,
+              container_size: link?.container_size || 0, // Adicionado container_size
             };
           });
           return { ...service, products: productsWithUsageAndDilution };
@@ -357,6 +358,7 @@ const ServicesPage = () => {
                                 <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
                                   {product.name} ({product.usage_per_vehicle.toFixed(0)} ml)
                                   {product.dilution_ratio > 0 && ` | Diluição: 1:${product.dilution_ratio.toFixed(0)}`}
+                                  {product.container_size > 0 && ` | Recipiente: ${product.container_size.toFixed(0)} ml`}
                                 </span>
                               ))}
                             </div>

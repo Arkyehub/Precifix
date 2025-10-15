@@ -21,7 +21,16 @@ interface Service {
   labor_cost_per_hour: number;
   execution_time_minutes: number;
   user_id: string;
-  products?: { id: string; name: string; size: number; price: number; type: 'diluted' | 'ready-to-use'; dilution_ratio: number; usage_per_vehicle: number }[];
+  products?: { 
+    id: string; 
+    name: string; 
+    size: number; 
+    price: number; 
+    type: 'diluted' | 'ready-to-use'; 
+    dilution_ratio: number; 
+    usage_per_vehicle: number;
+    container_size: number; // Adicionado container_size
+  }[];
 }
 
 interface CatalogProduct {
@@ -56,7 +65,7 @@ export const QuoteCalculator = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle, dilution_ratio') // Buscar usage_per_vehicle e dilution_ratio
+          .select('product_id, usage_per_vehicle, dilution_ratio, container_size') // Buscar usage_per_vehicle, dilution_ratio e container_size
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -74,13 +83,14 @@ export const QuoteCalculator = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             return { ...service, products: [] };
           }
-          // Combinar dados do produto com usage_per_vehicle e dilution_ratio do link
+          // Combinar dados do produto com usage_per_vehicle, dilution_ratio e container_size do link
           const productsWithUsageAndDilution = productsData.map(product => {
             const link = linksData.find(link => link.product_id === product.id);
             return { 
               ...product, 
               usage_per_vehicle: link?.usage_per_vehicle || 0,
               dilution_ratio: link?.dilution_ratio || 0, // Usar a diluição do link
+              container_size: link?.container_size || 0, // Usar o container_size do link
             };
           });
           return { ...service, products: productsWithUsageAndDilution };

@@ -25,7 +25,8 @@ export interface Service {
     price: number; // em R$
     type: 'diluted' | 'ready-to-use';
     dilution_ratio: number; 
-    usage_per_vehicle: number 
+    usage_per_vehicle: number;
+    container_size: number; // Adicionado container_size
   }[]; // Adicionado detalhes completos do produto
 }
 
