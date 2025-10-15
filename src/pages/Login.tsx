@@ -1,5 +1,5 @@
 import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { ThemeSupa } = from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -80,8 +80,10 @@ function Login() {
                   button_label: 'Enviar link mágico',
                   link_text: 'Enviar link mágico',
                 },
-                // A mensagem de erro comum deve ir aqui, dentro de 'variables.messages'
-                messages: {
+              },
+              // O bloco 'messages' deve ser um irmão de 'variables'
+              messages: {
+                validation: {
                   invalid_email_or_password: 'Senha Incorreta',
                 },
               },
