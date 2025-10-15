@@ -153,41 +153,7 @@ const ServicesPage = () => {
     },
   });
 
-  const clearAllProductLinksMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const { data: userServices, error: fetchError } = await supabase
-        .from('services')
-        .select('id')
-        .eq('user_id', userId);
-
-      if (fetchError) throw fetchError;
-
-      const serviceIds = userServices.map(s => s.id);
-
-      if (serviceIds.length > 0) {
-        const { error: deleteLinksError } = await supabase
-          .from('service_product_links')
-          .delete()
-          .in('service_id', serviceIds);
-        if (deleteLinksError) throw deleteLinksError;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidate services to reflect cleared links
-      toast({
-        title: "Vínculos de produtos limpos!",
-        description: "Todos os produtos foram desvinculados dos seus serviços.",
-      });
-    },
-    onError: (err) => {
-      console.error("Error clearing product links:", err);
-      toast({
-        title: "Erro ao limpar vínculos de produtos",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
+  // REMOVIDO: clearAllProductLinksMutation e seu useEffect, pois a lógica foi movida para ProductCatalog.tsx
 
   useEffect(() => {
     const shouldAddDefaults =
@@ -205,17 +171,7 @@ const ServicesPage = () => {
     }
   }, [user, isLoading, error, services, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
 
-  useEffect(() => {
-    // Trigger clearing product links when switching to 'monthly-average' mode
-    if (productCostCalculationMethod === 'monthly-average' && user && !clearAllProductLinksMutation.isPending) {
-      // Check if there are actually any linked products before attempting to clear
-      const hasLinkedProducts = services?.some(s => s.products && s.products.length > 0);
-      if (hasLinkedProducts) {
-        clearAllProductLinksMutation.mutate(user.id);
-      }
-    }
-  }, [productCostCalculationMethod, user, services, clearAllProductLinksMutation]);
-
+  // REMOVIDO: useEffect que disparava clearAllProductLinksMutation
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -310,7 +266,7 @@ const ServicesPage = () => {
     setIsAddProductDialogOpen(true);
   };
 
-  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost || clearAllProductLinksMutation.isPending) {
+  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) { // Removido clearAllProductLinksMutation.isPending
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
