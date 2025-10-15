@@ -128,13 +128,15 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                                 {product.type === 'diluted' && (
                                   <>
                                     <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
-                                    <span>Produto usado na diluição: {concentratedProductUsed.toFixed(0)} ml</span>
+                                    <span>Produto concentrado na aplicação: {concentratedProductUsed.toFixed(0)} ml</span>
                                     {waterNeededFor1LiterSolution > 0 && (
                                       <span>Água para 1L de solução: {waterNeededFor1LiterSolution.toFixed(0)} ml</span>
                                     )}
                                   </>
                                 )}
-                                <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
+                                {product.type === 'ready-to-use' && (
+                                  <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
+                                )}
                               </div>
                               <div className="mt-2 space-y-1">
                                 <p className="text-sm text-primary-strong font-medium">
