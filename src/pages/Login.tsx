@@ -54,6 +54,7 @@ function Login() {
                   button_label: 'Entrar',
                   social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
+                  invalid_email_or_password: 'Senha Incorreta', // Movido para aqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
