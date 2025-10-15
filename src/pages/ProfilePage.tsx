@@ -337,7 +337,6 @@ const ProfilePage = () => {
                   id="document-number" 
                   value={formatCpfCnpj(rawDocumentNumber)} // Exibe formatado
                   onChange={handleDocumentNumberChange} 
-                  placeholder="Ex: 111.222.333-01 ou 43.996.853/0001-38"
                   maxLength={18} // Max length for CNPJ formatted
                   className="bg-background" 
                 />
@@ -351,7 +350,6 @@ const ProfilePage = () => {
                   value={formatCep(zipCode)} // Exibe formatado
                   onChange={handleZipCodeChange} 
                   onBlur={() => zipCode.length === 8 && fetchAddressByZipCode(zipCode)} // Busca ao perder o foco
-                  placeholder="Ex: 00000-000"
                   maxLength={9} // Max length for CEP formatted
                   className="bg-background" 
                 />
@@ -371,9 +369,9 @@ const ProfilePage = () => {
                   id="phone-number" 
                   value={formatPhoneNumber(rawPhoneNumber)} // Exibe formatado
                   onChange={handlePhoneNumberChange} 
-                  placeholder="Ex: (XX) XXXXX-XXXX"
+                  placeholder="(XX) XXXXX-XXXX"
                   maxLength={15} // Max length for phone formatted
-                  className="bg-background" 
+                  className="bg-background placeholder:text-gray-300" 
                 />
               </div>
             </div>
