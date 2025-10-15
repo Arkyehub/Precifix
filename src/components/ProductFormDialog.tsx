@@ -45,16 +45,16 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
   const { toast } = useToast();
 
   const [name, setName] = useState(product?.name || '');
-  const [size, setSize] = useState(product?.size.toString() || '');
-  const [price, setPrice] = useState(product?.price.toString() || '');
+  const [size, setSize] = useState(product?.size.toFixed(2) || '');
+  const [price, setPrice] = useState(product?.price.toFixed(2) || '');
   const [type, setType] = useState<'diluted' | 'ready-to-use'>(product?.type || 'diluted');
   const [dilutionRatioInput, setDilutionRatioInput] = useState(product?.dilution_ratio ? formatDilutionRatio(product.dilution_ratio) : '');
 
   useEffect(() => {
     if (product) {
       setName(product.name);
-      setSize(product.size.toString());
-      setPrice(product.price.toString());
+      setSize(product.size.toFixed(2));
+      setPrice(product.price.toFixed(2));
       setType(product.type);
       setDilutionRatioInput(product.dilution_ratio ? formatDilutionRatio(product.dilution_ratio) : '');
     } else {
@@ -186,7 +186,7 @@ export const ProductFormDialog = ({ isOpen, onClose, product }: ProductFormDialo
           </div>
           <div className="space-y-2">
             <Label htmlFor="size">Tamanho (Litros) *</Label>
-            <Input id="size" type="number" step="0.1" value={size} onChange={(e) => setSize(e.target.value)} className="bg-background" />
+            <Input id="size" type="number" step="0.01" value={size} onChange={(e) => setSize(e.target.value)} className="bg-background" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="price">Preço (R$) *</Label>

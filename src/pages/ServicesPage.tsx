@@ -352,8 +352,8 @@ const ServicesPage = () => {
                             <div className="flex flex-wrap gap-1 mt-2">
                               {service.products.map(product => (
                                 <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
-                                  {product.name} ({product.usage_per_vehicle} ml)
-                                  {product.dilution_ratio > 0 && ` | Diluição: 1:${product.dilution_ratio}`}
+                                  {product.name} ({product.usage_per_vehicle.toFixed(0)} ml)
+                                  {product.dilution_ratio > 0 && ` | Diluição: 1:${product.dilution_ratio.toFixed(0)}`}
                                 </span>
                               ))}
                             </div>

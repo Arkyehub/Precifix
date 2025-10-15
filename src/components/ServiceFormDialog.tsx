@@ -52,16 +52,16 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
 
   const [name, setName] = useState(service?.name || '');
   const [description, setDescription] = useState(service?.description || '');
-  const [price, setPrice] = useState(service?.price.toString() || '');
-  const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toString() || '');
+  const [price, setPrice] = useState(service?.price.toFixed(2) || '');
+  const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toFixed(2) || '');
   const [executionTimeHHMM, setExecutionTimeHHMM] = useState(formatMinutesToHHMM(service?.execution_time_minutes || 0));
 
   useEffect(() => {
     if (service) {
       setName(service.name);
       setDescription(service.description || '');
-      setPrice(service.price.toString());
-      setLaborCostPerHour(service.labor_cost_per_hour.toString());
+      setPrice(service.price.toFixed(2));
+      setLaborCostPerHour(service.labor_cost_per_hour.toFixed(2));
       setExecutionTimeHHMM(formatMinutesToHHMM(service.execution_time_minutes));
     } else {
       setName('');

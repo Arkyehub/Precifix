@@ -77,8 +77,8 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
     if (catalogProduct) {
       setNewProduct({
         name: catalogProduct.name,
-        gallonPrice: catalogProduct.price.toString(),
-        gallonVolume: (catalogProduct.size * 1000).toString(), // convert liters to ml
+        gallonPrice: catalogProduct.price.toFixed(2),
+        gallonVolume: (catalogProduct.size * 1000).toFixed(0), // convert liters to ml, keep as integer
         usagePerVehicle: "",
       });
       setLoadedCatalogProductDetails({
@@ -149,11 +149,11 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                     </h4>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                       <span>Preço: R$ {product.gallonPrice.toFixed(2)}</span>
-                      <span>Volume: {product.gallonVolume} ml</span>
+                      <span>Volume: {product.gallonVolume.toFixed(0)} ml</span>
                       {product.type === 'diluted' && (
                         <>
                           <span>Diluição: {formatDilutionRatio(product.dilutionRatio)}</span>
-                          <span>Uso: {product.usagePerVehicle} ml</span>
+                          <span>Uso: {product.usagePerVehicle.toFixed(0)} ml</span>
                           <span className="text-primary font-medium col-span-2 mt-1">
                             Custo/ml diluído: R$ {(product.gallonPrice / (product.gallonVolume * (1 + product.dilutionRatio))).toFixed(4)}
                           </span>
@@ -161,7 +161,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                       )}
                       {product.type === 'ready-to-use' && (
                         <>
-                          <span>Uso: {product.usagePerVehicle} ml</span>
+                          <span>Uso: {product.usagePerVehicle.toFixed(0)} ml</span>
                           <span className="text-primary font-medium col-span-2 mt-1">
                             Custo/ml: R$ {(product.gallonPrice / product.gallonVolume).toFixed(4)}
                           </span>
@@ -207,7 +207,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                 <SelectContent>
                   {catalogProducts.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
-                      {product.name} - {product.size}L - R$ {product.price.toFixed(2)}
+                      {product.name} - {product.size.toFixed(2)}L - R$ {product.price.toFixed(2)}
                       {product.type === 'diluted' && ` (Diluição: ${formatDilutionRatio(product.dilution_ratio)})`}
                       {product.type === 'ready-to-use' && ` (Pronto Uso)`}
                     </SelectItem>
@@ -229,7 +229,7 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
           <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2">
             <p className="font-medium text-foreground">Produto Carregado: {loadedCatalogProductDetails.name}</p>
             <p className="text-sm text-muted-foreground">
-              Preço: R$ {loadedCatalogProductDetails.gallonPrice.toFixed(2)} | Volume: {loadedCatalogProductDetails.gallonVolume} ml
+              Preço: R$ {loadedCatalogProductDetails.gallonPrice.toFixed(2)} | Volume: {loadedCatalogProductDetails.gallonVolume.toFixed(0)} ml
             </p>
             <p className="text-sm text-muted-foreground">
               Tipo: {loadedCatalogProductDetails.type === 'diluted' ? 'Diluído' : 'Pronto Uso'}

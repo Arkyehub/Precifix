@@ -44,7 +44,7 @@ export function OperationalCosts({
             <Input
               id="execution-time"
               type="number"
-              value={executionTime || ""}
+              value={executionTime.toFixed(0) || ""} // Tempo em minutos pode ser inteiro
               onChange={(e) =>
                 onCostsChange({
                   executionTime: parseFloat(e.target.value) || 0,
@@ -62,7 +62,7 @@ export function OperationalCosts({
               id="labor-cost"
               type="number"
               step="0.01"
-              value={laborCostPerHour || ""}
+              value={laborCostPerHour.toFixed(2) || ""}
               onChange={(e) =>
                 onCostsChange({
                   executionTime,
@@ -81,7 +81,7 @@ export function OperationalCosts({
               id="other-costs"
               type="number"
               step="0.01"
-              value={otherCosts || ""}
+              value={otherCosts.toFixed(2) || ""}
               onChange={(e) =>
                 onCostsChange({
                   executionTime,

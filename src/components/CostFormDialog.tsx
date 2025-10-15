@@ -33,7 +33,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
   const { toast } = useToast();
 
   const [description, setDescription] = useState(cost?.description || defaultDescription || '');
-  const [value, setValue] = useState(cost?.value.toString() || '');
+  const [value, setValue] = useState(cost?.value.toFixed(2) || '');
   const [type, setType] = useState<'fixed' | 'variable'>(cost?.type || defaultType || 'fixed');
 
   // Determina se o custo é o "Produtos Gastos no Mês"
@@ -42,7 +42,7 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
   useEffect(() => {
     if (cost) {
       setDescription(cost.description);
-      setValue(cost.value.toString());
+      setValue(cost.value.toFixed(2));
       setType(cost.type);
     } else {
       // Se não estiver editando, use os defaults ou valores vazios

@@ -91,7 +91,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
             .single()
             .then(({ data, error }) => {
               if (data) {
-                setUsagePerVehicle(data.usage_per_vehicle?.toString() || '');
+                setUsagePerVehicle(data.usage_per_vehicle?.toFixed(0) || ''); // Usage per vehicle can be integer
                 setEditableDilutionRatioInput(formatDilutionRatioForInput(data.dilution_ratio || 0));
               } else if (error && (error as any).code !== 'PGRST116') {
                 console.error("Error fetching existing product link details:", error);
@@ -237,7 +237,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
             <div className="space-y-2 p-3 border rounded-md bg-muted/20">
               <p className="text-sm font-medium text-foreground">Detalhes do Produto:</p>
               <p className="text-xs text-muted-foreground">
-                Tamanho: {selectedProductDetails.size} L ({selectedProductDetails.size * 1000} ml)
+                Tamanho: {selectedProductDetails.size.toFixed(2)} L ({selectedProductDetails.size * 1000} ml)
               </p>
               <p className="text-xs text-muted-foreground">
                 Preço: R$ {selectedProductDetails.price.toFixed(2)}

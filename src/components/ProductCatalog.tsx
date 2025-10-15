@@ -111,7 +111,7 @@ export const ProductCatalog = () => {
                   <div className="flex-1">
                     <p className="font-medium text-foreground">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {product.size}L - R$ {product.price.toFixed(2)}
+                      {product.size.toFixed(2)}L - R$ {product.price.toFixed(2)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Tipo: {product.type === 'diluted' ? 'Diluído' : 'Pronto Uso'}

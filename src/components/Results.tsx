@@ -30,7 +30,7 @@ export function Results({ totalCost, profitMargin, executionTime, onMarginChange
             id="profit-margin"
             type="number"
             step="0.1"
-            value={profitMargin}
+            value={profitMargin.toFixed(2) || ""}
             onChange={(e) => onMarginChange(parseFloat(e.target.value) || 0)}
             className="bg-background text-lg font-semibold"
           />

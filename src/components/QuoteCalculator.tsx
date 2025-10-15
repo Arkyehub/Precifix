@@ -167,11 +167,11 @@ export const QuoteCalculator = () => {
                   id="labor-cost-per-hour"
                   type="number"
                   step="0.01"
-                  value={laborCostPerHour || ""}
+                  value={laborCostPerHour.toFixed(2) || ""}
                   onChange={(e) => setLaborCostPerHour(parseFloat(e.target.value) || 0)}
                   className="flex-1 bg-background"
                 />
-                <LoadHourlyCostButton onLoad={(cost) => setLaborCostPerHour(cost)} />
+                <LoadHourlyCostButton onLoad={(cost) => setLaborCostPerHour(parseFloat(cost.toFixed(2)))} />
               </div>
             </div>
 
@@ -181,7 +181,7 @@ export const QuoteCalculator = () => {
                 id="other-costs"
                 type="number"
                 step="0.01"
-                value={otherCosts || ""}
+                value={otherCosts.toFixed(2) || ""}
                 onChange={(e) => setOtherCosts(parseFloat(e.target.value) || 0)}
                 className="bg-background"
               />
@@ -193,7 +193,7 @@ export const QuoteCalculator = () => {
                 id="profit-margin"
                 type="number"
                 step="0.1"
-                value={profitMargin}
+                value={profitMargin.toFixed(2) || ""}
                 onChange={(e) => setProfitMargin(parseFloat(e.target.value) || 0)}
                 className="bg-background text-lg font-semibold"
               />
