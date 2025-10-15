@@ -104,5 +104,15 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.text-shadow-sm': {
+          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.4)', // Sombra sutil e escura
+        },
+      };
+      addUtilities(newUtilities, ['responsive']);
+    },
+  ],
 } satisfies Config;

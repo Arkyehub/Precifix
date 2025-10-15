@@ -274,7 +274,7 @@ const ServicesPage = () => {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className={`flex items-center gap-1 text-sm font-medium ${modeColorClass}`}>
+                    <div className={`flex items-center gap-1 text-sm font-medium ${modeColorClass} text-shadow-sm`}> {/* Adicionado text-shadow-sm aqui */}
                       <Info className="h-4 w-4" />
                       <span>Modo: {modeText}</span>
                     </div>
