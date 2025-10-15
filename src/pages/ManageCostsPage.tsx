@@ -238,6 +238,7 @@ const ManageCostsPage = () => {
       const updates = servicesToUpdate.map(service => ({
         id: service.id,
         labor_cost_per_hour: newHourlyCost,
+        user_id: user.id, // Adicionado user_id para satisfazer a política RLS em caso de upsert/insert
       }));
 
       // Perform batch update
