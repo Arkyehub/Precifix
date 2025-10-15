@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Car, Trash2 } from "lucide-react";
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useToast } from '@/hooks/use-toast';
 import { formatDilutionRatio, calculateProductCost, calculateProductCostPerLiter, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
+import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar ProductFormDialog e CatalogProduct
 
 interface ServiceProductManagerProps {
   services: Service[];
@@ -19,6 +20,9 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
+  const [editingCatalogProduct, setEditingCatalogProduct] = useState<CatalogProduct | undefined>(undefined);
 
   const deleteProductLinkMutation = useMutation({
     mutationFn: async ({ serviceId, productId }: { serviceId: string; productId: string }) => {
@@ -45,6 +49,11 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
       });
     },
   });
+
+  const handleEditProduct = (productToEdit: CatalogProduct) => {
+    setEditingCatalogProduct(productToEdit);
+    setIsProductFormDialogOpen(true);
+  };
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -98,7 +107,28 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                         <li key={product.id} className="flex flex-col p-3 rounded-md bg-muted/20 border border-border/50 relative group">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h5 className="font-medium text-foreground">
+                              <h5 
+                                className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => {
+                                  if (user) {
+                                    handleEditProduct({
+                                      id: product.id,
+                                      name: product.name,
+                                      size: product.size,
+                                      price: product.price,
+                                      type: product.type,
+                                      dilution_ratio: product.dilution_ratio,
+                                      user_id: user.id, // Adicionado user_id aqui
+                                    });
+                                  } else {
+                                    toast({
+                                      title: "Erro de autenticação",
+                                      description: "Você precisa estar logado para editar produtos.",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                              >
                                 {product.name}
                                 <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
                                   {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
@@ -167,6 +197,12 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
           </p>
         )}
       </CardContent>
+
+      <ProductFormDialog
+        isOpen={isProductFormDialogOpen}
+        onClose={() => setIsProductFormDialogOpen(false)}
+        product={editingCatalogProduct}
+      />
     </Card>
   );
 };
