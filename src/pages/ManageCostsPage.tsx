@@ -223,33 +223,38 @@ const ManageCostsPage = () => {
     },
   });
 
-  // NOVO: Mutação para atualizar o custo da hora de trabalho em todos os serviços
+  // Mutação para atualizar o custo da hora de trabalho em todos os serviços
   const updateServicesLaborCostMutation = useMutation({
     mutationFn: async (newHourlyCost: number) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
+      // Selecionar todas as colunas NOT NULL sem default, além das que estamos atualizando
       const { data: servicesToUpdate, error: fetchServicesError } = await supabase
         .from('services')
-        .select('id')
+        .select('id, name, price, description, execution_time_minutes') // Incluir name, price e outras colunas NOT NULL
         .eq('user_id', user.id);
 
       if (fetchServicesError) throw fetchServicesError;
 
       const updates = servicesToUpdate.map(service => ({
         id: service.id,
-        labor_cost_per_hour: newHourlyCost,
-        user_id: user.id, // Adicionado user_id para satisfazer a política RLS em caso de upsert/insert
+        name: service.name, // Manter o nome existente
+        price: service.price, // Manter o preço existente
+        description: service.description, // Manter a descrição existente (se houver)
+        execution_time_minutes: service.execution_time_minutes, // Manter o tempo de execução existente
+        labor_cost_per_hour: newHourlyCost, // Atualizar apenas o custo da hora de trabalho
+        user_id: user.id, // Garantir que user_id esteja presente para RLS
       }));
 
       // Perform batch update
       const { error: updateError } = await supabase
         .from('services')
-        .upsert(updates, { onConflict: 'id' }); // Use upsert with onConflict to update existing rows
+        .upsert(updates, { onConflict: 'id' }); // Usar upsert com onConflict para atualizar linhas existentes
 
       if (updateError) throw updateError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidate services query
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidar a query de serviços
       toast({
         title: "Serviços atualizados!",
         description: "O custo da hora de trabalho foi atualizado em todos os seus serviços.",
@@ -308,26 +313,31 @@ const ManageCostsPage = () => {
     }
   };
 
-  // NOVO: Callback para quando um custo é salvo no CostFormDialog
+  // Callback para quando um custo é salvo no CostFormDialog
   const handleCostSaved = (savedCost: OperationalCost) => {
     // Recalcular hourlyCost após o salvamento do custo
     queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
     queryClient.invalidateQueries({ queryKey: ['operationalHours', user?.id] });
     
     // Use a função de cálculo para obter o valor mais recente
-    const currentHourlyCost = calculateHourlyCost();
+    // É importante esperar a invalidação e o refetch para ter os dados mais recentes
+    queryClient.refetchQueries({ queryKey: ['operationalCosts', user?.id] }).then(() => {
+      queryClient.refetchQueries({ queryKey: ['operationalHours', user?.id] }).then(() => {
+        const currentHourlyCost = calculateHourlyCost();
 
-    if (savedCost.description === 'Produtos Gastos no Mês' && productCostCalculationMethod === 'monthly-average') {
-      if (currentHourlyCost > 0) {
-        updateServicesLaborCostMutation.mutate(currentHourlyCost);
-      } else {
-        toast({
-          title: "Custo por hora não calculado",
-          description: "Não foi possível calcular o custo por hora para atualizar os serviços. Verifique seus custos e horários.",
-          variant: "destructive",
-        });
-      }
-    }
+        if (savedCost.description === 'Produtos Gastos no Mês' && productCostCalculationMethod === 'monthly-average') {
+          if (currentHourlyCost > 0) {
+            updateServicesLaborCostMutation.mutate(currentHourlyCost);
+          } else {
+            toast({
+              title: "Custo por hora não calculado",
+              description: "Não foi possível calcular o custo por hora para atualizar os serviços. Verifique seus custos e horários.",
+              variant: "destructive",
+            });
+          }
+        }
+      });
+    });
   };
 
   const fixedCosts = operationalCosts?.filter(cost => cost.type === 'fixed') || [];
