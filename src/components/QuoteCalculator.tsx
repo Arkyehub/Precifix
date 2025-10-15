@@ -56,7 +56,7 @@ export const QuoteCalculator = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id')
+          .select('product_id, usage_per_vehicle') // Buscar usage_per_vehicle
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -74,12 +74,12 @@ export const QuoteCalculator = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             return { ...service, products: [] };
           }
-          // For now, we don't have usage_per_vehicle stored per service-product link,
-          // so we'll need to assume a default or add it to the link table if needed for precise calculation.
-          // For simplicity, we'll assume a generic usage for now or rely on service price.
-          // If product cost is to be calculated, we need usage_per_vehicle.
-          // For this implementation, we'll use the service's defined price and labor cost.
-          return { ...service, products: productsData.map(p => ({ ...p, usage_per_vehicle: 0 })) }; // Placeholder usage
+          // Combinar dados do produto com usage_per_vehicle do link
+          const productsWithUsage = productsData.map(product => {
+            const link = linksData.find(link => link.product_id === product.id);
+            return { ...product, usage_per_vehicle: link?.usage_per_vehicle || 0 };
+          });
+          return { ...service, products: productsWithUsage };
         }
         return { ...service, products: [] };
       }));
@@ -93,34 +93,15 @@ export const QuoteCalculator = () => {
   // Calculate total execution time
   const totalExecutionTime = selectedServices.reduce((sum, service) => sum + service.execution_time_minutes, 0);
 
-  // Calculate total products cost (this is a simplified approach, ideally needs product usage per service)
-  // For now, we'll assume the service's price already accounts for product cost,
-  // or we'd need a more complex structure to define product usage per service.
-  // Let's use the sum of service prices as a base for now, and allow 'otherCosts' for additional product costs.
-  // If detailed product cost calculation is needed, the `service_product_links` table would need a `quantity` or `usage_ml` column.
+  // Calculate total products cost
   const totalProductsCost = selectedServices.reduce((sum, service) => {
-    // This part is tricky. If a service has a fixed price, it might already include product cost.
-    // If we want to calculate product cost dynamically, we need `usage_per_vehicle` for each product linked to a service.
-    // For now, let's sum the `price` of the service itself as the "product cost" component,
-    // and allow `otherCosts` to cover additional product expenses not baked into service price.
-    // A more robust solution would involve a `service_product_links` table having a `quantity_used_ml` column.
-    // For simplicity, let's assume `otherCosts` covers product costs for now, or the service price is comprehensive.
-    // Let's make a simple assumption: the `price` of the service is the revenue, and `labor_cost_per_hour` is the direct labor cost.
-    // We need a way to get the *actual* product cost for selected services.
-    // Re-evaluating: The `ProductDilution` component on the `Index` page calculates `productsCost`.
-    // To replicate this here, we need to know which products are used for which service and their quantities.
-    // This data is not directly in the `services` table. It's in `service_product_links` and `product_catalog_items`.
-
     let serviceProductCost = 0;
     service.products?.forEach(product => {
-      // Assuming a default usage for calculation if not specified per service link
-      // This is a simplification. A real system would need `usage_per_vehicle` in `service_product_links`
-      const assumedUsagePerVehicleMl = 100; // Example: 100ml per service if not specified
       const productForCalc: ProductForCalculation = {
         gallonPrice: product.price,
         gallonVolume: product.size * 1000, // Convert liters to ml
         dilutionRatio: product.dilution_ratio,
-        usagePerVehicle: assumedUsagePerVehicleMl, // This needs to be dynamic
+        usagePerVehicle: product.usage_per_vehicle, // Usar a quantidade definida
         type: product.type,
       };
       serviceProductCost += calculateProductCost(productForCalc);

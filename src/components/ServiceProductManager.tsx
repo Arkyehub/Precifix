@@ -6,7 +6,7 @@ import { Service } from "@/components/ServiceFormDialog"; // Assumindo que Servi
 
 interface ServiceProductManagerProps {
   services: Service[];
-  onAddProductToService: (service: Service) => void;
+  onAddProductToService: (serviceId: string) => void; // Alterado para passar apenas o ID
 }
 
 export const ServiceProductManager = ({ services, onAddProductToService }: ServiceProductManagerProps) => {
@@ -38,7 +38,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onAddProductToService(service)}
+                    onClick={() => onAddProductToService(service.id)} // Passa o ID do serviço
                     className="text-primary hover:bg-primary/10"
                     title={`Adicionar produtos a ${service.name}`}
                   >
@@ -48,7 +48,9 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                 {service.products && service.products.length > 0 ? (
                   <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 space-y-1">
                     {service.products.map(product => (
-                      <li key={product.id}>{product.name}</li>
+                      <li key={product.id}>
+                        {product.name} ({product.usage_per_vehicle} ml)
+                      </li>
                     ))}
                   </ul>
                 ) : (

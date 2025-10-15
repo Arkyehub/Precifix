@@ -8,7 +8,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MultiSelect } from './ui/multi-select';
 import { LoadHourlyCostButton } from './LoadHourlyCostButton'; // Importar o novo componente
 
 export interface Service {
@@ -19,7 +18,7 @@ export interface Service {
   labor_cost_per_hour: number;
   execution_time_minutes: number;
   user_id: string;
-  products?: { id: string; name: string }[];
+  products?: { id: string; name: string; usage_per_vehicle: number }[]; // Adicionado usage_per_vehicle
 }
 
 interface ServiceFormDialogProps {
@@ -56,7 +55,6 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
   const [price, setPrice] = useState(service?.price.toString() || '');
   const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toString() || '');
   const [executionTimeHHMM, setExecutionTimeHHMM] = useState(formatMinutesToHHMM(service?.execution_time_minutes || 0));
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(service?.products?.map(p => p.id) || []);
 
   useEffect(() => {
     if (service) {
@@ -65,36 +63,19 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       setPrice(service.price.toString());
       setLaborCostPerHour(service.labor_cost_per_hour.toString());
       setExecutionTimeHHMM(formatMinutesToHHMM(service.execution_time_minutes));
-      setSelectedProductIds(service.products?.map(p => p.id) || []);
     } else {
       setName('');
       setDescription('');
       setPrice('');
       setLaborCostPerHour('');
       setExecutionTimeHHMM('00:00');
-      setSelectedProductIds([]);
     }
   }, [service, isOpen]);
-
-  const { data: catalogProducts, isLoading: isLoadingCatalog } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ['productCatalogForSelect', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from('product_catalog_items')
-        .select('id, name')
-        .eq('user_id', user.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
 
   const upsertServiceMutation = useMutation({
     mutationFn: async (newService: Omit<Service, 'id' | 'created_at' | 'products'> & { id?: string }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      // execution_time_minutes já é um número aqui, não precisa de parseHHMMToMinutes novamente
       const finalExecutionTimeMinutes = newService.execution_time_minutes;
 
       let serviceData;
@@ -131,28 +112,6 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
           .single();
         if (error) throw error;
         serviceData = data;
-      }
-
-      // Update service_product_links
-      if (serviceData) {
-        // Delete existing links for this service
-        const { error: deleteError } = await supabase
-          .from('service_product_links')
-          .delete()
-          .eq('service_id', serviceData.id);
-        if (deleteError) throw deleteError;
-
-        // Insert new links
-        if (selectedProductIds.length > 0) {
-          const linksToInsert = selectedProductIds.map(productId => ({
-            service_id: serviceData.id,
-            product_id: productId,
-          }));
-          const { error: insertError } = await supabase
-            .from('service_product_links')
-            .insert(linksToInsert);
-          if (insertError) throw insertError;
-        }
       }
       return serviceData;
     },
@@ -214,12 +173,10 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       description,
       price: parseFloat(price),
       labor_cost_per_hour: parseFloat(laborCostPerHour),
-      execution_time_minutes: parsedExecutionTime, // Já é um número aqui
+      execution_time_minutes: parsedExecutionTime,
       user_id: user!.id,
     });
   };
-
-  const productOptions = catalogProducts?.map(p => ({ label: p.name, value: p.id })) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -264,19 +221,6 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
               onChange={(e) => setExecutionTimeHHMM(e.target.value)} 
               className="bg-background" 
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="products">Adicionar Produtos do Catálogo</Label>
-            {isLoadingCatalog ? (
-              <p className="text-sm text-muted-foreground">Carregando produtos...</p>
-            ) : (
-              <MultiSelect
-                options={productOptions}
-                selected={selectedProductIds}
-                onSelectChange={setSelectedProductIds}
-                placeholder="Selecione os produtos"
-              />
-            )}
           </div>
         </div>
         <DialogFooter>

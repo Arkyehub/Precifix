@@ -9,7 +9,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ServiceProductManager } from "@/components/ServiceProductManager"; // Novo import
+import { ServiceProductManager } from "@/components/ServiceProductManager";
+import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog'; // Novo import
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -46,6 +47,9 @@ const ServicesPage = () => {
   const hasAddedDefaultServicesRef = useRef(false);
   const [showDetails, setShowDetails] = useState(false);
 
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false); // Novo estado
+  const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null); // Novo estado
+
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
     queryFn: async () => {
@@ -62,7 +66,7 @@ const ServicesPage = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id')
+          .select('product_id, usage_per_vehicle') // Buscar usage_per_vehicle
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -80,7 +84,12 @@ const ServicesPage = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             throw productsError;
           }
-          return { ...service, products: productsData };
+          // Combinar dados do produto com usage_per_vehicle do link
+          const productsWithUsage = productsData.map(product => {
+            const link = linksData.find(link => link.product_id === product.id);
+            return { ...product, usage_per_vehicle: link?.usage_per_vehicle || 0 };
+          });
+          return { ...service, products: productsWithUsage };
         }
         return { ...service, products: [] };
       }));
@@ -245,10 +254,10 @@ const ServicesPage = () => {
     clearAllServicesMutation.mutate();
   };
 
-  // Nova função para adicionar produtos a um serviço específico
-  const handleAddProductToService = (service: Service) => {
-    setEditingService(service); // Define o serviço a ser editado
-    setIsFormDialogOpen(true); // Abre o diálogo de formulário
+  // Nova função para abrir o diálogo de adição de produtos
+  const handleAddProductToService = (serviceId: string) => {
+    setServiceIdForProductAdd(serviceId);
+    setIsAddProductDialogOpen(true);
   };
 
   if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) return <p>Carregando serviços...</p>;
@@ -331,7 +340,7 @@ const ServicesPage = () => {
                             <div className="flex flex-wrap gap-1 mt-2">
                               {service.products.map(product => (
                                 <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
-                                  {product.name}
+                                  {product.name} ({product.usage_per_vehicle} ml)
                                 </span>
                               ))}
                             </div>
@@ -435,6 +444,12 @@ const ServicesPage = () => {
         isOpen={isFormDialogOpen}
         onClose={() => setIsFormDialogOpen(false)}
         service={editingService}
+      />
+
+      <AddProductToServiceDialog
+        isOpen={isAddProductDialogOpen}
+        onClose={() => setIsAddProductDialogOpen(false)}
+        serviceId={serviceIdForProductAdd}
       />
     </div>
   );
