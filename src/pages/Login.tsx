@@ -2,7 +2,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles } from 'lucide-react';
+// Removido: import { Sparkles } from 'lucide-react';
 
 function Login() {
   return (
@@ -10,11 +10,9 @@ function Login() {
       <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-glow)]">
-              <Sparkles className="h-8 w-8 text-primary-foreground" />
-            </div>
+            {/* Substituído o ícone Sparkles e o título pela nova logo */}
+            <img src="/logo-precificar.png" alt="PrecifiCar Logo" className="h-20 object-contain" />
           </div>
-          <h2 className="text-4xl font-extrabold text-primary-strong mb-2">PrecifiCar</h2> {/* Adicionado aqui */}
           <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>
           <CardDescription className="text-muted-foreground">
             Faça login ou crie uma conta para continuar.
@@ -58,7 +56,6 @@ function Login() {
                   button_label: 'Entrar',
                   social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
-                  // forgotten_password_link_text: 'Esqueceu sua senha?', // Removido daqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
