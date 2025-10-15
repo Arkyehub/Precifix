@@ -124,7 +124,7 @@ const PasswordUpdateForm = () => {
   const isPasswordStrong = isPasswordLongEnough && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
   const passwordsMatch = newPassword === confirmPassword;
 
-  const updatePasswordMutation = useMutation({ // Moved declaration here
+  const updatePasswordMutation = useMutation({
     mutationFn: async (password: string) => {
       if (!user) throw new Error("Usuário não autenticado.");
       
@@ -151,7 +151,6 @@ const PasswordUpdateForm = () => {
   });
 
   const isButtonDisabled = updatePasswordMutation.isPending || !isPasswordStrong || !passwordsMatch || newPassword.length === 0;
-
 
   // Calculate password strength for the progress bar
   const calculateStrength = (password: string) => {
@@ -287,17 +286,20 @@ const PasswordUpdateForm = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isButtonDisabled}
-                  >
-                    {updatePasswordMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      "Trocar Senha"
-                    )}
-                  </Button>
+                  {/* Envolve o botão desabilitado em um span para permitir que o tooltip seja acionado */}
+                  <span className="w-full">
+                    <Button 
+                      type="submit" 
+                      className="w-full pointer-events-none" // Impede o botão de capturar eventos
+                      disabled={isButtonDisabled}
+                    >
+                      {updatePasswordMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        "Trocar Senha"
+                      )}
+                    </Button>
+                  </span>
                 </TooltipTrigger>
                 {renderPasswordRequirementsTooltipContent()}
               </Tooltip>
