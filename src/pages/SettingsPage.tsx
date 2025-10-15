@@ -199,6 +199,33 @@ const PasswordUpdateForm = () => {
     </div>
   );
 
+  // Função para renderizar o conteúdo do tooltip
+  const renderPasswordRequirementsTooltipContent = () => (
+    <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md">
+      <p className="text-sm font-medium mb-2">Requisitos de Senha Forte:</p>
+      <PasswordRequirement 
+        condition={isPasswordLongEnough} 
+        text="Mínimo de 8 caracteres" 
+      />
+      <PasswordRequirement 
+        condition={hasUpperCase} 
+        text="Pelo menos uma letra maiúscula" 
+      />
+      <PasswordRequirement 
+        condition={hasLowerCase} 
+        text="Pelo menos uma letra minúscula" 
+      />
+      <PasswordRequirement 
+        condition={hasNumber} 
+        text="Pelo menos um número" 
+      />
+      <PasswordRequirement 
+        condition={hasSpecialChar} 
+        text="Pelo menos um caractere especial" 
+      />
+    </TooltipContent>
+  );
+
   return (
     <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
       <CardHeader>
@@ -213,46 +240,22 @@ const PasswordUpdateForm = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Label htmlFor="new-password">Nova Senha</Label>
-                    <Input 
-                      id="new-password" 
-                      type="password" 
-                      value={newPassword} 
-                      onChange={(e) => setNewPassword(e.target.value)} 
-                      className="bg-background" 
-                      required
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md">
-                  <p className="text-sm font-medium mb-2">Requisitos de Senha Forte:</p>
-                  <PasswordRequirement 
-                    condition={isPasswordLongEnough} 
-                    text="Mínimo de 8 caracteres" 
+            <Tooltip> {/* Primeiro Tooltip para o input */}
+              <TooltipTrigger asChild>
+                <div>
+                  <Label htmlFor="new-password">Nova Senha</Label>
+                  <Input 
+                    id="new-password" 
+                    type="password" 
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)} 
+                    className="bg-background" 
+                    required
                   />
-                  <PasswordRequirement 
-                    condition={hasUpperCase} 
-                    text="Pelo menos uma letra maiúscula" 
-                  />
-                  <PasswordRequirement 
-                    condition={hasLowerCase} 
-                    text="Pelo menos uma letra minúscula" 
-                  />
-                  <PasswordRequirement 
-                    condition={hasNumber} 
-                    text="Pelo menos um número" 
-                  />
-                  <PasswordRequirement 
-                    condition={hasSpecialChar} 
-                    text="Pelo menos um caractere especial" 
-                  />
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </div>
+              </TooltipTrigger>
+              {renderPasswordRequirementsTooltipContent()}
+            </Tooltip>
             
             {/* Régua de Força de Senha */}
             <div className="mt-2">
@@ -272,17 +275,23 @@ const PasswordUpdateForm = () => {
               required
             />
           </div>
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={updatePasswordMutation.isPending || !isPasswordStrong || newPassword !== confirmPassword || newPassword.length === 0}
-          >
-            {updatePasswordMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              "Trocar Senha"
-            )}
-          </Button>
+          
+          <Tooltip> {/* Segundo Tooltip para o botão */}
+            <TooltipTrigger asChild>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={updatePasswordMutation.isPending || !isPasswordStrong || newPassword !== confirmPassword || newPassword.length === 0}
+              >
+                {updatePasswordMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Trocar Senha"
+                )}
+              </Button>
+            </TooltipTrigger>
+            {renderPasswordRequirementsTooltipContent()}
+          </Tooltip>
         </form>
       </CardContent>
     </Card>
