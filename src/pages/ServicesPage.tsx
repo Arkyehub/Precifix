@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info } from "lucide-react"; // Adicionado Eye, EyeOff e Info
+import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -43,7 +43,7 @@ const ServicesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
   const hasAddedDefaultServicesRef = useRef(false);
-  const [showDetails, setShowDetails] = useState(false); // Novo estado para controlar a visibilidade dos detalhes
+  const [showDetails, setShowDetails] = useState(false);
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -89,7 +89,6 @@ const ServicesPage = () => {
     enabled: !!user,
   });
 
-  // Query para verificar a existência de "Produtos Gastos no Mês"
   const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost } = useQuery<OperationalCost | null>({
     queryKey: ['productsMonthlyCostItem', user?.id],
     queryFn: async () => {
@@ -100,7 +99,7 @@ const ServicesPage = () => {
         .eq('user_id', user.id)
         .eq('description', 'Produtos Gastos no Mês')
         .single();
-      if (error && (error as any).code !== 'PGRST116') { // PGRST116 means no rows found
+      if (error && (error as any).code !== 'PGRST116') {
         console.error("Error fetching products monthly cost item:", error);
         throw error;
       }
@@ -270,11 +269,11 @@ const ServicesPage = () => {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2"> {/* Container para o modo e o botão de detalhes */}
+            <div className="flex items-center gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className={`flex items-center gap-1 text-sm font-medium ${modeColorClass} text-shadow-sm`}> {/* Adicionado text-shadow-sm aqui */}
+                    <div className="flex items-center gap-1 text-sm font-medium bg-black text-primary px-2 py-1 rounded-md">
                       <Info className="h-4 w-4" />
                       <span>Modo: {modeText}</span>
                     </div>
