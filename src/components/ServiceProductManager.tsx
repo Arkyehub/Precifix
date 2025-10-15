@@ -105,6 +105,9 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                       const concentratedProductUsed = product.type === 'diluted' 
                         ? (product.usage_per_vehicle / product.dilution_ratio) 
                         : 0;
+                      const waterNeededFor1LiterSolution = product.type === 'diluted' && product.dilution_ratio > 0
+                        ? (1000 - (1000 / product.dilution_ratio))
+                        : 0;
 
                       return (
                         <li key={product.id} className="flex flex-col p-3 rounded-md bg-muted/20 border border-border/50 relative group">
@@ -121,11 +124,14 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                               </h5>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                                 <span>Preço: R$ {product.price.toFixed(2)}</span>
-                                <span>Volume: {(product.size * 1000).toFixed(0)} ml</span>
+                                <span>Volume Concentrado: {(product.size * 1000).toFixed(0)} ml</span>
                                 {product.type === 'diluted' && (
                                   <>
                                     <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
                                     <span>Produto usado na diluição: {concentratedProductUsed.toFixed(0)} ml</span>
+                                    {waterNeededFor1LiterSolution > 0 && (
+                                      <span>Água para 1L de solução: {waterNeededFor1LiterSolution.toFixed(0)} ml</span>
+                                    )}
                                   </>
                                 )}
                                 <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
