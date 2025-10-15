@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus } from 'lucide-react';
+import { DollarSign, Plus, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -62,6 +62,28 @@ const ManageCostsPage = () => {
     enabled: !!user,
   });
 
+  // Fetch products monthly cost item to determine calculation method
+  const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost } = useQuery<OperationalCost | null>({
+    queryKey: ['productsMonthlyCostItem', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('operational_costs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('description', 'Produtos Gastos no Mês')
+        .single();
+      if (error && (error as any).code !== 'PGRST116') {
+        console.error("Error fetching products monthly cost item:", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
+
   // Efeito para lidar com o estado de navegação
   useEffect(() => {
     if (location.state) {
@@ -94,7 +116,7 @@ const ManageCostsPage = () => {
         .select('*')
         .eq('user_id', user.id)
         .single();
-      if (error && (error as any).code !== 'PGRST116') {
+      if (error && (error as any).code !== 'PGRST116') { // PGRST116 means no rows found
         console.error("Error fetching operational hours:", error);
         throw error;
       }
@@ -201,6 +223,47 @@ const ManageCostsPage = () => {
     },
   });
 
+  // NOVO: Mutação para atualizar o custo da hora de trabalho em todos os serviços
+  const updateServicesLaborCostMutation = useMutation({
+    mutationFn: async (newHourlyCost: number) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const { data: servicesToUpdate, error: fetchServicesError } = await supabase
+        .from('services')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (fetchServicesError) throw fetchServicesError;
+
+      const updates = servicesToUpdate.map(service => ({
+        id: service.id,
+        labor_cost_per_hour: newHourlyCost,
+      }));
+
+      // Perform batch update
+      const { error: updateError } = await supabase
+        .from('services')
+        .upsert(updates, { onConflict: 'id' }); // Use upsert with onConflict to update existing rows
+
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidate services query
+      toast({
+        title: "Serviços atualizados!",
+        description: "O custo da hora de trabalho foi atualizado em todos os seus serviços.",
+      });
+    },
+    onError: (err) => {
+      console.error("Error updating services labor cost:", err);
+      toast({
+        title: "Erro ao atualizar serviços",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddCost = () => {
     setEditingCost(undefined);
     setNewCostDefaults(undefined);
@@ -241,6 +304,28 @@ const ManageCostsPage = () => {
   const handleSaveOperationalHours = () => {
     if (user) {
       upsertOperationalHoursMutation.mutate({ ...operationalHours, user_id: user.id });
+    }
+  };
+
+  // NOVO: Callback para quando um custo é salvo no CostFormDialog
+  const handleCostSaved = (savedCost: OperationalCost) => {
+    // Recalcular hourlyCost após o salvamento do custo
+    queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['operationalHours', user?.id] });
+    
+    // Use a função de cálculo para obter o valor mais recente
+    const currentHourlyCost = calculateHourlyCost();
+
+    if (savedCost.description === 'Produtos Gastos no Mês' && productCostCalculationMethod === 'monthly-average') {
+      if (currentHourlyCost > 0) {
+        updateServicesLaborCostMutation.mutate(currentHourlyCost);
+      } else {
+        toast({
+          title: "Custo por hora não calculado",
+          description: "Não foi possível calcular o custo por hora para atualizar os serviços. Verifique seus custos e horários.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -286,7 +371,69 @@ const ManageCostsPage = () => {
   const dailyCost = totalWorkingDaysInMonth > 0 ? totalMonthlyExpenses / totalWorkingDaysInMonth : 0;
   const hourlyCost = averageDailyWorkingHours > 0 ? dailyCost / averageDailyWorkingHours : 0;
 
-  if (isLoadingCosts || isLoadingHours) return <p>Carregando custos e horários operacionais...</p>;
+  // Função para calcular o custo por hora (extraída para ser reutilizável)
+  const calculateHourlyCost = (): number => {
+    if (!operationalCosts || !fetchedOperationalHours) return 0;
+
+    const currentFixedCosts = operationalCosts.filter(cost => cost.type === 'fixed');
+    const currentVariableCosts = operationalCosts.filter(cost => cost.type === 'variable');
+
+    const currentSumFixedCosts = currentFixedCosts.reduce((sum, cost) => sum + cost.value, 0);
+    const currentSumVariableCosts = currentVariableCosts.reduce((sum, cost) => sum + cost.value, 0);
+    const currentTotalMonthlyExpenses = currentSumFixedCosts + currentSumVariableCosts;
+
+    const currentSelectedDays: { [key: string]: boolean } = {};
+    daysOfWeek.forEach(day => {
+      const startKey = `${day.key}_start` as keyof typeof fetchedOperationalHours;
+      const endKey = `${day.key}_end` as keyof typeof fetchedOperationalHours;
+      currentSelectedDays[day.key] = !!(fetchedOperationalHours[startKey] || fetchedOperationalHours[endKey]);
+    });
+
+    const currentTotalWorkingDaysInMonth = Object.values(currentSelectedDays).filter(Boolean).length * 4;
+
+    let currentTotalWorkingMinutesPerWeek = 0;
+    let currentDaysWithActualHours = 0;
+
+    daysOfWeek.forEach(day => {
+      if (currentSelectedDays[day.key]) {
+        const startKey = `${day.key}_start` as keyof typeof fetchedOperationalHours;
+        const endKey = `${day.key}_end` as keyof typeof fetchedOperationalHours;
+        const startTime = fetchedOperationalHours[startKey];
+        const endTime = fetchedOperationalHours[endKey];
+
+        if (startTime && endTime) {
+          const startMinutes = timeToMinutes(startTime);
+          const endMinutes = timeToMinutes(endTime);
+          let duration = endMinutes - startMinutes;
+          
+          if (duration > 60) {
+            duration -= 60;
+          } else {
+            duration = 0; 
+          }
+
+          if (duration > 0) {
+            currentTotalWorkingMinutesPerWeek += duration;
+            currentDaysWithActualHours++;
+          }
+        }
+      }
+    });
+
+    const currentAverageDailyWorkingHours = currentDaysWithActualHours > 0 ? (currentTotalWorkingMinutesPerWeek / currentDaysWithActualHours) / 60 : 0;
+    const currentDailyCost = currentTotalWorkingDaysInMonth > 0 ? currentTotalMonthlyExpenses / currentTotalWorkingDaysInMonth : 0;
+    const currentHourlyCost = currentAverageDailyWorkingHours > 0 ? currentDailyCost / currentAverageDailyWorkingHours : 0;
+
+    return currentHourlyCost;
+  };
+
+
+  if (isLoadingCosts || isLoadingHours || isLoadingMonthlyCost || updateServicesLaborCostMutation.isPending) return (
+    <div className="flex justify-center items-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="ml-2 text-muted-foreground">Carregando custos e horários operacionais...</p>
+    </div>
+  );
   if (costsError) return <p>Erro ao carregar custos: {costsError.message}</p>;
   if (hoursError && (hoursError as any).code !== 'PGRST116') return <p>Erro ao carregar horários operacionais: {hoursError.message}</p>;
 
@@ -358,6 +505,7 @@ const ManageCostsPage = () => {
         cost={editingCost}
         defaultDescription={newCostDefaults?.description}
         defaultType={newCostDefaults?.type}
+        onCostSaved={handleCostSaved} // Passar o callback
       />
     </div>
   );

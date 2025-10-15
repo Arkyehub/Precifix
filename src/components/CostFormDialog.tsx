@@ -24,9 +24,10 @@ interface CostFormDialogProps {
   cost?: OperationalCost; // Opcional para edição
   defaultDescription?: string; // Nova prop para descrição padrão
   defaultType?: 'fixed' | 'variable'; // Nova prop para tipo padrão
+  onCostSaved?: (savedCost: OperationalCost) => void; // Nova prop para callback
 }
 
-export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defaultType }: CostFormDialogProps) => {
+export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defaultType, onCostSaved }: CostFormDialogProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -90,11 +91,13 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['productsMonthlyCostItem', user?.id] }); // Invalidate this specific query
       toast({
         title: cost ? "Custo atualizado!" : "Custo adicionado!",
         description: `${data.description} foi ${cost ? 'atualizado' : 'adicionado'} com sucesso.`,
       });
       onClose();
+      onCostSaved?.(data); // Chamar o callback com os dados do custo salvo
     },
     onError: (err) => {
       toast({
