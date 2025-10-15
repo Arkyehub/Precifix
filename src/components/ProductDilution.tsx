@@ -133,6 +133,9 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
         <div className="mb-6 space-y-3">
           {products.map((product) => {
             const cost = getProductCost(product);
+            const concentratedProductUsed = product.type === 'diluted' 
+              ? (product.usagePerVehicle / product.dilutionRatio) 
+              : 0;
             
             return (
               <div
@@ -153,9 +156,10 @@ export function ProductDilution({ onProductsChange }: ProductDilutionProps) {
                       {product.type === 'diluted' && (
                         <>
                           <span>Diluição: {formatDilutionRatio(product.dilutionRatio)}</span>
+                          <span>Produto usado na diluição: {concentratedProductUsed.toFixed(0)} ml</span>
                           <span>Uso: {product.usagePerVehicle.toFixed(0)} ml</span>
                           <span className="text-primary font-medium col-span-2 mt-1">
-                            Custo/ml diluído: R$ {(product.gallonPrice / (product.gallonVolume * (1 + product.dilutionRatio))).toFixed(4)}
+                            Custo/ml diluído: R$ {(product.gallonPrice / (product.gallonVolume * product.dilutionRatio)).toFixed(4)}
                           </span>
                         </>
                       )}
