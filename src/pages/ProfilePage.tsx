@@ -17,6 +17,8 @@ interface Profile {
   company_name: string | null;
   document_number: string | null;
   address: string | null;
+  address_number: string | null; // Novo campo
+  zip_code: string | null;      // Novo campo
   phone_number: string | null;
   avatar_url: string | null;
 }
@@ -31,7 +33,9 @@ const ProfilePage = () => {
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [documentNumber, setDocumentNumber] = useState('');
+  const [zipCode, setZipCode] = useState(''); // Novo estado
   const [address, setAddress] = useState('');
+  const [addressNumber, setAddressNumber] = useState(''); // Novo estado
   const [phoneNumber, setPhoneNumber] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
@@ -58,11 +62,52 @@ const ProfilePage = () => {
       setLastName(profile.last_name || '');
       setCompanyName(profile.company_name || '');
       setDocumentNumber(profile.document_number || '');
+      setZipCode(profile.zip_code || ''); // Preencher novo estado
       setAddress(profile.address || '');
+      setAddressNumber(profile.address_number || ''); // Preencher novo estado
       setPhoneNumber(profile.phone_number || '');
       setCurrentAvatarUrl(profile.avatar_url);
     }
   }, [profile]);
+
+  const fetchAddressByZipCode = async (cep: string) => {
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: "CEP não encontrado",
+          description: "Verifique o CEP e tente novamente.",
+          variant: "destructive",
+        });
+        setAddress(''); // Limpa o endereço se o CEP for inválido
+        return;
+      }
+
+      const fullAddress = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
+      setAddress(fullAddress);
+      toast({
+        title: "Endereço preenchido!",
+        description: "O endereço foi preenchido automaticamente com base no CEP.",
+      });
+    } catch (err: any) {
+      console.error("Error fetching address by CEP:", err);
+      toast({
+        title: "Erro ao buscar CEP",
+        description: "Não foi possível buscar o endereço. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    setZipCode(value);
+    if (value.length === 8) {
+      fetchAddressByZipCode(value);
+    }
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updatedProfile: Partial<Profile>) => {
@@ -100,7 +145,9 @@ const ProfilePage = () => {
           last_name: updatedProfile.last_name,
           company_name: updatedProfile.company_name,
           document_number: updatedProfile.document_number,
+          zip_code: updatedProfile.zip_code, // Salvar novo campo
           address: updatedProfile.address,
+          address_number: updatedProfile.address_number, // Salvar novo campo
           phone_number: updatedProfile.phone_number,
           avatar_url: newAvatarUrl,
           updated_at: new Date().toISOString(),
@@ -149,7 +196,9 @@ const ProfilePage = () => {
       last_name: lastName,
       company_name: companyName,
       document_number: documentNumber,
+      zip_code: zipCode, // Enviar novo campo
       address: address,
+      address_number: addressNumber, // Enviar novo campo
       phone_number: phoneNumber,
     });
   };
@@ -233,10 +282,30 @@ const ProfilePage = () => {
                 <Label htmlFor="document-number">CPF (titular) ou CNPJ:</Label>
                 <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} className="bg-background" />
               </div>
+              
+              {/* Novos campos de CEP e Endereço/Número */}
               <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="zip-code">CEP:</Label>
+                <Input 
+                  id="zip-code" 
+                  value={zipCode} 
+                  onChange={handleZipCodeChange} 
+                  onBlur={() => zipCode.length === 8 && fetchAddressByZipCode(zipCode)} // Busca ao perder o foco
+                  placeholder="Ex: 00000-000"
+                  maxLength={8}
+                  className="bg-background" 
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="address">Endereço:</Label>
                 <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-background" />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="address-number">Número:</Label>
+                <Input id="address-number" value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="bg-background" />
+              </div>
+              {/* Fim dos novos campos */}
+
               <div className="space-y-2">
                 <Label htmlFor="phone-number">Telefone:</Label>
                 <Input id="phone-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-background" />
