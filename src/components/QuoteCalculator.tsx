@@ -56,7 +56,7 @@ export const QuoteCalculator = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle') // Buscar usage_per_vehicle
+          .select('product_id, usage_per_vehicle, dilution_ratio') // Buscar usage_per_vehicle e dilution_ratio
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -74,12 +74,16 @@ export const QuoteCalculator = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             return { ...service, products: [] };
           }
-          // Combinar dados do produto com usage_per_vehicle do link
-          const productsWithUsage = productsData.map(product => {
+          // Combinar dados do produto com usage_per_vehicle e dilution_ratio do link
+          const productsWithUsageAndDilution = productsData.map(product => {
             const link = linksData.find(link => link.product_id === product.id);
-            return { ...product, usage_per_vehicle: link?.usage_per_vehicle || 0 };
+            return { 
+              ...product, 
+              usage_per_vehicle: link?.usage_per_vehicle || 0,
+              dilution_ratio: link?.dilution_ratio || 0, // Usar a diluição do link
+            };
           });
-          return { ...service, products: productsWithUsage };
+          return { ...service, products: productsWithUsageAndDilution };
         }
         return { ...service, products: [] };
       }));
@@ -100,7 +104,7 @@ export const QuoteCalculator = () => {
       const productForCalc: ProductForCalculation = {
         gallonPrice: product.price,
         gallonVolume: product.size * 1000, // Convert liters to ml
-        dilutionRatio: product.dilution_ratio,
+        dilutionRatio: product.dilution_ratio, // Usar a diluição do link
         usagePerVehicle: product.usage_per_vehicle, // Usar a quantidade definida
         type: product.type,
       };

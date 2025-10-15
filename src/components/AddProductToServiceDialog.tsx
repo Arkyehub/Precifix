@@ -25,6 +25,20 @@ interface AddProductToServiceDialogProps {
   serviceId: string | null;
 }
 
+// Utility function to parse dilution ratio from "1:X" or "X" format
+const parseDilutionRatioInput = (input: string): number => {
+  const parts = input.split(':');
+  if (parts.length === 2 && parts[0].trim() === '1') {
+    return parseFloat(parts[1].trim()) || 0;
+  }
+  return parseFloat(input.trim()) || 0; // Fallback if not in "1:X" format
+};
+
+// Utility function to format dilution ratio for display
+const formatDilutionRatioForInput = (ratio: number): string => {
+  return ratio > 0 ? `1:${ratio}` : ''; // Retorna vazio se 0 para não preencher o input
+};
+
 export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddProductToServiceDialogProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -33,6 +47,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [usagePerVehicle, setUsagePerVehicle] = useState('');
   const [selectedProductDetails, setSelectedProductDetails] = useState<CatalogProduct | null>(null);
+  const [editableDilutionRatioInput, setEditableDilutionRatioInput] = useState(''); // New state for editable dilution
 
   // Fetch product catalog
   const { data: catalogProducts, isLoading: isLoadingCatalog } = useQuery<CatalogProduct[]>({
@@ -55,6 +70,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
       setSelectedProductId('');
       setUsagePerVehicle('');
       setSelectedProductDetails(null);
+      setEditableDilutionRatioInput(''); // Reset editable dilution
     }
   }, [isOpen]);
 
@@ -62,13 +78,36 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
     if (selectedProductId && catalogProducts) {
       const product = catalogProducts.find(p => p.id === selectedProductId);
       setSelectedProductDetails(product || null);
+      if (product) {
+        setEditableDilutionRatioInput(formatDilutionRatioForInput(product.dilution_ratio));
+        // Also fetch existing usage_per_vehicle and dilution_ratio for this service-product link
+        if (serviceId) {
+          supabase
+            .from('service_product_links')
+            .select('usage_per_vehicle, dilution_ratio')
+            .eq('service_id', serviceId)
+            .eq('product_id', product.id)
+            .single()
+            .then(({ data, error }) => {
+              if (data) {
+                setUsagePerVehicle(data.usage_per_vehicle?.toString() || '');
+                setEditableDilutionRatioInput(formatDilutionRatioForInput(data.dilution_ratio || 0));
+              } else if (error && (error as any).code !== 'PGRST116') {
+                console.error("Error fetching existing product link details:", error);
+              }
+            });
+        }
+      } else {
+        setEditableDilutionRatioInput('');
+      }
     } else {
       setSelectedProductDetails(null);
+      setEditableDilutionRatioInput('');
     }
-  }, [selectedProductId, catalogProducts]);
+  }, [selectedProductId, catalogProducts, serviceId]);
 
   const addProductLinkMutation = useMutation({
-    mutationFn: async ({ serviceId, productId, usage }: { serviceId: string; productId: string; usage: number }) => {
+    mutationFn: async ({ serviceId, productId, usage, dilution }: { serviceId: string; productId: string; usage: number; dilution: number }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
       // Check if link already exists using the composite key
@@ -87,7 +126,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
         // Update existing link using the composite key
         const { data, error } = await supabase
           .from('service_product_links')
-          .update({ usage_per_vehicle: usage })
+          .update({ usage_per_vehicle: usage, dilution_ratio: dilution }) // Update dilution_ratio
           .eq('service_id', serviceId)
           .eq('product_id', productId)
           .select()
@@ -98,7 +137,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
         // Insert new link
         const { data, error } = await supabase
           .from('service_product_links')
-          .insert({ service_id: serviceId, product_id: productId, usage_per_vehicle: usage })
+          .insert({ service_id: serviceId, product_id: productId, usage_per_vehicle: usage, dilution_ratio: dilution }) // Insert dilution_ratio
           .select()
           .single();
         if (error) throw error;
@@ -141,10 +180,21 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
       return;
     }
 
+    const parsedDilution = parseDilutionRatioInput(editableDilutionRatioInput);
+    if (selectedProductDetails?.type === 'diluted' && (!editableDilutionRatioInput || parsedDilution <= 0)) {
+      toast({
+        title: "Diluição inválida",
+        description: "A proporção de diluição deve ser um número positivo (Ex: 1:100 ou 100).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     addProductLinkMutation.mutate({
       serviceId,
       productId: selectedProductId,
       usage: parsedUsage,
+      dilution: selectedProductDetails?.type === 'diluted' ? parsedDilution : 0, // Only save dilution if product is diluted
     });
   };
 
@@ -183,8 +233,22 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
               </p>
               <p className="text-xs text-muted-foreground">
                 Tipo: {selectedProductDetails.type === 'diluted' ? 'Diluído' : 'Pronto Uso'}
-                {selectedProductDetails.type === 'diluted' && ` | Diluição: ${formatDilutionRatio(selectedProductDetails.dilution_ratio)}`}
               </p>
+            </div>
+          )}
+
+          {selectedProductDetails?.type === 'diluted' && (
+            <div className="space-y-2">
+              <Label htmlFor="dilution-ratio">Proporção de Diluição (1:X) *</Label>
+              <Input
+                id="dilution-ratio"
+                type="text"
+                placeholder="Ex: 1:100 ou 100"
+                value={editableDilutionRatioInput}
+                onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
+                className="bg-background"
+                disabled={!selectedProductId}
+              />
             </div>
           )}
 
@@ -203,7 +267,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={addProductLinkMutation.isPending || !selectedProductId || !usagePerVehicle}>
+          <Button onClick={handleSubmit} disabled={addProductLinkMutation.isPending || !selectedProductId || !usagePerVehicle || (selectedProductDetails?.type === 'diluted' && !editableDilutionRatioInput)}>
             {addProductLinkMutation.isPending ? "Vinculando..." : "Vincular Produto"}
           </Button>
         </DialogFooter>

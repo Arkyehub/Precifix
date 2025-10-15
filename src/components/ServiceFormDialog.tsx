@@ -18,7 +18,7 @@ export interface Service {
   labor_cost_per_hour: number;
   execution_time_minutes: number;
   user_id: string;
-  products?: { id: string; name: string; usage_per_vehicle: number }[]; // Adicionado usage_per_vehicle
+  products?: { id: string; name: string; usage_per_vehicle: number; dilution_ratio: number }[]; // Adicionado usage_per_vehicle e dilution_ratio
 }
 
 interface ServiceFormDialogProps {
