@@ -54,7 +54,6 @@ function Login() {
                   button_label: 'Entrar',
                   social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
-                  invalid_email_or_password: 'Senha Incorreta', // Movido para aqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
@@ -80,6 +79,10 @@ function Login() {
                   email_input_placeholder: 'email@exemplo.com',
                   button_label: 'Enviar link mágico',
                   link_text: 'Enviar link mágico',
+                },
+                // A mensagem de erro comum deve ir aqui, dentro de 'variables.messages'
+                messages: {
+                  invalid_email_or_password: 'Senha Incorreta',
                 },
               },
             }}
