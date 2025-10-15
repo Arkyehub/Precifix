@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings, User as UserIcon, CreditCard, ChevronRight } from 'lucide-react'; // Adicionado CreditCard para 'Meu Plano'
+import { Menu, LogOut, Settings, User as UserIcon, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -57,10 +57,8 @@ export const Header = () => {
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end mr-2">
-            <p className="text-sm font-medium text-foreground">Olá, {userName}</p>
-            <Link to="/profile" className="text-xs text-muted-foreground hover:text-primary flex items-center">
-              Seu Perfil <ChevronRight className="h-3 w-3 ml-1" />
-            </Link>
+            <p className="text-base font-bold text-foreground">Olá, {userName}</p> {/* Aumentado para text-base e font-bold */}
+            {/* Link "Seu Perfil >" removido daqui */}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
