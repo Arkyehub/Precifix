@@ -12,7 +12,9 @@ export const calculateProductCost = (product: ProductForCalculation): number => 
     return costPerMl * product.usagePerVehicle;
   } else {
     const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
-    const costPerMlDilutedSolution = costPerMlConcentrated / (1 + product.dilutionRatio);
+    // Nova lógica de diluição: 1 parte de produto em X partes da solução total
+    // O custo do ml concentrado é dividido pela proporção de diluição para obter o custo por ml da solução final
+    const costPerMlDilutedSolution = costPerMlConcentrated / product.dilutionRatio;
     return costPerMlDilutedSolution * product.usagePerVehicle;
   }
 };
@@ -23,7 +25,8 @@ export const calculateProductCostPerLiter = (product: ProductForCalculation): nu
     return costPerMl * 1000; // Custo por litro
   } else {
     const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
-    const costPerMlDilutedSolution = costPerMlConcentrated / (1 + product.dilutionRatio);
+    // Nova lógica de diluição: 1 parte de produto em X partes da solução total
+    const costPerMlDilutedSolution = costPerMlConcentrated / product.dilutionRatio;
     return costPerMlDilutedSolution * 1000; // Custo por litro da solução diluída
   }
 };
