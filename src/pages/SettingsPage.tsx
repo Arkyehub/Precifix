@@ -122,27 +122,9 @@ const PasswordUpdateForm = () => {
   const hasSpecialChar = /[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(newPassword);
 
   const isPasswordStrong = isPasswordLongEnough && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+  const passwordsMatch = newPassword === confirmPassword;
 
-  // Calculate password strength for the progress bar
-  const calculateStrength = (password: string) => {
-    let strength = 0;
-    if (password.length >= 8) strength += 20;
-    if (/[A-Z]/.test(password)) strength += 20;
-    if (/[a-z]/.test(password)) strength += 20;
-    if (/\d/.test(password)) strength += 20;
-    if (/[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(password)) strength += 20;
-    return Math.min(strength, 100); // Cap at 100%
-  };
-
-  const passwordStrength = calculateStrength(newPassword);
-
-  const getProgressBarColor = (strength: number) => {
-    if (strength < 40) return "bg-destructive";
-    if (strength < 70) return "bg-accent"; // Using accent for medium strength
-    return "bg-success"; // Using success for strong
-  };
-
-  const updatePasswordMutation = useMutation({
+  const updatePasswordMutation = useMutation({ // Moved declaration here
     mutationFn: async (password: string) => {
       if (!user) throw new Error("Usuário não autenticado.");
       
@@ -167,6 +149,28 @@ const PasswordUpdateForm = () => {
       });
     },
   });
+
+  const isButtonDisabled = updatePasswordMutation.isPending || !isPasswordStrong || !passwordsMatch || newPassword.length === 0;
+
+
+  // Calculate password strength for the progress bar
+  const calculateStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/\d/.test(password)) strength += 20;
+    if (/[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(password)) strength += 20;
+    return Math.min(strength, 100); // Cap at 100%
+  };
+
+  const passwordStrength = calculateStrength(newPassword);
+
+  const getProgressBarColor = (strength: number) => {
+    if (strength < 40) return "bg-destructive";
+    if (strength < 70) return "bg-accent"; // Using accent for medium strength
+    return "bg-success"; // Using success for strong
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,22 +244,24 @@ const PasswordUpdateForm = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Tooltip> {/* Primeiro Tooltip para o input */}
-              <TooltipTrigger asChild>
-                <div>
-                  <Label htmlFor="new-password">Nova Senha</Label>
-                  <Input 
-                    id="new-password" 
-                    type="password" 
-                    value={newPassword} 
-                    onChange={(e) => setNewPassword(e.target.value)} 
-                    className="bg-background" 
-                    required
-                  />
-                </div>
-              </TooltipTrigger>
-              {renderPasswordRequirementsTooltipContent()}
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Label htmlFor="new-password">Nova Senha</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      value={newPassword} 
+                      onChange={(e) => setNewPassword(e.target.value)} 
+                      className="bg-background" 
+                      required
+                    />
+                  </div>
+                </TooltipTrigger>
+                {renderPasswordRequirementsTooltipContent()}
+              </Tooltip>
+            </TooltipProvider>
             
             {/* Régua de Força de Senha */}
             <div className="mt-2">
@@ -276,22 +282,39 @@ const PasswordUpdateForm = () => {
             />
           </div>
           
-          <Tooltip> {/* Segundo Tooltip para o botão */}
-            <TooltipTrigger asChild>
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={updatePasswordMutation.isPending || !isPasswordStrong || newPassword !== confirmPassword || newPassword.length === 0}
-              >
-                {updatePasswordMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  "Trocar Senha"
-                )}
-              </Button>
-            </TooltipTrigger>
-            {renderPasswordRequirementsTooltipContent()}
-          </Tooltip>
+          {/* Tooltip condicional para o botão */}
+          {isButtonDisabled ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isButtonDisabled}
+                  >
+                    {updatePasswordMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Trocar Senha"
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                {renderPasswordRequirementsTooltipContent()}
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isButtonDisabled}
+            >
+              {updatePasswordMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Trocar Senha"
+              )}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>
