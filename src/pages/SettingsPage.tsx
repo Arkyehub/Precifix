@@ -8,8 +8,9 @@ import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
-import { Progress } from '@/components/ui/progress'; // Importar Progress
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
+import { ProductCostCalculationMethod } from '@/components/settings/ProductCostCalculationMethod'; // Importar o novo componente
 
 // Regex para validar senha forte:
 // (?=.*[a-z]) - Pelo menos uma letra minúscula
@@ -339,6 +340,9 @@ const SettingsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <EmailUpdateForm />
         <PasswordUpdateForm />
+      </div>
+      <div className="mt-8"> {/* Nova seção para o método de cálculo */}
+        <ProductCostCalculationMethod />
       </div>
     </div>
   );
