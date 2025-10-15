@@ -17,6 +17,17 @@ export const calculateProductCost = (product: ProductForCalculation): number => 
   }
 };
 
+export const calculateProductCostPerLiter = (product: ProductForCalculation): number => {
+  if (product.type === 'ready-to-use') {
+    const costPerMl = product.gallonPrice / product.gallonVolume;
+    return costPerMl * 1000; // Custo por litro
+  } else {
+    const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
+    const costPerMlDilutedSolution = costPerMlConcentrated / (1 + product.dilutionRatio);
+    return costPerMlDilutedSolution * 1000; // Custo por litro da solução diluída
+  }
+};
+
 export const formatDilutionRatio = (ratio: number): string => {
   return ratio > 0 ? `1:${ratio}` : 'N/A';
 };

@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceProductManager } from "@/components/ServiceProductManager";
 import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog';
+import { calculateProductCostPerLiter } from '@/lib/cost-calculations'; // Importar a nova função de cálculo
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -78,7 +79,7 @@ const ServicesPage = () => {
         if (productIds.length > 0) {
           const { data: productsData, error: productsError } = await supabase
             .from('product_catalog_items')
-            .select('id, name')
+            .select('id, name, size, price, type, dilution_ratio') // Adicionado size, price, type, dilution_ratio
             .in('id', productIds);
           if (productsError) {
             console.error(`Error fetching products for service ${service.id}:`, productsError);

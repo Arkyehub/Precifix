@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useToast } from '@/hooks/use-toast';
-import { formatDilutionRatio } from '@/lib/cost-calculations'; // Importar formatDilutionRatio
+import { formatDilutionRatio, calculateProductCost, calculateProductCostPerLiter, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
 
 interface ServiceProductManagerProps {
   services: Service[];
@@ -82,44 +82,78 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                   </Button>
                 </div>
                 {service.products && service.products.length > 0 ? (
-                  <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 space-y-1">
-                    {service.products.map(product => (
-                      <li key={product.id} className="flex items-center justify-between group">
-                        <span>
-                          {product.name} ({product.usage_per_vehicle} ml)
-                          {product.dilution_ratio > 0 && ` | Diluição: ${formatDilutionRatio(product.dilution_ratio)}`}
-                        </span>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title={`Remover ${product.name} de ${service.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso desvinculará permanentemente o produto "{product.name}" do serviço "{service.name}".
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => deleteProductLinkMutation.mutate({ serviceId: service.id, productId: product.id })} 
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Desvincular
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </li>
-                    ))}
+                  <ul className="list-none space-y-3 ml-4">
+                    {service.products.map(product => {
+                      const productForCalc: ProductForCalculation = {
+                        gallonPrice: product.price,
+                        gallonVolume: product.size * 1000, // Convert liters to ml
+                        dilutionRatio: product.dilution_ratio,
+                        usagePerVehicle: product.usage_per_vehicle,
+                        type: product.type,
+                      };
+                      const costPerLiter = calculateProductCostPerLiter(productForCalc);
+                      const costPerApplication = calculateProductCost(productForCalc);
+
+                      return (
+                        <li key={product.id} className="flex flex-col p-3 rounded-md bg-muted/20 border border-border/50 relative group">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h5 className="font-medium text-foreground">
+                                {product.name}
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
+                                  {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
+                                </span>
+                              </h5>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                                <span>Preço: R$ {product.price.toFixed(2)}</span>
+                                <span>Volume: {(product.size * 1000).toFixed(0)} ml</span>
+                                {product.type === 'diluted' && (
+                                  <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
+                                )}
+                                <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                <p className="text-sm text-primary-strong font-medium">
+                                  Custo/litro {product.type === 'diluted' ? 'diluído' : ''}: R$ {costPerLiter.toFixed(4)}
+                                </p>
+                                <p className="text-sm text-primary-strong font-bold">
+                                  Custo/aplicação: R$ {costPerApplication.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title={`Remover ${product.name} de ${service.name}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-card">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. Isso desvinculará permanentemente o produto "{product.name}" do serviço "{service.name}".
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => deleteProductLinkMutation.mutate({ serviceId: service.id, productId: product.id })} 
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Desvincular
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-sm text-muted-foreground italic ml-4">Nenhum produto vinculado.</p>
