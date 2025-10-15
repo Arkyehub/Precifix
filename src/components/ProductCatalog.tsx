@@ -304,7 +304,7 @@ export const ProductCatalog = () => {
             <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
               <RadioGroupItem value="per-service" id="per-service" />
               <Label htmlFor="per-service" className="flex-1 cursor-pointer">
-                <h4 className="font-medium text-foreground">Cálculo Detalhado por Serviço</h4>
+                <h4 className="font-medium text-foreground"><strong>Cálculo Detalhado</strong> (Para cada Serviço)</h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   Atribua produtos específicos do seu catálogo e suas respectivas diluições a cada serviço. Ideal para uma precificação exata e controle minucioso.
                 </p>
@@ -314,7 +314,7 @@ export const ProductCatalog = () => {
             <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
               <RadioGroupItem value="monthly-average" id="monthly-average" />
               <Label htmlFor="monthly-average" className="flex-1 cursor-pointer">
-                <h4 className="font-medium text-foreground">Cálculo Médio Mensal</h4>
+                <h4 className="font-medium text-foreground"><strong>Cálculo Simplificado</strong> (Média Mensal)</h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   Informe o valor total gasto com produtos por mês. O sistema calculará um custo médio por serviço com base nos seus custos operacionais e horas trabalhadas. Perfeito para simplificar a gestão.
                 </p>

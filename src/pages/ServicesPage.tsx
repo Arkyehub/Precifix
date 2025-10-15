@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff } from "lucide-react"; // Adicionado Eye e EyeOff
+import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info } from "lucide-react"; // Adicionado Eye, EyeOff e Info
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -24,6 +25,15 @@ const DEFAULT_SERVICES_TO_ADD = [
   { name: "Polimento Comercial", description: "Remoção de riscos superficiais e restauração do brilho da pintura.", price: 400.00, labor_cost_per_hour: 60.00, execution_time_minutes: 240 },
   { name: "Vitrificação de Pintura", description: "Aplicação de camada protetora para maior durabilidade e brilho da pintura.", price: 800.00, labor_cost_per_hour: 70.00, execution_time_minutes: 360 },
 ];
+
+interface OperationalCost {
+  id: string;
+  description: string;
+  value: number;
+  type: 'fixed' | 'variable';
+  user_id: string;
+  created_at: string;
+}
 
 const ServicesPage = () => {
   const { user } = useSession();
@@ -78,6 +88,28 @@ const ServicesPage = () => {
     },
     enabled: !!user,
   });
+
+  // Query para verificar a existência de "Produtos Gastos no Mês"
+  const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost } = useQuery<OperationalCost | null>({
+    queryKey: ['productsMonthlyCostItem', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('operational_costs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('description', 'Produtos Gastos no Mês')
+        .single();
+      if (error && (error as any).code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error("Error fetching products monthly cost item:", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
 
   const addDefaultServicesMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -213,14 +245,20 @@ const ServicesPage = () => {
     clearAllServicesMutation.mutate();
   };
 
-  if (isLoading || addDefaultServicesMutation.isPending) return <p>Carregando serviços...</p>;
+  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) return <p>Carregando serviços...</p>;
   if (error) return <p>Erro ao carregar serviços: {error.message}</p>;
+
+  const modeText = productCostCalculationMethod === 'per-service' ? 'Detalhado' : 'Simplificado';
+  const modeColorClass = productCostCalculationMethod === 'per-service' ? 'text-primary' : 'text-accent';
+  const modeTooltip = productCostCalculationMethod === 'per-service' 
+    ? 'O custo dos produtos é calculado individualmente para cada serviço, com base nos produtos do catálogo vinculados.'
+    : 'O custo dos produtos é uma média mensal, definida na página Gerenciar Custos, e distribuída pelos serviços.';
 
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
-          <div className="flex items-center justify-between"> {/* Adicionado justify-between */}
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
                 <Car className="h-5 w-5 text-primary-foreground" />
@@ -232,15 +270,30 @@ const ServicesPage = () => {
                 </CardDescription>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-muted-foreground hover:text-primary"
-              title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
-            >
-              {showDetails ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </Button>
+            <div className="flex items-center gap-2"> {/* Container para o modo e o botão de detalhes */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={`flex items-center gap-1 text-sm font-medium ${modeColorClass}`}>
+                      <Info className="h-4 w-4" />
+                      <span>Modo: {modeText}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md max-w-xs">
+                    <p>{modeTooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-muted-foreground hover:text-primary"
+                title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+              >
+                {showDetails ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
