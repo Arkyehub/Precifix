@@ -50,6 +50,7 @@ const ServicesPage = () => {
 
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null);
+  const [productIdForProductAdd, setProductIdForProductAdd] = useState<string | null>(null); // Novo estado para productId
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -262,8 +263,9 @@ const ServicesPage = () => {
     clearAllServicesMutation.mutate();
   };
 
-  const handleAddProductToService = (serviceId: string) => {
+  const handleAddProductToService = (serviceId: string, productId: string | null = null) => {
     setServiceIdForProductAdd(serviceId);
+    setProductIdForProductAdd(productId); // Definir o productId
     setIsAddProductDialogOpen(true);
   };
 
@@ -464,8 +466,13 @@ const ServicesPage = () => {
 
       <AddProductToServiceDialog
         isOpen={isAddProductDialogOpen}
-        onClose={() => setIsAddProductDialogOpen(false)}
+        onClose={() => {
+          setIsAddProductDialogOpen(false);
+          setServiceIdForProductAdd(null);
+          setProductIdForProductAdd(null);
+        }}
         serviceId={serviceIdForProductAdd}
+        productId={productIdForProductAdd} // Passar o productId
       />
     </div>
   );

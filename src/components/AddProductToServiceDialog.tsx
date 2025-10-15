@@ -24,6 +24,7 @@ interface AddProductToServiceDialogProps {
   isOpen: boolean;
   onClose: () => void;
   serviceId: string | null;
+  productId: string | null; // Novo prop para o ID do produto a ser editado
 }
 
 // Utility function to parse dilution ratio from "1:X" or "X" format
@@ -40,7 +41,7 @@ const formatDilutionRatioForInput = (ratio: number): string => {
   return ratio > 0 ? `1:${ratio}` : ''; // Retorna vazio se 0 para não preencher o input
 };
 
-export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddProductToServiceDialogProps) => {
+export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productId }: AddProductToServiceDialogProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -72,17 +73,29 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
       setUsagePerVehicle('');
       setSelectedProductDetails(null);
       setEditableDilutionRatioInput(''); // Reset editable dilution
+    } else if (productId && serviceId) {
+      // Se estamos editando um vínculo existente
+      setSelectedProductId(productId);
+      // A lógica de carregar os detalhes do vínculo será disparada pelo useEffect abaixo
+    } else {
+      // Se estamos adicionando um novo, garantir que os campos estejam limpos
+      setSelectedProductId('');
+      setUsagePerVehicle('');
+      setSelectedProductDetails(null);
+      setEditableDilutionRatioInput('');
     }
-  }, [isOpen]);
+  }, [isOpen, productId, serviceId]);
 
   useEffect(() => {
     if (selectedProductId && catalogProducts) {
       const product = catalogProducts.find(p => p.id === selectedProductId);
       setSelectedProductDetails(product || null);
       if (product) {
+        // Definir a diluição padrão do catálogo
         setEditableDilutionRatioInput(formatDilutionRatioForInput(product.dilution_ratio));
-        // Also fetch existing usage_per_vehicle and dilution_ratio for this service-product link
-        if (serviceId) {
+        
+        // Se serviceId e productId estão presentes, tentar carregar os valores do vínculo
+        if (serviceId && productId === selectedProductId) { // Verificar se o productId corresponde ao selecionado
           supabase
             .from('service_product_links')
             .select('usage_per_vehicle, dilution_ratio')
@@ -97,15 +110,21 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
                 console.error("Error fetching existing product link details:", error);
               }
             });
+        } else {
+          // Se não é um vínculo existente ou o produto selecionado mudou, limpar os campos de uso e diluição
+          setUsagePerVehicle('');
+          // A diluição já foi definida para o padrão do catálogo acima
         }
       } else {
         setEditableDilutionRatioInput('');
+        setUsagePerVehicle('');
       }
     } else {
       setSelectedProductDetails(null);
       setEditableDilutionRatioInput('');
+      setUsagePerVehicle('');
     }
-  }, [selectedProductId, catalogProducts, serviceId]);
+  }, [selectedProductId, catalogProducts, serviceId, productId]);
 
   const addProductLinkMutation = useMutation({
     mutationFn: async ({ serviceId, productId, usage, dilution }: { serviceId: string; productId: string; usage: number; dilution: number }) => {
@@ -213,12 +232,16 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-card">
         <DialogHeader>
-          <DialogTitle>Adicionar Produtos ao Serviço</DialogTitle>
+          <DialogTitle>{productId ? 'Editar Produto Vinculado' : 'Adicionar Produtos ao Serviço'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="product-select">Selecionar Produto *</Label>
-            <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isLoadingCatalog}>
+            <Select 
+              value={selectedProductId} 
+              onValueChange={setSelectedProductId} 
+              disabled={isLoadingCatalog || !!productId} // Desabilitar se estiver editando um vínculo existente
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Escolha um produto do catálogo" />
               </SelectTrigger>
@@ -292,7 +315,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={addProductLinkMutation.isPending || !selectedProductId || !usagePerVehicle || (selectedProductDetails?.type === 'diluted' && !editableDilutionRatioInput)}>
-            {addProductLinkMutation.isPending ? "Vinculando..." : "Vincular Produto"}
+            {addProductLinkMutation.isPending ? "Salvando..." : (productId ? "Salvar Alterações" : "Vincular Produto")}
           </Button>
         </DialogFooter>
       </DialogContent>

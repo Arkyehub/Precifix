@@ -9,11 +9,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useToast } from '@/hooks/use-toast';
 import { formatDilutionRatio, calculateProductCost, calculateProductCostPerLiter, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
-import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // Importar ProductFormDialog e CatalogProduct
+// REMOVIDO: import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // ProductFormDialog não será mais usado aqui
 
 interface ServiceProductManagerProps {
   services: Service[];
-  onAddProductToService: (serviceId: string) => void;
+  onAddProductToService: (serviceId: string, productId?: string) => void; // Atualizado para aceitar productId opcional
 }
 
 export const ServiceProductManager = ({ services, onAddProductToService }: ServiceProductManagerProps) => {
@@ -21,8 +21,8 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
-  const [editingCatalogProduct, setEditingCatalogProduct] = useState<CatalogProduct | undefined>(undefined);
+  // REMOVIDO: const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
+  // REMOVIDO: const [editingCatalogProduct, setEditingCatalogProduct] = useState<CatalogProduct | undefined>(undefined);
 
   const deleteProductLinkMutation = useMutation({
     mutationFn: async ({ serviceId, productId }: { serviceId: string; productId: string }) => {
@@ -50,10 +50,10 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
     },
   });
 
-  const handleEditProduct = (productToEdit: CatalogProduct) => {
-    setEditingCatalogProduct(productToEdit);
-    setIsProductFormDialogOpen(true);
-  };
+  // REMOVIDO: const handleEditProduct = (productToEdit: CatalogProduct) => {
+  // REMOVIDO:   setEditingCatalogProduct(productToEdit);
+  // REMOVIDO:   setIsProductFormDialogOpen(true);
+  // REMOVIDO: };
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -83,7 +83,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onAddProductToService(service.id)}
+                    onClick={() => onAddProductToService(service.id)} // Chamada para adicionar novo produto
                     className="text-primary hover:bg-primary/10"
                     title={`Adicionar produtos a ${service.name}`}
                   >
@@ -109,25 +109,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                             <div>
                               <h5 
                                 className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => {
-                                  if (user) {
-                                    handleEditProduct({
-                                      id: product.id,
-                                      name: product.name,
-                                      size: product.size,
-                                      price: product.price,
-                                      type: product.type,
-                                      dilution_ratio: product.dilution_ratio,
-                                      user_id: user.id, // Adicionado user_id aqui
-                                    });
-                                  } else {
-                                    toast({
-                                      title: "Erro de autenticação",
-                                      description: "Você precisa estar logado para editar produtos.",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
+                                onClick={() => onAddProductToService(service.id, product.id)} // Chamada para editar produto vinculado
                               >
                                 {product.name}
                                 <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
@@ -198,11 +180,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
         )}
       </CardContent>
 
-      <ProductFormDialog
-        isOpen={isProductFormDialogOpen}
-        onClose={() => setIsProductFormDialogOpen(false)}
-        product={editingCatalogProduct}
-      />
+      {/* REMOVIDO: ProductFormDialog não é mais usado aqui */}
     </Card>
   );
 };
