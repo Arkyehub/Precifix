@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Package, DollarSign, FileText, Sparkles, Settings, Calculator } from 'lucide-react';
+import { Car, Package, DollarSign, FileText, Sparkles, Settings, Calculator, User as UserIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const Sidebar = () => {
@@ -47,6 +47,20 @@ export const Sidebar = () => {
         >
           <FileText className="h-4 w-4" />
           Gerar Orçamento
+        </Link>
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
+          <UserIcon className="h-4 w-4" />
+          Meu Perfil
+        </Link>
+        <Link
+          to="/settings"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
+          <Settings className="h-4 w-4" />
+          Configurações
         </Link>
       </nav>
       <Separator className="my-4" />

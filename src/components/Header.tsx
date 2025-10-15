@@ -80,11 +80,15 @@ export const Header = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Meu Perfil</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => console.log('Meu Plano')}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 <span>Meu Plano</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('Configurações')}>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configurações</span>
               </DropdownMenuItem>

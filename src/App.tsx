@@ -10,7 +10,8 @@ import ServicesPage from "./pages/ServicesPage";
 import ProductCatalogPage from "./pages/ProductCatalogPage";
 import ManageCostsPage from "./pages/ManageCostsPage";
 import QuoteGenerationPage from "./pages/QuoteGenerationPage";
-import ProfilePage from "./pages/ProfilePage"; // Importar a nova página de perfil
+import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage"; // Importar a nova página de configurações
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -66,10 +67,18 @@ const App = () => (
               } 
             />
             <Route 
-              path="/profile" // Nova rota para a página de perfil
+              path="/profile"
               element={
                 <Layout>
                   <ProfilePage />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/settings" // Nova rota
+              element={
+                <Layout>
+                  <SettingsPage />
                 </Layout>
               } 
             />
