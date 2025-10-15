@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDilutionRatio } from '@/lib/cost-calculations';
+import { RefreshCw } from 'lucide-react'; // Importar o ícone de refresh
 
 interface CatalogProduct {
   id: string;
@@ -198,6 +199,16 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
     });
   };
 
+  const handleResetDilution = () => {
+    if (selectedProductDetails) {
+      setEditableDilutionRatioInput(formatDilutionRatioForInput(selectedProductDetails.dilution_ratio));
+      toast({
+        title: "Diluição restaurada!",
+        description: "O valor padrão de diluição do catálogo foi restaurado.",
+      });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-card">
@@ -240,15 +251,28 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
           {selectedProductDetails?.type === 'diluted' && (
             <div className="space-y-2">
               <Label htmlFor="dilution-ratio">Proporção de Diluição (1:X) *</Label>
-              <Input
-                id="dilution-ratio"
-                type="text"
-                placeholder="Ex: 1:100 ou 100"
-                value={editableDilutionRatioInput}
-                onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
-                className="bg-background"
-                disabled={!selectedProductId}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="dilution-ratio"
+                  type="text"
+                  placeholder="Ex: 1:100 ou 100"
+                  value={editableDilutionRatioInput}
+                  onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
+                  className="flex-1 bg-background"
+                  disabled={!selectedProductId}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleResetDilution}
+                  disabled={!selectedProductId || !selectedProductDetails}
+                  className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
+                  title="Restaurar diluição padrão do catálogo"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
 
