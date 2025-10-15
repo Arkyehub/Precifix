@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon, Camera } from 'lucide-react';
+import { User as UserIcon, Camera, Loader2 } from 'lucide-react'; // Importar Loader2
 import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,8 +17,8 @@ interface Profile {
   company_name: string | null;
   document_number: string | null;
   address: string | null;
-  address_number: string | null; // Novo campo
-  zip_code: string | null;      // Novo campo
+  address_number: string | null;
+  zip_code: string | null;
   phone_number: string | null;
   avatar_url: string | null;
 }
@@ -72,13 +72,14 @@ const ProfilePage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [rawDocumentNumber, setRawDocumentNumber] = useState(''); // Armazena o valor sem formatação
+  const [rawDocumentNumber, setRawDocumentNumber] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [address, setAddress] = useState('');
   const [addressNumber, setAddressNumber] = useState('');
-  const [rawPhoneNumber, setRawPhoneNumber] = useState(''); // Armazena o valor sem formatação
+  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false); // Novo estado para processamento local
 
   // Fetch user profile data
   const { data: profile, isLoading, error } = useQuery<Profile>({
@@ -101,17 +102,17 @@ const ProfilePage = () => {
       setFirstName(profile.first_name || '');
       setLastName(profile.last_name || '');
       setCompanyName(profile.company_name || '');
-      setRawDocumentNumber(profile.document_number || ''); // Preencher com valor raw
+      setRawDocumentNumber(profile.document_number || '');
       setZipCode(profile.zip_code || '');
       setAddress(profile.address || '');
       setAddressNumber(profile.address_number || '');
-      setRawPhoneNumber(profile.phone_number || ''); // Preencher com valor raw
+      setRawPhoneNumber(profile.phone_number || '');
       setCurrentAvatarUrl(profile.avatar_url);
     }
   }, [profile]);
 
   const fetchAddressByZipCode = async (cep: string) => {
-    const cleanedCep = cep.replace(/\D/g, ''); // Usar CEP limpo para a API
+    const cleanedCep = cep.replace(/\D/g, '');
     if (cleanedCep.length !== 8) return;
 
     try {
@@ -124,7 +125,7 @@ const ProfilePage = () => {
           description: "Verifique o CEP e tente novamente.",
           variant: "destructive",
         });
-        setAddress(''); // Limpa o endereço se o CEP for inválido
+        setAddress('');
         return;
       }
 
@@ -145,7 +146,7 @@ const ProfilePage = () => {
   };
 
   const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    const value = e.target.value.replace(/\D/g, '');
     setZipCode(value);
     if (value.length === 8) {
       fetchAddressByZipCode(value);
@@ -153,44 +154,123 @@ const ProfilePage = () => {
   };
 
   const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    const value = e.target.value.replace(/\D/g, '');
     setRawDocumentNumber(value);
   };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    const value = e.target.value.replace(/\D/g, '');
     setRawPhoneNumber(value);
+  };
+
+  // Helper function to process and validate image
+  const processImage = (file: File): Promise<File | null> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIMENSION = 1000; // Max width/height
+          const MAX_FILE_SIZE_BYTES = 500 * 1024; // 500 KB
+
+          let width = img.width;
+          let height = img.height;
+
+          // Check dimensions
+          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+            if (width > height) {
+              height = (height * MAX_DIMENSION) / width;
+              width = MAX_DIMENSION;
+            } else {
+              width = (width * MAX_DIMENSION) / height;
+              height = MAX_DIMENSION;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          let quality = 0.9; // Start with high quality
+          const attemptCompression = () => {
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                toast({
+                  title: "Erro ao processar imagem",
+                  description: "Não foi possível gerar a imagem.",
+                  variant: "destructive",
+                });
+                resolve(null);
+                return;
+              }
+
+              if (blob.size > MAX_FILE_SIZE_BYTES && quality > 0.1) {
+                quality -= 0.1; // Reduce quality
+                attemptCompression(); // Try again with lower quality
+              } else if (blob.size > MAX_FILE_SIZE_BYTES && quality <= 0.1) {
+                toast({
+                  title: "Imagem muito grande",
+                  description: "A imagem ainda é muito grande mesmo após compressão máxima (máx 500KB).",
+                  variant: "destructive",
+                });
+                resolve(null);
+              } else {
+                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+              }
+            }, 'image/jpeg', quality);
+          };
+
+          attemptCompression();
+        };
+        img.onerror = () => {
+          toast({
+            title: "Erro ao carregar imagem",
+            description: "O arquivo selecionado não é uma imagem válida.",
+            variant: "destructive",
+          });
+          resolve(null);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => {
+        toast({
+          title: "Erro ao ler arquivo",
+          description: "Não foi possível ler o arquivo de imagem.",
+          variant: "destructive",
+        });
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updatedProfile: Partial<Profile>) => {
       if (!user) throw new Error("User not authenticated.");
 
-      // Handle avatar upload first
       let newAvatarUrl = currentAvatarUrl;
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`; // Store in a user-specific folder
+        const filePath = `${user.id}/${fileName}`;
 
-        // Upload file to Supabase storage
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(filePath, avatarFile, {
             cacheControl: '3600',
-            upsert: true, // Overwrite if file exists
+            upsert: true,
           });
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath);
         newAvatarUrl = publicUrlData.publicUrl;
       }
 
-      // Update profile in public.profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -209,8 +289,6 @@ const ProfilePage = () => {
 
       if (profileError) throw profileError;
 
-      // Optionally, update auth.users user_metadata for immediate reflection in session
-      // This is important for the Header component to update without a full page refresh
       if (newAvatarUrl !== user.user_metadata?.avatar_url || updatedProfile.first_name !== user.user_metadata?.first_name || updatedProfile.last_name !== user.user_metadata?.last_name) {
         const { data: authUpdateData, error: authUpdateError } = await supabase.auth.updateUser({
           data: {
@@ -230,8 +308,8 @@ const ProfilePage = () => {
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
-      setCurrentAvatarUrl(data.avatar_url); // Update local state for avatar
-      setAvatarFile(null); // Clear selected file
+      setCurrentAvatarUrl(data.avatar_url);
+      setAvatarFile(null);
     },
     onError: (err) => {
       toast({
@@ -248,11 +326,11 @@ const ProfilePage = () => {
       first_name: firstName,
       last_name: lastName,
       company_name: companyName,
-      document_number: rawDocumentNumber, // Enviar valor raw
+      document_number: rawDocumentNumber,
       zip_code: zipCode,
       address: address,
       address_number: addressNumber,
-      phone_number: rawPhoneNumber, // Enviar valor raw
+      phone_number: rawPhoneNumber,
     });
   };
 
@@ -260,11 +338,37 @@ const ProfilePage = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setAvatarFile(e.target.files[0]);
-      // Create a temporary URL for preview
-      setCurrentAvatarUrl(URL.createObjectURL(e.target.files[0]));
+      const selectedFile = e.target.files[0];
+      setIsProcessingImage(true); // Inicia o processamento
+      setAvatarFile(null); // Limpa o arquivo anterior
+      setCurrentAvatarUrl(null); // Limpa a pré-visualização anterior
+
+      try {
+        const processedFile = await processImage(selectedFile);
+        if (processedFile) {
+          setAvatarFile(processedFile);
+          setCurrentAvatarUrl(URL.createObjectURL(processedFile));
+        } else {
+          // Erro já foi exibido pelo processImage
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ''; // Limpa o input para permitir re-seleção
+          }
+        }
+      } catch (error) {
+        console.error("Erro durante o processamento da imagem:", error);
+        toast({
+          title: "Erro inesperado",
+          description: "Ocorreu um erro ao processar a imagem.",
+          variant: "destructive",
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } finally {
+        setIsProcessingImage(false); // Finaliza o processamento
+      }
     }
   };
 
@@ -274,6 +378,8 @@ const ProfilePage = () => {
     const lastInitial = (lastName || user.user_metadata?.last_name || '').charAt(0);
     return `${firstInitial}${lastInitial}`.toUpperCase() || user.email?.substring(0, 2).toUpperCase() || '??';
   };
+
+  const isUploadingOrProcessing = isProcessingImage || updateProfileMutation.isPending;
 
   if (isLoading) return <p>Carregando perfil...</p>;
   if (error) return <p>Erro ao carregar perfil: {error.message}</p>;
@@ -300,14 +406,27 @@ const ProfilePage = () => {
             <div className="flex flex-col items-center gap-4">
               <div className="relative w-32 h-32 cursor-pointer" onClick={handleAvatarClick}>
                 <Avatar className="w-32 h-32">
-                  <AvatarImage src={currentAvatarUrl || ""} alt={firstName || "User"} />
-                  <AvatarFallback className="w-32 h-32 text-5xl bg-primary text-primary-foreground">
-                    {getUserInitials(user)}
-                  </AvatarFallback>
+                  {isUploadingOrProcessing ? (
+                    <AvatarFallback className="w-32 h-32 text-5xl bg-primary text-primary-foreground flex items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin" />
+                    </AvatarFallback>
+                  ) : (
+                    <>
+                      {currentAvatarUrl ? (
+                        <AvatarImage src={currentAvatarUrl} alt={firstName || "User"} />
+                      ) : (
+                        <AvatarFallback className="w-32 h-32 text-5xl bg-primary text-primary-foreground">
+                          {getUserInitials(user)}
+                        </AvatarFallback>
+                      )}
+                    </>
+                  )}
                 </Avatar>
-                <div className="absolute bottom-0 right-0 bg-primary p-2 rounded-full border-2 border-background">
-                  <Camera className="h-5 w-5 text-primary-foreground" />
-                </div>
+                {!isUploadingOrProcessing && (
+                  <div className="absolute bottom-0 right-0 bg-primary p-2 rounded-full border-2 border-background">
+                    <Camera className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                )}
               </div>
               <input
                 type="file"
@@ -335,22 +454,21 @@ const ProfilePage = () => {
                 <Label htmlFor="document-number">CPF (titular) ou CNPJ:</Label>
                 <Input 
                   id="document-number" 
-                  value={formatCpfCnpj(rawDocumentNumber)} // Exibe formatado
+                  value={formatCpfCnpj(rawDocumentNumber)}
                   onChange={handleDocumentNumberChange} 
-                  maxLength={18} // Max length for CNPJ formatted
+                  maxLength={18}
                   className="bg-background" 
                 />
               </div>
               
-              {/* Campos de CEP e Endereço/Número */}
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="zip-code">CEP:</Label>
                 <Input 
                   id="zip-code" 
-                  value={formatCep(zipCode)} // Exibe formatado
+                  value={formatCep(zipCode)}
                   onChange={handleZipCodeChange} 
-                  onBlur={() => zipCode.length === 8 && fetchAddressByZipCode(zipCode)} // Busca ao perder o foco
-                  maxLength={9} // Max length for CEP formatted
+                  onBlur={() => zipCode.length === 8 && fetchAddressByZipCode(zipCode)}
+                  maxLength={9}
                   className="bg-background" 
                 />
               </div>
@@ -367,10 +485,10 @@ const ProfilePage = () => {
                 <Label htmlFor="phone-number">Telefone:</Label>
                 <Input 
                   id="phone-number" 
-                  value={formatPhoneNumber(rawPhoneNumber)} // Exibe formatado
+                  value={formatPhoneNumber(rawPhoneNumber)}
                   onChange={handlePhoneNumberChange} 
                   placeholder="(XX) XXXXX-XXXX"
-                  maxLength={15} // Max length for phone formatted
+                  maxLength={15}
                   className="bg-background placeholder:text-gray-300" 
                 />
               </div>
