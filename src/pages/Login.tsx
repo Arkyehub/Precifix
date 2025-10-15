@@ -9,7 +9,7 @@ function Login() {
       <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo-precificar.png" alt="PrecifiCar Logo" className="h-20 object-contain" />
+            <img src="/logo-precificar.png" alt="PrecifiCar Logo" className="h-28 object-contain" />
           </div>
           <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>
           <CardDescription className="text-muted-foreground">
