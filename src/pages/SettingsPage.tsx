@@ -3,11 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Settings, Mail, Lock, Loader2 } from 'lucide-react';
+import { Settings, Mail, Lock, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
+
+// Regex para validar senha forte:
+// (?=.*[a-z]) - Pelo menos uma letra minúscula
+// (?=.*[A-Z]) - Pelo menos uma letra maiúscula
+// (?=.*\d) - Pelo menos um dígito
+// (?=.*[!@#$%^&*()_+[\]{};':"\\|,.<>/?]) - Pelo menos um caractere especial comum
+// .{8,} - Mínimo de 8 caracteres
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{};':"\\|,.<>/?]).{8,}$/;
 
 const EmailUpdateForm = () => {
   const { user } = useSession();
@@ -105,11 +113,12 @@ const PasswordUpdateForm = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const isPasswordStrong = STRONG_PASSWORD_REGEX.test(newPassword);
+
   const updatePasswordMutation = useMutation({
     mutationFn: async (password: string) => {
       if (!user) throw new Error("Usuário não autenticado.");
       
-      // Nota: Supabase Auth `updateUser` não requer a senha antiga, apenas a nova.
       const { data, error } = await supabase.auth.updateUser({ password });
 
       if (error) throw error;
@@ -134,14 +143,16 @@ const PasswordUpdateForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
+    
+    if (!isPasswordStrong) {
       toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
+        title: "Senha fraca",
+        description: "A nova senha não atende aos requisitos de segurança.",
         variant: "destructive",
       });
       return;
     }
+    
     if (newPassword !== confirmPassword) {
       toast({
         title: "Senhas não conferem",
@@ -150,8 +161,16 @@ const PasswordUpdateForm = () => {
       });
       return;
     }
+    
     updatePasswordMutation.mutate(newPassword);
   };
+
+  const PasswordRequirement = ({ condition, text }: { condition: boolean, text: string }) => (
+    <div className={`flex items-center text-sm ${condition ? 'text-success' : 'text-destructive'}`}>
+      {condition ? <CheckCircle className="h-4 w-4 mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+      {text}
+    </div>
+  );
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
@@ -177,6 +196,32 @@ const PasswordUpdateForm = () => {
               required
             />
           </div>
+          
+          {/* Regras de Senha */}
+          <div className="p-3 rounded-lg border border-border/50 space-y-1">
+            <p className="text-sm font-medium text-foreground mb-2">Requisitos de Senha Forte:</p>
+            <PasswordRequirement 
+              condition={newPassword.length >= 8} 
+              text="Mínimo de 8 caracteres" 
+            />
+            <PasswordRequirement 
+              condition={/[A-Z]/.test(newPassword)} 
+              text="Pelo menos uma letra maiúscula" 
+            />
+            <PasswordRequirement 
+              condition={/[a-z]/.test(newPassword)} 
+              text="Pelo menos uma letra minúscula" 
+            />
+            <PasswordRequirement 
+              condition={/\d/.test(newPassword)} 
+              text="Pelo menos um número" 
+            />
+            <PasswordRequirement 
+              condition={/[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(newPassword)} 
+              text="Pelo menos um caractere especial" 
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
             <Input 
@@ -188,7 +233,11 @@ const PasswordUpdateForm = () => {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={updatePasswordMutation.isPending}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={updatePasswordMutation.isPending || !isPasswordStrong || newPassword !== confirmPassword || newPassword.length === 0}
+          >
             {updatePasswordMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
