@@ -8,6 +8,8 @@ import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
+import { Progress } from '@/components/ui/progress'; // Importar Progress
 
 // Regex para validar senha forte:
 // (?=.*[a-z]) - Pelo menos uma letra minúscula
@@ -113,7 +115,32 @@ const PasswordUpdateForm = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const isPasswordStrong = STRONG_PASSWORD_REGEX.test(newPassword);
+  const isPasswordLongEnough = newPassword.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(newPassword);
+  const hasLowerCase = /[a-z]/.test(newPassword);
+  const hasNumber = /\d/.test(newPassword);
+  const hasSpecialChar = /[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(newPassword);
+
+  const isPasswordStrong = isPasswordLongEnough && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+
+  // Calculate password strength for the progress bar
+  const calculateStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/\d/.test(password)) strength += 20;
+    if (/[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(password)) strength += 20;
+    return Math.min(strength, 100); // Cap at 100%
+  };
+
+  const passwordStrength = calculateStrength(newPassword);
+
+  const getProgressBarColor = (strength: number) => {
+    if (strength < 40) return "bg-destructive";
+    if (strength < 70) return "bg-accent"; // Using accent for medium strength
+    return "bg-success"; // Using success for strong
+  };
 
   const updatePasswordMutation = useMutation({
     mutationFn: async (password: string) => {
@@ -186,40 +213,52 @@ const PasswordUpdateForm = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="new-password">Nova Senha</Label>
-            <Input 
-              id="new-password" 
-              type="password" 
-              value={newPassword} 
-              onChange={(e) => setNewPassword(e.target.value)} 
-              className="bg-background" 
-              required
-            />
-          </div>
-          
-          {/* Regras de Senha */}
-          <div className="p-3 rounded-lg border border-border/50 space-y-1">
-            <p className="text-sm font-medium text-foreground mb-2">Requisitos de Senha Forte:</p>
-            <PasswordRequirement 
-              condition={newPassword.length >= 8} 
-              text="Mínimo de 8 caracteres" 
-            />
-            <PasswordRequirement 
-              condition={/[A-Z]/.test(newPassword)} 
-              text="Pelo menos uma letra maiúscula" 
-            />
-            <PasswordRequirement 
-              condition={/[a-z]/.test(newPassword)} 
-              text="Pelo menos uma letra minúscula" 
-            />
-            <PasswordRequirement 
-              condition={/\d/.test(newPassword)} 
-              text="Pelo menos um número" 
-            />
-            <PasswordRequirement 
-              condition={/[!@#$%^&*()_+[\]{};':"\\|,.<>/?]/.test(newPassword)} 
-              text="Pelo menos um caractere especial" 
-            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Label htmlFor="new-password">Nova Senha</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      value={newPassword} 
+                      onChange={(e) => setNewPassword(e.target.value)} 
+                      className="bg-background" 
+                      required
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md">
+                  <p className="text-sm font-medium mb-2">Requisitos de Senha Forte:</p>
+                  <PasswordRequirement 
+                    condition={isPasswordLongEnough} 
+                    text="Mínimo de 8 caracteres" 
+                  />
+                  <PasswordRequirement 
+                    condition={hasUpperCase} 
+                    text="Pelo menos uma letra maiúscula" 
+                  />
+                  <PasswordRequirement 
+                    condition={hasLowerCase} 
+                    text="Pelo menos uma letra minúscula" 
+                  />
+                  <PasswordRequirement 
+                    condition={hasNumber} 
+                    text="Pelo menos um número" 
+                  />
+                  <PasswordRequirement 
+                    condition={hasSpecialChar} 
+                    text="Pelo menos um caractere especial" 
+                  />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Régua de Força de Senha */}
+            <div className="mt-2">
+              <Label className="text-sm text-muted-foreground">Força da Senha:</Label>
+              <Progress value={passwordStrength} className="h-2 mt-1" indicatorClassName={getProgressBarColor(passwordStrength)} />
+            </div>
           </div>
 
           <div className="space-y-2">
