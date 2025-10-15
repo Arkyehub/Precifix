@@ -71,10 +71,10 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
     mutationFn: async ({ serviceId, productId, usage }: { serviceId: string; productId: string; usage: number }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      // Check if link already exists
+      // Check if link already exists using the composite key
       const { data: existingLink, error: fetchError } = await supabase
         .from('service_product_links')
-        .select('id')
+        .select('service_id, product_id') // Select composite key columns
         .eq('service_id', serviceId)
         .eq('product_id', productId)
         .single();
@@ -84,7 +84,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId }: AddPro
       }
 
       if (existingLink) {
-        // Update existing link
+        // Update existing link using the composite key
         const { data, error } = await supabase
           .from('service_product_links')
           .update({ usage_per_vehicle: usage })
