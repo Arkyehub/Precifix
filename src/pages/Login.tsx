@@ -54,6 +54,7 @@ function Login() {
                   button_label: 'Entrar',
                   social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
+                  // A mensagem 'invalid_email_or_password' foi removida daqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
@@ -81,12 +82,7 @@ function Login() {
                   link_text: 'Enviar link mágico',
                 },
               },
-              // O bloco 'messages' deve ser um irmão de 'variables'
-              messages: {
-                validation: {
-                  invalid_email_or_password: 'Senha Incorreta',
-                },
-              },
+              // O bloco 'messages' foi removido completamente
             }}
           />
         </CardContent>
