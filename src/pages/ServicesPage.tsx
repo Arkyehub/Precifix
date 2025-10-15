@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ServiceProductManager } from "@/components/ServiceProductManager"; // Novo import
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -244,6 +245,12 @@ const ServicesPage = () => {
     clearAllServicesMutation.mutate();
   };
 
+  // Nova função para adicionar produtos a um serviço específico
+  const handleAddProductToService = (service: Service) => {
+    setEditingService(service); // Define o serviço a ser editado
+    setIsFormDialogOpen(true); // Abre o diálogo de formulário
+  };
+
   if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) return <p>Carregando serviços...</p>;
   if (error) return <p>Erro ao carregar serviços: {error.message}</p>;
 
@@ -415,6 +422,14 @@ const ServicesPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Nova Seção: Produtos Utilizados nos Serviços */}
+      <div className="mt-8">
+        <ServiceProductManager
+          services={services || []}
+          onAddProductToService={handleAddProductToService}
+        />
+      </div>
 
       <ServiceFormDialog
         isOpen={isFormDialogOpen}
