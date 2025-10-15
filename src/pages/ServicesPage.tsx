@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info } from "lucide-react";
+import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -10,7 +10,7 @@ import { ServiceFormDialog, Service } from "@/components/ServiceFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceProductManager } from "@/components/ServiceProductManager";
-import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog'; // Novo import
+import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog';
 
 // Utility function to format minutes to HH:MM
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -47,8 +47,8 @@ const ServicesPage = () => {
   const hasAddedDefaultServicesRef = useRef(false);
   const [showDetails, setShowDetails] = useState(false);
 
-  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false); // Novo estado
-  const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null); // Novo estado
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null);
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -66,7 +66,7 @@ const ServicesPage = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle, dilution_ratio') // Buscar usage_per_vehicle e dilution_ratio
+          .select('product_id, usage_per_vehicle, dilution_ratio')
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -84,13 +84,12 @@ const ServicesPage = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             throw productsError;
           }
-          // Combinar dados do produto com usage_per_vehicle e dilution_ratio do link
           const productsWithUsageAndDilution = productsData.map(product => {
             const link = linksData.find(link => link.product_id === product.id);
             return { 
               ...product, 
               usage_per_vehicle: link?.usage_per_vehicle || 0,
-              dilution_ratio: link?.dilution_ratio || 0, // Adicionar dilution_ratio
+              dilution_ratio: link?.dilution_ratio || 0,
             };
           });
           return { ...service, products: productsWithUsageAndDilution };
@@ -154,6 +153,42 @@ const ServicesPage = () => {
     },
   });
 
+  const clearAllProductLinksMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: userServices, error: fetchError } = await supabase
+        .from('services')
+        .select('id')
+        .eq('user_id', userId);
+
+      if (fetchError) throw fetchError;
+
+      const serviceIds = userServices.map(s => s.id);
+
+      if (serviceIds.length > 0) {
+        const { error: deleteLinksError } = await supabase
+          .from('service_product_links')
+          .delete()
+          .in('service_id', serviceIds);
+        if (deleteLinksError) throw deleteLinksError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidate services to reflect cleared links
+      toast({
+        title: "Vínculos de produtos limpos!",
+        description: "Todos os produtos foram desvinculados dos seus serviços.",
+      });
+    },
+    onError: (err) => {
+      console.error("Error clearing product links:", err);
+      toast({
+        title: "Erro ao limpar vínculos de produtos",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     const shouldAddDefaults =
       user &&
@@ -169,6 +204,18 @@ const ServicesPage = () => {
       addDefaultServicesMutation.mutate(user.id);
     }
   }, [user, isLoading, error, services, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
+
+  useEffect(() => {
+    // Trigger clearing product links when switching to 'monthly-average' mode
+    if (productCostCalculationMethod === 'monthly-average' && user && !clearAllProductLinksMutation.isPending) {
+      // Check if there are actually any linked products before attempting to clear
+      const hasLinkedProducts = services?.some(s => s.products && s.products.length > 0);
+      if (hasLinkedProducts) {
+        clearAllProductLinksMutation.mutate(user.id);
+      }
+    }
+  }, [productCostCalculationMethod, user, services, clearAllProductLinksMutation]);
+
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -258,17 +305,22 @@ const ServicesPage = () => {
     clearAllServicesMutation.mutate();
   };
 
-  // Nova função para abrir o diálogo de adição de produtos
   const handleAddProductToService = (serviceId: string) => {
     setServiceIdForProductAdd(serviceId);
     setIsAddProductDialogOpen(true);
   };
 
-  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) return <p>Carregando serviços...</p>;
+  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost || clearAllProductLinksMutation.isPending) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Carregando serviços...</p>
+      </div>
+    );
+  }
   if (error) return <p>Erro ao carregar serviços: {error.message}</p>;
 
   const modeText = productCostCalculationMethod === 'per-service' ? 'Detalhado' : 'Simplificado';
-  const modeColorClass = productCostCalculationMethod === 'per-service' ? 'text-primary' : 'text-accent';
   const modeTooltip = productCostCalculationMethod === 'per-service' 
     ? 'O custo dos produtos é calculado individualmente para cada serviço, com base nos produtos do catálogo vinculados.'
     : 'O custo dos produtos é uma média mensal, definida na página Gerenciar Custos, e distribuída pelos serviços.';
@@ -340,7 +392,7 @@ const ServicesPage = () => {
                             <Clock className="h-3 w-3 ml-2" />
                             <span>Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</span>
                           </div>
-                          {service.products && service.products.length > 0 && (
+                          {productCostCalculationMethod === 'per-service' && service.products && service.products.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {service.products.map(product => (
                                 <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
@@ -437,13 +489,15 @@ const ServicesPage = () => {
         </CardContent>
       </Card>
 
-      {/* Nova Seção: Produtos Utilizados nos Serviços */}
-      <div className="mt-8">
-        <ServiceProductManager
-          services={services || []}
-          onAddProductToService={handleAddProductToService}
-        />
-      </div>
+      {/* Nova Seção: Produtos Utilizados nos Serviços - Renderização Condicional */}
+      {productCostCalculationMethod === 'per-service' && (
+        <div className="mt-8">
+          <ServiceProductManager
+            services={services || []}
+            onAddProductToService={handleAddProductToService}
+          />
+        </div>
+      )}
 
       <ServiceFormDialog
         isOpen={isFormDialogOpen}
