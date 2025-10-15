@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings, User as UserIcon, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { Menu, LogOut, Settings, User as UserIcon, CreditCard, ChevronRight } from 'lucide-react'; // Adicionado CreditCard para 'Meu Plano'
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
-import { Sidebar } from './Sidebar'; // Importar o Sidebar
+import { Sidebar } from './Sidebar';
 
 export const Header = () => {
   const { user } = useSession();
@@ -76,16 +76,13 @@ export const Header = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.email}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.id}
-                  </p>
+                  <p className="text-base font-bold leading-none">{user?.email}</p> {/* E-mail maior e em negrito */}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => console.log('Alterar foto')}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                <span>Alterar Foto</span>
+              <DropdownMenuItem onClick={() => console.log('Meu Plano')}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span>Meu Plano</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => console.log('Configurações')}>
                 <Settings className="mr-2 h-4 w-4" />
