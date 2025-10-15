@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import ServicesPage from "./pages/ServicesPage";
 import ProductCatalogPage from "./pages/ProductCatalogPage";
 import ManageCostsPage from "./pages/ManageCostsPage";
-import QuoteGenerationPage from "./pages/QuoteGenerationPage"; // Importar a nova página de geração de orçamento
+import QuoteGenerationPage from "./pages/QuoteGenerationPage";
+import ProfilePage from "./pages/ProfilePage"; // Importar a nova página de perfil
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -57,10 +58,18 @@ const App = () => (
               } 
             />
             <Route 
-              path="/generate-quote" // Nova rota para a página de geração de orçamento
+              path="/generate-quote" 
               element={
                 <Layout>
                   <QuoteGenerationPage />
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/profile" // Nova rota para a página de perfil
+              element={
+                <Layout>
+                  <ProfilePage />
                 </Layout>
               } 
             />

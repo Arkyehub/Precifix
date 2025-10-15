@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings, User as UserIcon, Image as ImageIcon } from 'lucide-react';
+import { Menu, LogOut, Settings, User as UserIcon, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,6 +31,8 @@ export const Header = () => {
     return email.substring(0, 2).toUpperCase();
   };
 
+  const userName = user?.user_metadata?.first_name || 'Usuário';
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -54,6 +56,12 @@ export const Header = () => {
 
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end mr-2">
+            <p className="text-sm font-medium text-foreground">Olá, {userName}</p>
+            <Link to="/profile" className="text-xs text-muted-foreground hover:text-primary flex items-center">
+              Seu Perfil <ChevronRight className="h-3 w-3 ml-1" />
+            </Link>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
