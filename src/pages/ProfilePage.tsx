@@ -23,6 +23,46 @@ interface Profile {
   avatar_url: string | null;
 }
 
+// Helper function to format CEP
+const formatCep = (value: string) => {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length <= 5) {
+    return cleaned;
+  }
+  return `${cleaned.substring(0, 5)}-${cleaned.substring(5, 8)}`;
+};
+
+// Helper function to format CPF or CNPJ
+const formatCpfCnpj = (value: string) => {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length <= 11) { // CPF
+    return cleaned
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else { // CNPJ
+    return cleaned
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+};
+
+// Helper function to format Phone Number
+const formatPhoneNumber = (value: string) => {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length <= 10) { // Standard phone number (e.g., 8 digits)
+    return cleaned
+      .replace(/^(\d{2})(\d)/g, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  } else { // Mobile phone number (e.g., 9 digits)
+    return cleaned
+      .replace(/^(\d{2})(\d)/g, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2');
+  }
+};
+
 const ProfilePage = () => {
   const { user, session } = useSession();
   const queryClient = useQueryClient();
@@ -32,11 +72,11 @@ const ProfilePage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [documentNumber, setDocumentNumber] = useState('');
-  const [zipCode, setZipCode] = useState(''); // Novo estado
+  const [rawDocumentNumber, setRawDocumentNumber] = useState(''); // Armazena o valor sem formatação
+  const [zipCode, setZipCode] = useState('');
   const [address, setAddress] = useState('');
-  const [addressNumber, setAddressNumber] = useState(''); // Novo estado
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [addressNumber, setAddressNumber] = useState('');
+  const [rawPhoneNumber, setRawPhoneNumber] = useState(''); // Armazena o valor sem formatação
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
 
@@ -61,18 +101,21 @@ const ProfilePage = () => {
       setFirstName(profile.first_name || '');
       setLastName(profile.last_name || '');
       setCompanyName(profile.company_name || '');
-      setDocumentNumber(profile.document_number || '');
-      setZipCode(profile.zip_code || ''); // Preencher novo estado
+      setRawDocumentNumber(profile.document_number || ''); // Preencher com valor raw
+      setZipCode(profile.zip_code || '');
       setAddress(profile.address || '');
-      setAddressNumber(profile.address_number || ''); // Preencher novo estado
-      setPhoneNumber(profile.phone_number || '');
+      setAddressNumber(profile.address_number || '');
+      setRawPhoneNumber(profile.phone_number || ''); // Preencher com valor raw
       setCurrentAvatarUrl(profile.avatar_url);
     }
   }, [profile]);
 
   const fetchAddressByZipCode = async (cep: string) => {
+    const cleanedCep = cep.replace(/\D/g, ''); // Usar CEP limpo para a API
+    if (cleanedCep.length !== 8) return;
+
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
       const data = await response.json();
 
       if (data.erro) {
@@ -107,6 +150,16 @@ const ProfilePage = () => {
     if (value.length === 8) {
       fetchAddressByZipCode(value);
     }
+  };
+
+  const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    setRawDocumentNumber(value);
+  };
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    setRawPhoneNumber(value);
   };
 
   const updateProfileMutation = useMutation({
@@ -145,9 +198,9 @@ const ProfilePage = () => {
           last_name: updatedProfile.last_name,
           company_name: updatedProfile.company_name,
           document_number: updatedProfile.document_number,
-          zip_code: updatedProfile.zip_code, // Salvar novo campo
+          zip_code: updatedProfile.zip_code,
           address: updatedProfile.address,
-          address_number: updatedProfile.address_number, // Salvar novo campo
+          address_number: updatedProfile.address_number,
           phone_number: updatedProfile.phone_number,
           avatar_url: newAvatarUrl,
           updated_at: new Date().toISOString(),
@@ -195,11 +248,11 @@ const ProfilePage = () => {
       first_name: firstName,
       last_name: lastName,
       company_name: companyName,
-      document_number: documentNumber,
-      zip_code: zipCode, // Enviar novo campo
+      document_number: rawDocumentNumber, // Enviar valor raw
+      zip_code: zipCode,
       address: address,
-      address_number: addressNumber, // Enviar novo campo
-      phone_number: phoneNumber,
+      address_number: addressNumber,
+      phone_number: rawPhoneNumber, // Enviar valor raw
     });
   };
 
@@ -280,19 +333,26 @@ const ProfilePage = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="document-number">CPF (titular) ou CNPJ:</Label>
-                <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} className="bg-background" />
+                <Input 
+                  id="document-number" 
+                  value={formatCpfCnpj(rawDocumentNumber)} // Exibe formatado
+                  onChange={handleDocumentNumberChange} 
+                  placeholder="Ex: 111.222.333-01 ou 43.996.853/0001-38"
+                  maxLength={18} // Max length for CNPJ formatted
+                  className="bg-background" 
+                />
               </div>
               
-              {/* Novos campos de CEP e Endereço/Número */}
+              {/* Campos de CEP e Endereço/Número */}
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="zip-code">CEP:</Label>
                 <Input 
                   id="zip-code" 
-                  value={zipCode} 
+                  value={formatCep(zipCode)} // Exibe formatado
                   onChange={handleZipCodeChange} 
                   onBlur={() => zipCode.length === 8 && fetchAddressByZipCode(zipCode)} // Busca ao perder o foco
                   placeholder="Ex: 00000-000"
-                  maxLength={8}
+                  maxLength={9} // Max length for CEP formatted
                   className="bg-background" 
                 />
               </div>
@@ -304,11 +364,17 @@ const ProfilePage = () => {
                 <Label htmlFor="address-number">Número:</Label>
                 <Input id="address-number" value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="bg-background" />
               </div>
-              {/* Fim dos novos campos */}
 
               <div className="space-y-2">
                 <Label htmlFor="phone-number">Telefone:</Label>
-                <Input id="phone-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-background" />
+                <Input 
+                  id="phone-number" 
+                  value={formatPhoneNumber(rawPhoneNumber)} // Exibe formatado
+                  onChange={handlePhoneNumberChange} 
+                  placeholder="Ex: (XX) XXXXX-XXXX"
+                  maxLength={15} // Max length for phone formatted
+                  className="bg-background" 
+                />
               </div>
             </div>
 
