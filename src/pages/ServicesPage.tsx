@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Info, Loader2 } from "lucide-react"; // Removido Eraser, Eye, EyeOff, Clock, DollarSign as DollarIcon
+import { Plus, Car, Pencil, Trash2, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceProductManager } from "@/components/ServiceProductManager";
 import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog';
-import { ServiceProfitabilitySummary } from '@/components/ServiceProfitabilitySummary'; // Importar o novo componente
+import { ServiceProfitabilitySummary } from '@/components/ServiceProfitabilitySummary';
 
 // Utility function to format minutes to HH:MM (mantido para referência, mas não usado diretamente no display simplificado)
 const formatMinutesToHHMM = (totalMinutes: number): string => {
@@ -46,7 +46,6 @@ const ServicesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
   const hasAddedDefaultServicesRef = useRef(false);
-  // const [showDetails, setShowDetails] = useState(false); // Removido
 
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null);
@@ -198,8 +197,6 @@ const ServicesPage = () => {
     },
   });
 
-  // Removido clearAllServicesMutation e handleClearAllServices
-
   const handleAddService = () => {
     setEditingService(undefined);
     setIsFormDialogOpen(true);
@@ -265,19 +262,18 @@ const ServicesPage = () => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              {/* Botão de olho removido */}
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {services && services.length > 0 ? (
-            <div className="space-y-2"> {/* Espaçamento diminuído */}
-              <h3 className="text-sm font-semibold text-foreground mb-2">Serviços Cadastrados</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2"> {/* Espaçamento diminuído */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Serviços Cadastrados</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 {services.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-center justify-between p-2 rounded-lg" // Removido hover:bg-muted/50 transition-colors
+                    className="flex items-center justify-between p-2 rounded-lg"
                   >
                     <div className="flex-1 flex items-center gap-2">
                       <span className="font-medium text-foreground">{service.name}</span>
@@ -288,7 +284,7 @@ const ServicesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditService(service)}
-                        className="text-muted-foreground hover:text-primary" // Ícone muda para primário
+                        className="text-muted-foreground hover:text-primary hover:bg-transparent" // Adicionado hover:bg-transparent
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -297,7 +293,7 @@ const ServicesPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-muted-foreground hover:text-destructive" // Ícone muda para destrutivo
+                            className="text-muted-foreground hover:text-destructive hover:bg-transparent" // Adicionado hover:bg-transparent
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -335,8 +331,6 @@ const ServicesPage = () => {
             <Plus className="mr-2 h-4 w-4" />
             Adicionar Novo Serviço
           </Button>
-
-          {/* Botão "Limpar Todos os Serviços" removido */}
         </CardContent>
       </Card>
 
@@ -351,7 +345,6 @@ const ServicesPage = () => {
           <ServiceProductManager
             services={services || []}
             onAddProductToService={handleAddProductToService}
-            // showDetails removido daqui
           />
         </div>
       )}
