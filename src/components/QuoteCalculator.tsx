@@ -373,7 +373,7 @@ export const QuoteCalculator = () => {
               <SelectContent>
                 {paymentMethods?.map((method) => (
                   <SelectItem key={method.id} value={method.id}>
-                    {method.name} ({method.type === 'cash' || method.type === 'pix' ? '0.00%' : `${method.rate.toFixed(2)}%`})
+                    {method.name}
                   </SelectItem>
                 ))}
               </SelectContent>
