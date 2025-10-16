@@ -18,7 +18,7 @@ export const ProductCostCalculationMethod = () => {
   const navigate = useNavigate();
 
   const [isConfirmSwitchToPerServiceDialogOpen, setIsConfirmSwitchToPerServiceDialogOpen] = useState(false);
-  // Removido isConfirmSwitchToMonthlyDialogOpen e isClearingLinks
+  const [isConfirmSwitchToMonthlyAverageInfoDialog, setIsConfirmSwitchToMonthlyAverageInfoDialog] = useState(false); // Novo estado para o diálogo de informação
 
   // Query para verificar a existência de "Produtos Gastos no Mês"
   const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost, refetch: refetchMonthlyCostItem } = useQuery<OperationalCost | null>({
@@ -39,8 +39,6 @@ export const ProductCostCalculationMethod = () => {
     },
     enabled: !!user,
   });
-
-  // Removido a query hasLinkedProducts
 
   // Estado derivado para o método de cálculo
   const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
@@ -75,11 +73,30 @@ export const ProductCostCalculationMethod = () => {
     },
   });
 
-  // Removido a mutação clearAllProductLinksForMonthlyModeMutation
-
   const handleConfirmSwitchToPerService = () => {
     if (productsMonthlyCostItem?.id) {
       deleteProductsMonthlyCostMutation.mutate(productsMonthlyCostItem.id);
+    }
+  };
+
+  const handleConfirmMonthlyAverageInfo = () => {
+    setIsConfirmSwitchToMonthlyAverageInfoDialog(false); // Fecha o diálogo de informação
+    // Agora navega para gerenciar custos para adicionar/editar o custo mensal
+    const latestProductsMonthlyCostItem = queryClient.getQueryData<OperationalCost | null>(['productsMonthlyCostItem', user?.id]);
+    if (latestProductsMonthlyCostItem) {
+      navigate('/manage-costs', {
+        state: {
+          editingCostId: latestProductsMonthlyCostItem.id,
+        },
+      });
+    } else {
+      navigate('/manage-costs', {
+        state: {
+          openAddCostDialog: true,
+          defaultDescription: 'Produtos Gastos no Mês',
+          defaultType: 'variable',
+        },
+      });
     }
   };
 
@@ -102,35 +119,36 @@ export const ProductCostCalculationMethod = () => {
     console.log("Latest productsMonthlyCostItem (after refetch):", latestProductsMonthlyCostItem);
 
     if (value === 'monthly-average') {
-      // Não precisa verificar hasLinkedProducts nem abrir diálogo de confirmação para apagar vínculos
-      toast({
-        title: "Método de cálculo alterado!",
-        description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
-      });
-      if (latestProductsMonthlyCostItem) {
+      // User wants to switch TO 'monthly-average'
+      if (!latestProductsMonthlyCostItem) {
+        // If 'Produtos Gastos no Mês' does NOT exist, it means they are currently in 'per-service' mode.
+        // Show an informational dialog before redirecting to add the cost.
+        setIsConfirmSwitchToMonthlyAverageInfoDialog(true); 
+      } else {
+        // If 'Produtos Gastos no Mês' DOES exist, it means they are already in 'monthly-average' mode
+        // or switching from 'per-service' but the item was somehow created.
+        // Just navigate to edit the existing cost.
+        toast({
+          title: "Método de cálculo alterado!",
+          description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
+        });
         navigate('/manage-costs', {
           state: {
             editingCostId: latestProductsMonthlyCostItem.id,
           },
         });
-      } else {
-        navigate('/manage-costs', {
-          state: {
-            openAddCostDialog: true,
-            defaultDescription: 'Produtos Gastos no Mês',
-            defaultType: 'variable',
-          },
-        });
       }
-    } else { // Attempting to switch to 'per-service'
-      if (latestProductsMonthlyCostItem) { // Use the freshly fetched value
+    } else { // User wants to switch TO 'per-service'
+      if (latestProductsMonthlyCostItem) {
+        // If 'Produtos Gastos no Mês' DOES exist, it means they are currently in 'monthly-average' mode.
+        // Ask for confirmation to delete it.
         setIsConfirmSwitchToPerServiceDialogOpen(true);
       }
-      // If 'Produtos Gastos no Mês' does not exist, the state is already 'per-service', no action is needed.
+      // If 'Produtos Gastos no Mês' does NOT exist, they are already in 'per-service' mode, no action needed.
     }
   };
 
-  if (isLoadingMonthlyCost) { // Removido isLoadingLinkedProducts
+  if (isLoadingMonthlyCost) {
     return (
       <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
         <CardHeader>
@@ -170,7 +188,7 @@ export const ProductCostCalculationMethod = () => {
             <RadioGroupItem 
               value="per-service" 
               id="per-service" 
-              disabled={isLoadingMonthlyCost} // Removido isLoadingLinkedProducts
+              disabled={isLoadingMonthlyCost} 
             />
             <Label htmlFor="per-service" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Detalhado</strong> (Para cada Serviço)</h4>
@@ -184,7 +202,7 @@ export const ProductCostCalculationMethod = () => {
             <RadioGroupItem 
               value="monthly-average" 
               id="monthly-average" 
-              disabled={isLoadingMonthlyCost} // Removido isLoadingLinkedProducts
+              disabled={isLoadingMonthlyCost} 
             />
             <Label htmlFor="monthly-average" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Simplificado</strong> (Média Mensal)</h4>
@@ -196,7 +214,7 @@ export const ProductCostCalculationMethod = () => {
         </RadioGroup>
       </CardContent>
 
-      {/* Diálogo de Confirmação para mudar para Cálculo Detalhado por Serviço */}
+      {/* Diálogo de Confirmação para mudar para Cálculo Detalhado por Serviço (apaga custo mensal) */}
       <AlertDialog open={isConfirmSwitchToPerServiceDialogOpen} onOpenChange={setIsConfirmSwitchToPerServiceDialogOpen}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
@@ -220,7 +238,25 @@ export const ProductCostCalculationMethod = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Removido Diálogo de Confirmação para mudar para Cálculo Simplificado (Mensal) */}
+      {/* NOVO Diálogo de Informação para mudar para Cálculo Simplificado (redireciona para adicionar custo mensal) */}
+      <AlertDialog open={isConfirmSwitchToMonthlyAverageInfoDialog} onOpenChange={setIsConfirmSwitchToMonthlyAverageInfoDialog}>
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar Método de Cálculo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está mudando para o "Cálculo Simplificado (Média Mensal)".
+              O custo dos produtos será calculado com base em um valor mensal que você definirá.
+              Você será redirecionado para a página "Gerenciar Custos" para configurar este valor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmMonthlyAverageInfo}>
+              Entendi, Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
