@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importar Select
-import { Car, Package, DollarSign, FileText, Percent, Pencil, CreditCard } from "lucide-react"; // Importar CreditCard
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Car, Package, DollarSign, FileText, Percent, Pencil, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -14,7 +14,7 @@ import { LoadHourlyCostButton } from './LoadHourlyCostButton';
 import { QuoteGenerator } from './QuoteGenerator';
 import { calculateProductCost, formatDilutionRatio, ProductForCalculation, formatMinutesToHHMM, parseHHMMToMinutes } from "@/lib/cost-calculations";
 import { QuoteServiceFormDialog, QuotedService } from './QuoteServiceFormDialog';
-import { PaymentMethod, PaymentMethodInstallment } from './PaymentMethodFormDialog'; // Importar interfaces
+import { PaymentMethod, PaymentMethodInstallment } from './PaymentMethodFormDialog';
 
 interface Service {
   id: string;
@@ -57,6 +57,7 @@ export const QuoteCalculator = () => {
   const [displayProfitMargin, setDisplayProfitMargin] = useState('40,00');
 
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
+  const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null); // Novo estado para parcelas
   const [paymentFee, setPaymentFee] = useState(0);
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
@@ -257,17 +258,19 @@ export const QuoteCalculator = () => {
     } else if (method.type === 'debit_card') {
       calculatedFee = finalPriceBeforeFee * (method.rate / 100);
     } else if (method.type === 'credit_card') {
-      // For credit card, default to 1x installment rate if available, otherwise use base rate (which is likely 0)
-      const oneXInstallment = method.installments?.find(inst => inst.installments === 1);
-      const rateToApply = oneXInstallment ? oneXInstallment.rate : method.rate;
+      const rateToApply = selectedInstallments 
+        ? method.installments?.find(inst => inst.installments === selectedInstallments)?.rate || 0
+        : method.installments?.find(inst => inst.installments === 1)?.rate || 0; // Default to 1x if no installments selected
       calculatedFee = finalPriceBeforeFee * (rateToApply / 100);
     }
     setPaymentFee(calculatedFee);
-  }, [finalPriceBeforeFee, selectedPaymentMethodId, paymentMethods]);
+  }, [finalPriceBeforeFee, selectedPaymentMethodId, selectedInstallments, paymentMethods]); // Adicionado selectedInstallments às dependências
 
   const finalPriceWithFee = finalPriceBeforeFee + paymentFee;
 
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
+
+  const currentPaymentMethod = paymentMethods?.find(pm => pm.id === selectedPaymentMethodId);
 
   if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods) {
     return <p className="text-center py-8">Carregando dados...</p>;
@@ -351,7 +354,15 @@ export const QuoteCalculator = () => {
             </div>
             <Select 
               value={selectedPaymentMethodId || ''} 
-              onValueChange={setSelectedPaymentMethodId}
+              onValueChange={(value) => {
+                setSelectedPaymentMethodId(value);
+                const method = paymentMethods?.find(pm => pm.id === value);
+                if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
+                  setSelectedInstallments(1); // Default to 1x when credit card is selected
+                } else {
+                  setSelectedInstallments(null); // Reset installments for other types
+                }
+              }}
               disabled={isLoadingPaymentMethods}
             >
               <SelectTrigger id="payment-method-select" className="bg-background">
@@ -366,6 +377,28 @@ export const QuoteCalculator = () => {
               </SelectContent>
             </Select>
             {isLoadingPaymentMethods && <p className="text-sm text-muted-foreground mt-2">Carregando formas de pagamento...</p>}
+
+            {/* Seleção de Parcelas para Cartão de Crédito */}
+            {currentPaymentMethod?.type === 'credit_card' && currentPaymentMethod.installments && currentPaymentMethod.installments.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="installments-select" className="text-sm">Número de Parcelas</Label>
+                <Select
+                  value={selectedInstallments?.toString() || ''}
+                  onValueChange={(value) => setSelectedInstallments(parseInt(value, 10))}
+                >
+                  <SelectTrigger id="installments-select" className="bg-background">
+                    <SelectValue placeholder="Selecione as parcelas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentPaymentMethod.installments.map((inst) => (
+                      <SelectItem key={inst.installments} value={inst.installments.toString()}>
+                        {inst.installments}x ({inst.rate.toFixed(2)}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-border/50 space-y-2">
@@ -454,7 +487,7 @@ export const QuoteCalculator = () => {
         <QuoteGenerator
           selectedServices={quotedServices.map(s => s.name)}
           totalCost={totalCost}
-          finalPrice={finalPriceWithFee} // Passar o preço final com a taxa
+          finalPrice={finalPriceWithFee}
           executionTime={totalExecutionTime}
         />
       )}
