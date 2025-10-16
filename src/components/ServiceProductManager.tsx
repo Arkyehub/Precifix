@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useToast } from '@/hooks/use-toast';
-import { formatDilutionRatio, calculateProductCost, calculateProductCostPerLiter, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
+import { formatDilutionRatio, calculateProductCost, calculateProductCostPerContainer, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
 // REMOVIDO: import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // ProductFormDialog não será mais usado aqui
 
 interface ServiceProductManagerProps {
@@ -99,9 +99,10 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                         dilutionRatio: product.dilution_ratio,
                         usagePerVehicle: product.usage_per_vehicle,
                         type: product.type,
+                        containerSize: product.container_size, // Passar container_size
                       };
-                      const costPerLiter = calculateProductCostPerLiter(productForCalc);
                       const costPerApplication = calculateProductCost(productForCalc);
+                      const costPerContainer = calculateProductCostPerContainer(productForCalc);
                       
                       // Cálculos baseados no container_size
                       const concentratedProductInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
@@ -144,9 +145,11 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                                 )}
                               </div>
                               <div className="mt-2 space-y-1">
-                                <p className="text-sm text-primary-strong font-medium">
-                                  Custo/litro {product.type === 'diluted' ? 'diluído' : ''}: R$ {costPerLiter.toFixed(4)}
-                                </p>
+                                {product.type === 'diluted' && product.container_size > 0 && (
+                                  <p className="text-sm text-primary-strong font-medium">
+                                    Custo/Recipiente diluído: R$ {costPerContainer.toFixed(4)}
+                                  </p>
+                                )}
                                 <p className="text-sm text-primary-strong font-bold">
                                   Custo/aplicação: R$ {costPerApplication.toFixed(2)}
                                 </p>

@@ -4,6 +4,7 @@ export interface ProductForCalculation {
   dilutionRatio: number; // ex: 10 para 1:10
   usagePerVehicle: number; // em ml
   type: 'diluted' | 'ready-to-use';
+  containerSize?: number; // Adicionado containerSize
 }
 
 export const calculateProductCost = (product: ProductForCalculation): number => {
@@ -29,6 +30,15 @@ export const calculateProductCostPerLiter = (product: ProductForCalculation): nu
     const costPerMlDilutedSolution = costPerMlConcentrated / product.dilutionRatio;
     return costPerMlDilutedSolution * 1000; // Custo por litro da solução diluída
   }
+};
+
+export const calculateProductCostPerContainer = (product: ProductForCalculation): number => {
+  if (product.type === 'diluted' && product.dilutionRatio > 0 && product.containerSize && product.containerSize > 0) {
+    const costPerMlConcentrated = product.gallonPrice / product.gallonVolume;
+    const costPerMlDilutedSolution = costPerMlConcentrated / product.dilutionRatio;
+    return costPerMlDilutedSolution * product.containerSize;
+  }
+  return 0; // Retorna 0 se não for diluído ou se os dados forem inválidos
 };
 
 export const formatDilutionRatio = (ratio: number): string => {
