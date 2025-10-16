@@ -151,7 +151,8 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                                   </p>
                                 )}
                                 <p className="text-sm text-primary-strong font-bold">
-                                  Custo/aplicação: R$ {costPerApplication.toFixed(2)}
+                                  Custo/aplicação: R$ {costPerApplication.toFixed(2)}{" "}
+                                  <span className="text-xs text-muted-foreground">(Ref. a quantidade: {product.usage_per_vehicle.toFixed(0)}ml)</span>
                                 </p>
                               </div>
                             </div>
