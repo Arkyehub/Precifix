@@ -42,7 +42,7 @@ export const ProductCostCalculationMethod = () => {
   });
 
   // Query para verificar se existem produtos vinculados a serviços
-  const { data: hasLinkedProducts, isLoading: isLoadingLinkedProducts } = useQuery<boolean>({
+  const { data: hasLinkedProducts, isLoading: isLoadingLinkedProducts, refetch: refetchHasLinkedProducts } = useQuery<boolean>({
     queryKey: ['hasLinkedProducts', user?.id],
     queryFn: async () => {
       if (!user) return false;
@@ -58,13 +58,13 @@ export const ProductCostCalculationMethod = () => {
 
       const serviceIds = userServices.map(s => s.id);
 
-      if (serviceIds.length === 0) return false;
+      if (serviceIds.length === 0) return false; // If no services, no linked products possible
 
       const { count, error } = await supabase
         .from('service_product_links')
         .select('id', { count: 'exact', head: true })
         .in('service_id', serviceIds)
-        .limit(1);
+        .limit(1); // Just need to know if at least one exists
       
       if (error) {
         console.error("Error checking for linked products:", error);
@@ -182,26 +182,23 @@ export const ProductCostCalculationMethod = () => {
       return;
     }
 
-    if (isLoadingLinkedProducts || isLoadingMonthlyCost) {
-      toast({
-        title: "Carregando dados",
-        description: "Aguarde enquanto verificamos os vínculos de produtos e custos mensais.",
-        // variant: "info", // Removido a variante "info"
-      });
-      return;
-    }
+    // Trigger refetch for both queries and await their completion
+    // This ensures `productsMonthlyCostItem` and `hasLinkedProducts` are up-to-date
+    await refetchMonthlyCostItem();
+    await refetchHasLinkedProducts();
+
+    // Now, `productsMonthlyCostItem` and `hasLinkedProducts` will reflect the latest data
+    // We can use them directly for the decision logic.
 
     if (value === 'monthly-average') {
-      // Se houver produtos vinculados, abre o diálogo de confirmação
-      if (hasLinkedProducts) {
+      if (hasLinkedProducts) { // This `hasLinkedProducts` now has the latest refetched data
         setIsConfirmSwitchToMonthlyDialogOpen(true);
       } else {
-        // Se não houver produtos vinculados, informa o usuário e procede
         toast({
           title: "Método de cálculo alterado!",
           description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
         });
-        if (productsMonthlyCostItem) {
+        if (productsMonthlyCostItem) { // This `productsMonthlyCostItem` now has the latest refetched data
           navigate('/manage-costs', {
             state: {
               editingCostId: productsMonthlyCostItem.id,
@@ -217,12 +214,11 @@ export const ProductCostCalculationMethod = () => {
           });
         }
       }
-    } else { // Tentando mudar para 'per-service'
-      if (productsMonthlyCostItem) {
-        // Se 'Produtos Gastos no Mês' existe, abre o diálogo de confirmação existente
+    } else { // Attempting to switch to 'per-service'
+      if (productsMonthlyCostItem) { // This `productsMonthlyCostItem` now has the latest refetched data
         setIsConfirmSwitchToPerServiceDialogOpen(true);
       }
-      // Se não existe, o estado já é 'per-service', nenhuma ação é necessária.
+      // If 'Produtos Gastos no Mês' does not exist, the state is already 'per-service', no action is needed.
     }
   };
 
