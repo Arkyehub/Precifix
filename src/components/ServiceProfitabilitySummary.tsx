@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Percent, BarChart3, Car } from "lucide-react";
+import { DollarSign, Percent, BarChart3, Car, Clock, Tag } from "lucide-react"; // Adicionado Clock e Tag
 import { Service } from "@/components/ServiceFormDialog";
-import { calculateProductCost, ProductForCalculation } from '@/lib/cost-calculations';
+import { calculateProductCost, ProductForCalculation, formatMinutesToHHMM } from '@/lib/cost-calculations'; // Importar formatMinutesToHHMM
 
 interface ServiceProfitabilitySummaryProps {
   services: Service[];
@@ -55,10 +55,19 @@ export const ServiceProfitabilitySummary = ({ services }: ServiceProfitabilitySu
                     <Car className="h-4 w-4 text-muted-foreground" />
                     {service.name}
                   </h4>
+                  {service.description && (
+                    <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                  )}
                   <div className="p-3 rounded-md bg-gradient-to-r from-mediumslateblue/10 to-mediumslateblue/5 border border-mediumslateblue/30">
                     <h5 className="font-semibold text-mediumslateblue mb-2">Detalhes do Lucro</h5>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      <span className="text-muted-foreground">Custo Mão de Obra:</span>
+                      <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Tempo de Execução:</span>
+                      <span className="text-foreground text-right">{formatMinutesToHHMM(service.execution_time_minutes)}</span>
+
+                      <span className="text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" /> Custo Mão de Obra/Hora:</span>
+                      <span className="text-foreground text-right">R$ {service.labor_cost_per_hour.toFixed(2)}</span>
+
+                      <span className="text-muted-foreground">Custo Mão de Obra Total:</span>
                       <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
 
                       <span className="text-muted-foreground">Custo Produtos:</span>
