@@ -10,6 +10,21 @@ import { formatMinutesToHHMM, parseHHMMToMinutes, calculateProductCost, ProductF
 import { Package, Pencil, Trash2, DollarSign, Clock, Receipt } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatDilutionRatio } from '@/lib/cost-calculations';
+import { QuoteProductFormDialog } from './QuoteProductFormDialog'; // Importar o novo diálogo
+
+// Nova interface para produtos dentro do contexto do orçamento
+export interface QuotedProductForQuote {
+  id: string;
+  name: string;
+  size: number; // em litros
+  price: number; // em R$
+  type: 'diluted' | 'ready-to-use';
+  dilution_ratio: number;
+  usage_per_vehicle: number;
+  container_size: number;
+  // Adicionar original_product_id se precisar rastrear o produto original do catálogo
+  original_product_id?: string; 
+}
 
 // Reutilizando a interface Service, mas adicionando campos para overrides específicos do orçamento
 export interface QuotedService {
@@ -21,32 +36,14 @@ export interface QuotedService {
   execution_time_minutes: number; // Tempo original de execução
   other_costs: number; // Outros custos originais
   user_id: string;
-  products?: {
-    id: string;
-    name: string;
-    size: number; // em litros
-    price: number; // em R$
-    type: 'diluted' | 'ready-to-use';
-    dilution_ratio: number;
-    usage_per_vehicle: number;
-    container_size: number;
-  }[];
+  products?: QuotedProductForQuote[]; // Produtos base do catálogo
 
   // Campos para overrides específicos do orçamento
   quote_price?: number;
   quote_labor_cost_per_hour?: number;
   quote_execution_time_minutes?: number;
   quote_other_costs?: number;
-  quote_products?: { // Produtos específicos para este orçamento, potencialmente modificados
-    id: string;
-    name: string;
-    size: number;
-    price: number;
-    type: 'diluted' | 'ready-to-use';
-    dilution_ratio: number;
-    usage_per_vehicle: number;
-    container_size: number;
-  }[];
+  quote_products?: QuotedProductForQuote[]; // Produtos *para este orçamento*, permitindo modificações
 }
 
 interface QuoteServiceFormDialogProps {
@@ -65,7 +62,11 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
   const [quoteLaborCostPerHour, setQuoteLaborCostPerHour] = useState(service.quote_labor_cost_per_hour?.toFixed(2) || service.labor_cost_per_hour.toFixed(2));
   const [quoteExecutionTimeHHMM, setQuoteExecutionTimeHHMM] = useState(formatMinutesToHHMM(service.quote_execution_time_minutes || service.execution_time_minutes));
   const [quoteOtherCosts, setQuoteOtherCosts] = useState(service.quote_other_costs?.toFixed(2) || service.other_costs.toFixed(2));
-  const [quoteProducts, setQuoteProducts] = useState(service.quote_products || service.products || []);
+  const [quoteProducts, setQuoteProducts] = useState<QuotedProductForQuote[]>([]);
+
+  const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
+  const [productToEditInDialog, setProductToEditInDialog] = useState<QuotedProductForQuote | null>(null);
+  const [originalProductDilution, setOriginalProductDilution] = useState(0); // Para o reset de diluição
 
   useEffect(() => {
     if (service) {
@@ -73,6 +74,7 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
       setQuoteLaborCostPerHour(service.quote_labor_cost_per_hour?.toFixed(2) || service.labor_cost_per_hour.toFixed(2));
       setQuoteExecutionTimeHHMM(formatMinutesToHHMM(service.quote_execution_time_minutes || service.execution_time_minutes));
       setQuoteOtherCosts(service.quote_other_costs?.toFixed(2) || service.other_costs.toFixed(2));
+      // Inicializa quoteProducts com os produtos do serviço ou os produtos já sobrescritos
       setQuoteProducts(service.quote_products || service.products || []);
     }
   }, [service, isOpen]);
@@ -106,13 +108,13 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
       quote_labor_cost_per_hour: parsedQuoteLaborCostPerHour,
       quote_execution_time_minutes: parsedQuoteExecutionTimeMinutes,
       quote_other_costs: parsedQuoteOtherCosts,
-      quote_products: quoteProducts, // Manter os produtos (mesmo que não editáveis aqui ainda)
+      quote_products: quoteProducts, // Salvar os produtos modificados para este orçamento
     };
     onSave(updatedService);
     onClose();
   };
 
-  const getProductCost = (product: QuotedService['products'][0]) => {
+  const getProductCost = (product: QuotedProductForQuote) => {
     if (!product) return 0;
     const productForCalc: ProductForCalculation = {
       gallonPrice: product.price,
@@ -126,6 +128,32 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
   };
 
   const totalProductsCostForService = quoteProducts.reduce((sum, product) => sum + getProductCost(product), 0);
+
+  const handleEditProductForQuote = (product: QuotedProductForQuote) => {
+    setProductToEditInDialog(product);
+    // Encontrar a diluição original do produto no serviço base (se existir)
+    const originalProduct = service.products?.find(p => p.id === product.id);
+    setOriginalProductDilution(originalProduct?.dilution_ratio || 0);
+    setIsProductFormDialogOpen(true);
+  };
+
+  const handleSaveQuotedProduct = (updatedProduct: QuotedProductForQuote) => {
+    setQuoteProducts(prev => 
+      prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p))
+    );
+    toast({
+      title: "Produto atualizado para o orçamento!",
+      description: `${updatedProduct.name} foi configurado para este serviço no orçamento.`,
+    });
+  };
+
+  const handleDeleteQuotedProduct = (productId: string) => {
+    setQuoteProducts(prev => prev.filter(p => p.id !== productId));
+    toast({
+      title: "Produto removido do serviço!",
+      description: "O produto foi removido deste serviço para o orçamento atual.",
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -201,13 +229,36 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
                         </p>
                       </div>
                       <div className="flex gap-1">
-                        {/* Botões de editar e apagar produtos (funcionalidade futura) */}
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" title="Editar produto (funcionalidade futura)" disabled>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-muted-foreground hover:text-primary" 
+                          title="Editar produto"
+                          onClick={() => handleEditProductForQuote(product)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" title="Remover produto (funcionalidade futura)" disabled>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" title="Remover produto">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-card">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação removerá o produto "{product.name}" *deste orçamento*. Ele não será excluído do seu catálogo ou do serviço original.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteQuotedProduct(product.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </li>
                   ))}
@@ -229,6 +280,16 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
           <Button onClick={handleSave}>Salvar Alterações</Button>
         </DialogFooter>
       </DialogContent>
+
+      {productToEditInDialog && (
+        <QuoteProductFormDialog
+          isOpen={isProductFormDialogOpen}
+          onClose={() => setIsProductFormDialogOpen(false)}
+          product={productToEditInDialog}
+          onSave={handleSaveQuotedProduct}
+          originalDilutionRatio={originalProductDilution}
+        />
+      )}
     </Dialog>
   );
 };
