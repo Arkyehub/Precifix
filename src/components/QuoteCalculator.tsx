@@ -57,7 +57,7 @@ export const QuoteCalculator = () => {
   const [displayProfitMargin, setDisplayProfitMargin] = useState('40,00');
 
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
-  const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null); // Novo estado para parcelas
+  const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null);
   const [paymentFee, setPaymentFee] = useState(0);
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
@@ -264,7 +264,7 @@ export const QuoteCalculator = () => {
       calculatedFee = finalPriceBeforeFee * (rateToApply / 100);
     }
     setPaymentFee(calculatedFee);
-  }, [finalPriceBeforeFee, selectedPaymentMethodId, selectedInstallments, paymentMethods]); // Adicionado selectedInstallments às dependências
+  }, [finalPriceBeforeFee, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
   const finalPriceWithFee = finalPriceBeforeFee + paymentFee;
 
@@ -358,7 +358,9 @@ export const QuoteCalculator = () => {
                 setSelectedPaymentMethodId(value);
                 const method = paymentMethods?.find(pm => pm.id === value);
                 if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                  setSelectedInstallments(1); // Default to 1x when credit card is selected
+                  // Set default to the first available installment with rate > 0, or 1 if none
+                  const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
+                  setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
                 } else {
                   setSelectedInstallments(null); // Reset installments for other types
                 }
@@ -390,11 +392,13 @@ export const QuoteCalculator = () => {
                     <SelectValue placeholder="Selecione as parcelas" />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentPaymentMethod.installments.map((inst) => (
-                      <SelectItem key={inst.installments} value={inst.installments.toString()}>
-                        {inst.installments}x ({inst.rate.toFixed(2)}%)
-                      </SelectItem>
-                    ))}
+                    {currentPaymentMethod.installments
+                      .filter(inst => inst.rate > 0) // Filtrar parcelas com taxa > 0
+                      .map((inst) => (
+                        <SelectItem key={inst.installments} value={inst.installments.toString()}>
+                          {inst.installments}x ({inst.rate.toFixed(2)}%)
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
