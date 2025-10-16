@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Package, DollarSign, FileText, Percent, Pencil, CreditCard } from "lucide-react";
+import { Car, Package, DollarSign, FileText, Percent, Pencil, CreditCard, Tag } from "lucide-react"; // Adicionado Tag para o ícone de desconto
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -59,6 +59,11 @@ export const QuoteCalculator = () => {
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
   const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null);
   const [paymentFee, setPaymentFee] = useState(0);
+
+  // Novos estados para o desconto
+  const [discountValueInput, setDiscountValueInput] = useState('0,00'); // Valor digitado no input
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount'); // Tipo de desconto
+  const [calculatedDiscount, setCalculatedDiscount] = useState(0); // Valor do desconto em R$
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
   const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
@@ -236,19 +241,30 @@ export const QuoteCalculator = () => {
   // Calculate total cost (soma de todos os custos operacionais e de produtos)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
 
-  // NOVO: Calcular o Valor Atual à Receber (soma dos preços de venda dos serviços)
+  // Calcular o Valor Atual à Receber (soma dos preços de venda dos serviços)
   const totalChargedValue = quotedServices.reduce((sum, service) => 
     sum + (service.quote_price ?? service.price), 0);
 
-  // NOVO: Calcular a Margem de Lucro Atual
-  const currentProfitMarginPercentage = totalChargedValue > 0 ? ((totalChargedValue - totalCost) / totalChargedValue) * 100 : 0;
+  // Efeito para calcular o desconto
+  useEffect(() => {
+    const parsedDiscountValue = parseFloat(discountValueInput.replace(',', '.')) || 0;
+    let newCalculatedDiscount = 0;
 
-  // NOVO: Calcular o Preço Sugerido com base na Margem de Lucro Desejada
-  const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
+    if (discountType === 'amount') {
+      newCalculatedDiscount = parsedDiscountValue;
+    } else { // percentage
+      newCalculatedDiscount = totalChargedValue * (parsedDiscountValue / 100);
+    }
+    // Garantir que o desconto não seja maior que o valor total
+    setCalculatedDiscount(Math.min(newCalculatedDiscount, totalChargedValue));
+  }, [discountValueInput, discountType, totalChargedValue]);
+
+  // Valor após o desconto ser aplicado
+  const valueAfterDiscount = totalChargedValue - calculatedDiscount;
 
   // Effect to calculate payment fee
   useEffect(() => {
-    if (!selectedPaymentMethodId || !paymentMethods || totalChargedValue <= 0) { // Usar totalChargedValue como base
+    if (!selectedPaymentMethodId || !paymentMethods || valueAfterDiscount <= 0) {
       setPaymentFee(0);
       return;
     }
@@ -263,17 +279,23 @@ export const QuoteCalculator = () => {
     if (method.type === 'cash' || method.type === 'pix') {
       calculatedFee = 0;
     } else if (method.type === 'debit_card') {
-      calculatedFee = totalChargedValue * (method.rate / 100);
+      calculatedFee = valueAfterDiscount * (method.rate / 100);
     } else if (method.type === 'credit_card') {
       const rateToApply = selectedInstallments 
         ? method.installments?.find(inst => inst.installments === selectedInstallments)?.rate || 0
         : method.installments?.find(inst => inst.installments === 1)?.rate || 0; // Default to 1x if no installments selected
-      calculatedFee = totalChargedValue * (rateToApply / 100);
+      calculatedFee = valueAfterDiscount * (rateToApply / 100);
     }
     setPaymentFee(calculatedFee);
-  }, [totalChargedValue, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
+  }, [valueAfterDiscount, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
-  const finalPriceWithFee = totalChargedValue + paymentFee; // O preço final é o valor cobrado + taxa
+  const finalPriceWithFee = valueAfterDiscount + paymentFee;
+
+  // Calcular a Margem de Lucro Atual (após desconto, antes da taxa de pagamento)
+  const currentProfitMarginPercentage = valueAfterDiscount > 0 ? ((valueAfterDiscount - totalCost) / valueAfterDiscount) * 100 : 0;
+
+  // Calcular o Preço Sugerido com base na Margem de Lucro Desejada (após desconto, antes da taxa de pagamento)
+  const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
 
@@ -353,7 +375,43 @@ export const QuoteCalculator = () => {
             <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
           </div>
 
-          {/* Nova seção para Forma de Pagamento */}
+          {/* Seção para Desconto */}
+          <div className="space-y-2 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="h-4 w-4 text-primary" />
+              <Label htmlFor="discount-value" className="text-sm font-medium">Desconto</Label>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id="discount-value"
+                type="text"
+                step="0.01"
+                value={discountValueInput}
+                onChange={(e) => setDiscountValueInput(e.target.value)}
+                onBlur={(e) => {
+                  const rawValue = e.target.value.replace(',', '.');
+                  const parsedValue = parseFloat(rawValue) || 0;
+                  setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
+                }}
+                className="flex-1 bg-background"
+                placeholder="0,00"
+              />
+              <Select value={discountType} onValueChange={(value: 'amount' | 'percentage') => setDiscountType(value)}>
+                <SelectTrigger className="w-[120px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="amount">Valor (R$)</SelectItem>
+                  <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {calculatedDiscount > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">Desconto aplicado: R$ {calculatedDiscount.toFixed(2)}</p>
+            )}
+          </div>
+
+          {/* Seção para Forma de Pagamento */}
           <div className="space-y-2 pt-4 border-t border-border/50">
             <div className="flex items-center gap-2 mb-2">
               <CreditCard className="h-4 w-4 text-primary" />
@@ -365,11 +423,10 @@ export const QuoteCalculator = () => {
                 setSelectedPaymentMethodId(value);
                 const method = paymentMethods?.find(pm => pm.id === value);
                 if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                  // Set default to the first available installment with rate > 0, or 1 if none
                   const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
                   setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
                 } else {
-                  setSelectedInstallments(null); // Reset installments for other types
+                  setSelectedInstallments(null);
                 }
               }}
               disabled={isLoadingPaymentMethods}
@@ -400,7 +457,7 @@ export const QuoteCalculator = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {currentPaymentMethod.installments
-                      .filter(inst => inst.rate > 0) // Filtrar parcelas com taxa > 0
+                      .filter(inst => inst.rate > 0)
                       .map((inst) => (
                         <SelectItem key={inst.installments} value={inst.installments.toString()}>
                           {inst.installments}x ({inst.rate.toFixed(2)}%)
@@ -441,7 +498,7 @@ export const QuoteCalculator = () => {
             </div>
             
             {/* Nova estrutura para Comparativo de Margem de Lucro e Preço */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2"> {/* Alterado para 3 colunas */}
               {/* Coluna de Valores Atuais */}
               <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
                 <div className="flex justify-between items-center">
