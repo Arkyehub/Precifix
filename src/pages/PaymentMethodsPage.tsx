@@ -38,7 +38,8 @@ const PaymentMethodsPage = () => {
       const { data: methodsData, error: methodsError } = await supabase
         .from('payment_methods')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }); // Adicionado ordenação por created_at
       if (methodsError) throw methodsError;
 
       const methodsWithInstallments = await Promise.all(methodsData.map(async (method) => {
