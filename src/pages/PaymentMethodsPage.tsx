@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, CreditCard, Pencil, Trash2, Loader2 } from "lucide-react";
@@ -9,6 +9,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PaymentMethodFormDialog, PaymentMethod, PaymentMethodInstallment } from "@/components/PaymentMethodFormDialog";
 
+const DEFAULT_PAYMENT_METHODS = [
+  { name: "Dinheiro", type: "cash", rate: 0.00 },
+  { name: "PIX", type: "pix", rate: 0.00 },
+  { name: "Cartão de Débito", type: "debit_card", rate: 2.00 }, // Exemplo de taxa inicial
+  { name: "Cartão de Crédito", type: "credit_card", rate: 0.00 }, // Taxa base, parcelas terão taxas específicas
+];
+
+const DEFAULT_CREDIT_INSTALLMENTS = Array.from({ length: 12 }, (_, i) => ({
+  installments: i + 1,
+  rate: 0.00, // Taxa inicial de 0% para todas as parcelas
+}));
+
 const PaymentMethodsPage = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -16,6 +28,7 @@ const PaymentMethodsPage = () => {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
+  const hasAddedDefaultPaymentMethodsRef = useRef(false);
 
   // Fetch payment methods with their installments
   const { data: paymentMethods, isLoading, error } = useQuery<PaymentMethod[]>({
@@ -47,6 +60,64 @@ const PaymentMethodsPage = () => {
     },
     enabled: !!user,
   });
+
+  const addDefaultPaymentMethodsMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const insertedMethods: PaymentMethod[] = [];
+      for (const defaultMethod of DEFAULT_PAYMENT_METHODS) {
+        const { data: methodData, error: methodError } = await supabase
+          .from('payment_methods')
+          .insert({ ...defaultMethod, user_id: userId })
+          .select()
+          .single();
+        if (methodError) throw methodError;
+        insertedMethods.push(methodData);
+
+        if (methodData.type === 'credit_card') {
+          const installmentsToInsert = DEFAULT_CREDIT_INSTALLMENTS.map(inst => ({
+            ...inst,
+            payment_method_id: methodData.id,
+          }));
+          const { error: installmentsError } = await supabase
+            .from('payment_method_installments')
+            .insert(installmentsToInsert);
+          if (installmentsError) throw installmentsError;
+        }
+      }
+      return insertedMethods;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paymentMethods', user?.id] });
+      toast({
+        title: "Formas de pagamento padrão adicionadas!",
+        description: "Você pode editá-las ou adicionar novas.",
+      });
+    },
+    onError: (err) => {
+      console.error("Error adding default payment methods:", err);
+      toast({
+        title: "Erro ao adicionar formas de pagamento padrão",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    const shouldAddDefaults =
+      user &&
+      !isLoading &&
+      !error &&
+      paymentMethods &&
+      paymentMethods.length === 0 &&
+      !addDefaultPaymentMethodsMutation.isPending &&
+      !hasAddedDefaultPaymentMethodsRef.current;
+
+    if (shouldAddDefaults) {
+      hasAddedDefaultPaymentMethodsRef.current = true;
+      addDefaultPaymentMethodsMutation.mutate(user.id);
+    }
+  }, [user, isLoading, error, paymentMethods, addDefaultPaymentMethodsMutation.isPending, addDefaultPaymentMethodsMutation]);
 
   const deletePaymentMethodMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -88,7 +159,7 @@ const PaymentMethodsPage = () => {
     deletePaymentMethodMutation.mutate(id);
   };
 
-  if (isLoading) {
+  if (isLoading || addDefaultPaymentMethodsMutation.isPending) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
