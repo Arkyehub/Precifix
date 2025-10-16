@@ -11,7 +11,8 @@ import ProductCatalogPage from "./pages/ProductCatalogPage";
 import ManageCostsPage from "./pages/ManageCostsPage";
 import QuoteGenerationPage from "./pages/QuoteGenerationPage";
 import ProfilePage from "./pages/ProfilePage";
-import SettingsPage from "./pages/SettingsPage"; // Importar a nova página de configurações
+import SettingsPage from "./pages/SettingsPage";
+import PaymentMethodsPage from "./pages/PaymentMethodsPage"; // Importar a nova página
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { Layout } from "./components/Layout";
 
@@ -59,6 +60,14 @@ const App = () => (
               } 
             />
             <Route 
+              path="/payment-methods" // Nova rota
+              element={
+                <Layout>
+                  <PaymentMethodsPage />
+                </Layout>
+              } 
+            />
+            <Route 
               path="/generate-quote" 
               element={
                 <Layout>
@@ -75,7 +84,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/settings" // Nova rota
+              path="/settings"
               element={
                 <Layout>
                   <SettingsPage />

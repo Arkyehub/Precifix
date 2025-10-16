@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Package, DollarSign, FileText, Sparkles, Calculator } from 'lucide-react'; // Removido Settings e UserIcon
+import { Car, Package, DollarSign, FileText, Sparkles, Calculator, CreditCard } from 'lucide-react'; // Adicionado CreditCard
 import { Separator } from '@/components/ui/separator';
 
 export const Sidebar = () => {
@@ -42,13 +42,19 @@ export const Sidebar = () => {
           Gerenciar Serviços
         </Link>
         <Link
+          to="/payment-methods" // Novo link
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+        >
+          <CreditCard className="h-4 w-4" />
+          Gerenciar Pagamentos
+        </Link>
+        <Link
           to="/generate-quote"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
         >
           <FileText className="h-4 w-4" />
           Gerar Orçamento
         </Link>
-        {/* Links para Meu Perfil e Configurações removidos daqui */}
       </nav>
       <Separator className="my-4" />
       <div className="px-4 text-xs text-muted-foreground">
