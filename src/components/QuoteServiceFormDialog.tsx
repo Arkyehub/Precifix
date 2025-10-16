@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { LoadHourlyCostButton } from './LoadHourlyCostButton';
 import { formatMinutesToHHMM, parseHHMMToMinutes, calculateProductCost, ProductForCalculation } from '@/lib/cost-calculations';
-import { Package, Pencil, Trash2, DollarSign, Clock, Receipt, Plus } from 'lucide-react'; // Importar Plus
+import { Package, Pencil, Trash2, DollarSign, Clock, Receipt, Plus } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatDilutionRatio } from '@/lib/cost-calculations';
 import { QuoteProductFormDialog } from './QuoteProductFormDialog';
@@ -226,7 +226,7 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
 
           {productCostCalculationMethod === 'per-service' && (
             <div className="space-y-2 pt-4 border-t border-border/50">
-              <div className="flex items-center justify-between mb-2"> {/* Adicionado justify-between */}
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary" />
                   <Label className="text-sm font-medium">Produtos Vinculados</Label>
@@ -236,7 +236,7 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
                   size="icon" 
                   className="text-primary hover:bg-primary/10" 
                   title="Adicionar produto"
-                  onClick={() => setIsAddProductToQuoteDialogOpen(true)} // Abrir o novo diálogo
+                  onClick={() => setIsAddProductToQuoteDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -256,7 +256,7 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="text-muted-foreground hover:text-primary" 
+                          className="text-muted-foreground hover:text-primary hover:bg-transparent" 
                           title="Editar produto"
                           onClick={() => handleEditProductForQuote(product)}
                         >
@@ -264,7 +264,7 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" title="Remover produto">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-transparent" title="Remover produto">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
