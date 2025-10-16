@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-// Removido import { Input } from '@/components/ui/input';
+// Removido import { Input } from '@/components/ui/input'; // Não estamos usando o componente Input do shadcn/ui
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Percent } from 'lucide-react';
 import { PaymentMethodInstallment } from './PaymentMethodFormDialog';
-import { cn } from '@/lib/utils'; // Importar cn para aplicar as classes do shadcn/ui
+// import { cn } from '@/lib/utils'; // Não estamos usando cn para este input específico
 
 interface CreditCardInstallmentRatesProps {
   initialInstallmentRates: PaymentMethodInstallment[];
@@ -50,6 +50,7 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
   }, [initialInstallmentRates]);
 
   const handleRateChange = (installmentNum: number, value: string) => {
+    console.log(`Input para ${installmentNum}x:`, value); // Log do valor bruto de entrada
     const newRates = rates.map(item => {
       if (item.installments === installmentNum) {
         // Substitui vírgula por ponto para o parseFloat
@@ -89,10 +90,19 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
               type="text" 
               value={item.inputValue} 
               onChange={(e) => handleRateChange(item.installments, e.target.value)}
-              className={cn( // Aplicando as classes de estilo do shadcn/ui
-                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                "flex-1 bg-background" // Classes específicas do componente
-              )}
+              // Estilos inline básicos para depuração
+              style={{
+                flex: 1,
+                height: '40px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid hsl(var(--input))',
+                backgroundColor: 'hsl(var(--background))',
+                color: 'hsl(var(--foreground))',
+                fontSize: '14px',
+                outline: 'none',
+                boxShadow: 'none',
+              }}
             />
             <span className="text-muted-foreground">%</span>
           </div>
