@@ -84,14 +84,12 @@ export const ServiceProfitabilitySummary = ({ services, productCostCalculationMe
                         <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Custo Mão de Obra Total:</span>
                         <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
 
-                        {productCostCalculationMethod === 'per-service' ? (
-                          <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos:</span>
-                        ) : (
-                          <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos (Média Mensal):</span>
+                        {productCostCalculationMethod === 'per-service' && (
+                          <>
+                            <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos:</span>
+                            <span className="text-foreground text-right">R$ {productsCost.toFixed(2)}</span>
+                          </>
                         )}
-                        <span className="text-foreground text-right">
-                          {productCostCalculationMethod === 'per-service' ? `R$ ${productsCost.toFixed(2)}` : 'N/A (Custo geral)'}
-                        </span>
 
                         <span className="text-muted-foreground flex items-center gap-1"><Receipt className="h-3 w-3" /> Outros Custos:</span>
                         <span className="text-foreground text-right">R$ {otherCosts.toFixed(2)}</span>
