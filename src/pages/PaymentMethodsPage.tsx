@@ -12,7 +12,7 @@ import { PaymentMethodFormDialog, PaymentMethod, PaymentMethodInstallment } from
 const DEFAULT_PAYMENT_METHODS = [
   { name: "Dinheiro", type: "cash", rate: 0.00 },
   { name: "PIX", type: "pix", rate: 0.00 },
-  { name: "Cartão de Débito", type: "debit_card", rate: 2.00 }, // Exemplo de taxa inicial
+  { name: "Cartão de Débito", type: "debit_card", rate: 0.00 }, // Alterado para 0.00%
   { name: "Cartão de Crédito", type: "credit_card", rate: 0.00 }, // Taxa base, parcelas terão taxas específicas
 ];
 
@@ -146,6 +146,50 @@ const PaymentMethodsPage = () => {
     },
   });
 
+  const resetPaymentMethodsMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      // 1. Delete all existing payment method installments for the user
+      const { error: deleteInstallmentsError } = await supabase
+        .from('payment_method_installments')
+        .delete()
+        .in('payment_method_id', paymentMethods?.map(pm => pm.id) || []); // Delete only for current user's methods
+      if (deleteInstallmentsError) {
+        console.error("Error deleting existing installments:", deleteInstallmentsError);
+        throw deleteInstallmentsError;
+      }
+
+      // 2. Delete all existing payment methods for the user
+      const { error: deleteMethodsError } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('user_id', user.id);
+      if (deleteMethodsError) {
+        console.error("Error deleting existing payment methods:", deleteMethodsError);
+        throw deleteMethodsError;
+      }
+
+      // 3. Re-add default payment methods
+      await addDefaultPaymentMethodsMutation.mutateAsync(user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paymentMethods', user?.id] });
+      toast({
+        title: "Formas de pagamento resetadas!",
+        description: "Todas as formas de pagamento foram restauradas para o padrão com taxas zeradas.",
+      });
+    },
+    onError: (err) => {
+      console.error("Error resetting payment methods:", err);
+      toast({
+        title: "Erro ao resetar formas de pagamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddPaymentMethod = () => {
     setEditingPaymentMethod(undefined);
     setIsFormDialogOpen(true);
@@ -160,7 +204,11 @@ const PaymentMethodsPage = () => {
     deletePaymentMethodMutation.mutate(id);
   };
 
-  if (isLoading || addDefaultPaymentMethodsMutation.isPending) {
+  const handleResetPaymentMethods = () => {
+    resetPaymentMethodsMutation.mutate();
+  };
+
+  if (isLoading || addDefaultPaymentMethodsMutation.isPending || resetPaymentMethodsMutation.isPending) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -174,16 +222,49 @@ const PaymentMethodsPage = () => {
     <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
-              <CreditCard className="h-5 w-5 text-primary-foreground" />
+          <div className="flex items-center justify-between"> {/* Adicionado justify-between aqui */}
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+                <CreditCard className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-foreground">Gerenciar Formas de Pagamento</CardTitle>
+                <CardDescription>
+                  Adicione e configure as formas de pagamento aceitas em sua estética.
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-foreground">Gerenciar Formas de Pagamento</CardTitle>
-              <CardDescription>
-                Adicione e configure as formas de pagamento aceitas em sua estética.
-              </CardDescription>
-            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive hover:bg-transparent"
+                  title="Resetar para formas de pagamento padrão"
+                  disabled={resetPaymentMethodsMutation.isPending}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-card">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Tem certeza que deseja resetar?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Todos os seus métodos de pagamento e taxas de parcelamento personalizados serão excluídos e substituídos pelos padrões do sistema (com taxas zeradas).
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={resetPaymentMethodsMutation.isPending}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleResetPaymentMethods} 
+                    disabled={resetPaymentMethodsMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {resetPaymentMethodsMutation.isPending ? "Resetando..." : "Resetar Tudo"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
