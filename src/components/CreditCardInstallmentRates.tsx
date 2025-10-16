@@ -10,31 +10,37 @@ interface CreditCardInstallmentRatesProps {
   onRatesChange: (rates: PaymentMethodInstallment[]) => void;
 }
 
+// Define a local interface para gerenciar o estado da string de entrada
+interface LocalInstallmentRate extends PaymentMethodInstallment {
+  inputValue: string;
+}
+
 export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesChange }: CreditCardInstallmentRatesProps) => {
-  const [rates, setRates] = useState<PaymentMethodInstallment[]>([]);
+  const [rates, setRates] = useState<LocalInstallmentRate[]>([]);
 
   useEffect(() => {
-    // Initialize with default 1-12 installments if no initial rates are provided
     if (initialInstallmentRates.length === 0) {
-      const defaultRates: PaymentMethodInstallment[] = Array.from({ length: 12 }, (_, i) => ({
-        id: `new-${i + 1}`, // Temporary ID for new entries
-        payment_method_id: '', // Will be filled on save
+      const defaultRates: LocalInstallmentRate[] = Array.from({ length: 12 }, (_, i) => ({
+        id: `new-${i + 1}`,
+        payment_method_id: '',
         installments: i + 1,
         rate: 0.00,
         created_at: new Date().toISOString(),
+        inputValue: '0.00', // Inicializa com string formatada
       }));
       setRates(defaultRates);
     } else {
-      // Ensure all 1-12 installments exist, fill missing with 0.00
       const existingInstallmentsMap = new Map(initialInstallmentRates.map(item => [item.installments, item]));
-      const fullRates: PaymentMethodInstallment[] = Array.from({ length: 12 }, (_, i) => {
+      const fullRates: LocalInstallmentRate[] = Array.from({ length: 12 }, (_, i) => {
         const installmentNum = i + 1;
-        return existingInstallmentsMap.get(installmentNum) || {
-          id: `new-${installmentNum}`,
-          payment_method_id: initialInstallmentRates[0]?.payment_method_id || '', // Use existing payment_method_id if available
+        const existing = existingInstallmentsMap.get(installmentNum);
+        return {
+          id: existing?.id || `new-${installmentNum}`,
+          payment_method_id: existing?.payment_method_id || initialInstallmentRates[0]?.payment_method_id || '',
           installments: installmentNum,
-          rate: 0.00,
-          created_at: new Date().toISOString(),
+          rate: existing?.rate || 0.00,
+          created_at: existing?.created_at || new Date().toISOString(),
+          inputValue: (existing?.rate || 0.00).toFixed(2), // Inicializa com string formatada
         };
       });
       setRates(fullRates);
@@ -42,13 +48,21 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
   }, [initialInstallmentRates]);
 
   const handleRateChange = (installmentNum: number, value: string) => {
-    const newRates = rates.map(item =>
-      item.installments === installmentNum
-        ? { ...item, rate: parseFloat(value) || 0 }
-        : item
-    );
+    const newRates = rates.map(item => {
+      if (item.installments === installmentNum) {
+        // Permite string vazia ou string com apenas um ponto para digitação
+        const parsedValue = value === '' || value === '.' ? 0 : parseFloat(value);
+        return {
+          ...item,
+          rate: isNaN(parsedValue) ? 0 : parsedValue,
+          inputValue: value, // Mantém a string bruta para o campo de entrada
+        };
+      }
+      return item;
+    });
     setRates(newRates);
-    onRatesChange(newRates);
+    // Passa os objetos PaymentMethodInstallment reais para o pai
+    onRatesChange(newRates.map(({ inputValue, ...rest }) => rest));
   };
 
   return (
@@ -68,9 +82,9 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
             </Label>
             <Input
               id={`installments-${item.installments}`}
-              type="number"
-              step="0.01"
-              value={item.rate.toFixed(2)}
+              type="text" // Alterado para 'text'
+              inputMode="decimal" // Sugere teclado decimal em dispositivos móveis
+              value={item.inputValue} // Usa o valor da string
               onChange={(e) => handleRateChange(item.installments, e.target.value)}
               className="flex-1 bg-background"
             />
