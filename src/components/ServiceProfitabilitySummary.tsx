@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Percent, BarChart3, Car, Clock, Tag } from "lucide-react";
+import { DollarSign, Percent, BarChart3, Car, Clock, Tag, SprayCan, Receipt, Users } from "lucide-react"; // Importados SprayCan, Receipt, Users
 import { Service } from "@/components/ServiceFormDialog";
 import { calculateProductCost, ProductForCalculation, formatMinutesToHHMM } from '@/lib/cost-calculations';
 
@@ -61,20 +61,19 @@ export const ServiceProfitabilitySummary = ({ services }: ServiceProfitabilitySu
                   <div className="p-3 rounded-md bg-gradient-to-r from-mediumslateblue/10 to-mediumslateblue/5 border border-mediumslateblue/30">
                     <h5 className="font-semibold text-mediumslateblue mb-2">Detalhes do Lucro</h5>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                      {/* Ordem invertida aqui */}
                       <span className="text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" /> Custo Mão de Obra/Hora:</span>
                       <span className="text-foreground text-right">R$ {service.labor_cost_per_hour.toFixed(2)}</span>
 
                       <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Tempo de Execução:</span>
                       <span className="text-foreground text-right">{formatMinutesToHHMM(service.execution_time_minutes)}</span>
 
-                      <span className="text-muted-foreground">Custo Mão de Obra Total:</span>
+                      <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Custo Mão de Obra Total:</span>
                       <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
 
-                      <span className="text-muted-foreground">Custo Produtos:</span>
+                      <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos:</span>
                       <span className="text-foreground text-right">R$ {productsCost.toFixed(2)}</span>
 
-                      <span className="text-muted-foreground">Outros Custos:</span>
+                      <span className="text-muted-foreground flex items-center gap-1"><Receipt className="h-3 w-3" /> Outros Custos:</span>
                       <span className="text-foreground text-right">R$ {otherCosts.toFixed(2)}</span>
 
                       <div className="col-span-2 border-t border-border/50 my-1"></div>
