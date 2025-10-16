@@ -53,7 +53,7 @@ export const QuoteCalculator = () => {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]);
   const [otherCostsGlobal, setOtherCostsGlobal] = useState(0);
-  const [profitMargin, setProfitMargin] = useState(40);
+  const [profitMargin, setProfitMargin] = useState(40); // Esta será a margem de lucro DESEJADA
   const [displayProfitMargin, setDisplayProfitMargin] = useState('40,00');
 
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
@@ -233,15 +233,22 @@ export const QuoteCalculator = () => {
   const totalOtherCosts = quotedServices.reduce((sum, service) => 
     sum + (service.quote_other_costs ?? service.other_costs), 0);
 
-  // Calculate total cost
+  // Calculate total cost (soma de todos os custos operacionais e de produtos)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
 
-  // Calculate final price (before payment fee)
-  const finalPriceBeforeFee = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
+  // NOVO: Calcular o Valor Atual à Receber (soma dos preços de venda dos serviços)
+  const totalChargedValue = quotedServices.reduce((sum, service) => 
+    sum + (service.quote_price ?? service.price), 0);
+
+  // NOVO: Calcular a Margem de Lucro Atual
+  const currentProfitMarginPercentage = totalChargedValue > 0 ? ((totalChargedValue - totalCost) / totalChargedValue) * 100 : 0;
+
+  // NOVO: Calcular o Preço Sugerido com base na Margem de Lucro Desejada
+  const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   // Effect to calculate payment fee
   useEffect(() => {
-    if (!selectedPaymentMethodId || !paymentMethods || finalPriceBeforeFee <= 0) {
+    if (!selectedPaymentMethodId || !paymentMethods || totalChargedValue <= 0) { // Usar totalChargedValue como base
       setPaymentFee(0);
       return;
     }
@@ -256,17 +263,17 @@ export const QuoteCalculator = () => {
     if (method.type === 'cash' || method.type === 'pix') {
       calculatedFee = 0;
     } else if (method.type === 'debit_card') {
-      calculatedFee = finalPriceBeforeFee * (method.rate / 100);
+      calculatedFee = totalChargedValue * (method.rate / 100);
     } else if (method.type === 'credit_card') {
       const rateToApply = selectedInstallments 
         ? method.installments?.find(inst => inst.installments === selectedInstallments)?.rate || 0
         : method.installments?.find(inst => inst.installments === 1)?.rate || 0; // Default to 1x if no installments selected
-      calculatedFee = finalPriceBeforeFee * (rateToApply / 100);
+      calculatedFee = totalChargedValue * (rateToApply / 100);
     }
     setPaymentFee(calculatedFee);
-  }, [finalPriceBeforeFee, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
+  }, [totalChargedValue, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
-  const finalPriceWithFee = finalPriceBeforeFee + paymentFee;
+  const finalPriceWithFee = totalChargedValue + paymentFee; // O preço final é o valor cobrado + taxa
 
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
 
@@ -433,14 +440,21 @@ export const QuoteCalculator = () => {
               </div>
             </div>
             
-            {/* Nova estrutura para Margem de Lucro e Preço Sugerido */}
+            {/* Nova estrutura para Comparativo de Margem de Lucro e Preço */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              {/* Coluna de Valores Atuais */}
               <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-foreground">Preço Sugerido ao Cliente:</span>
-                  <span className="text-3xl font-bold text-accent">R$ {finalPriceBeforeFee.toFixed(2)}</span>
+                  <span className="font-medium text-foreground">Valor Atual à Receber:</span>
+                  <span className="text-3xl font-bold text-accent">R$ {totalChargedValue.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="font-medium text-foreground">Margem de Lucro Atual:</span>
+                  <span className="text-xl font-bold text-accent">{currentProfitMarginPercentage.toFixed(1)}%</span>
                 </div>
               </div>
+
+              {/* Coluna de Margem Desejada e Preço Sugerido */}
               <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50">
                 <div className="space-y-2">
                   <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
@@ -459,8 +473,12 @@ export const QuoteCalculator = () => {
                     className="bg-background text-lg font-semibold"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Ajuste a margem em tempo real e veja o impacto no preço final
+                    Ajuste a margem para ver um preço sugerido.
                   </p>
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
+                  <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
                 </div>
               </div>
             </div>
