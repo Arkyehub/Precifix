@@ -17,6 +17,7 @@ export interface Service {
   price: number;
   labor_cost_per_hour: number;
   execution_time_minutes: number;
+  other_costs: number; // Novo campo
   user_id: string;
   products?: { 
     id: string; 
@@ -64,6 +65,7 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
   const [price, setPrice] = useState(service?.price.toFixed(2) || '');
   const [laborCostPerHour, setLaborCostPerHour] = useState(service?.labor_cost_per_hour.toFixed(2) || '');
   const [executionTimeHHMM, setExecutionTimeHHMM] = useState(formatMinutesToHHMM(service?.execution_time_minutes || 0));
+  const [otherCosts, setOtherCosts] = useState(service?.other_costs.toFixed(2) || ''); // Novo estado
 
   useEffect(() => {
     if (service) {
@@ -72,12 +74,14 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       setPrice(service.price.toFixed(2));
       setLaborCostPerHour(service.labor_cost_per_hour.toFixed(2));
       setExecutionTimeHHMM(formatMinutesToHHMM(service.execution_time_minutes));
+      setOtherCosts(service.other_costs.toFixed(2)); // Definir valor para edição
     } else {
       setName('');
       setDescription('');
       setPrice('');
       setLaborCostPerHour('');
       setExecutionTimeHHMM('00:00');
+      setOtherCosts(''); // Limpar valor para novo serviço
     }
   }, [service, isOpen]);
 
@@ -98,6 +102,7 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
             price: newService.price,
             labor_cost_per_hour: newService.labor_cost_per_hour,
             execution_time_minutes: finalExecutionTimeMinutes,
+            other_costs: newService.other_costs, // Incluir outros custos
           })
           .eq('id', newService.id)
           .eq('user_id', user.id)
@@ -115,6 +120,7 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
             price: newService.price, 
             labor_cost_per_hour: newService.labor_cost_per_hour,
             execution_time_minutes: finalExecutionTimeMinutes,
+            other_costs: newService.other_costs, // Incluir outros custos
             user_id: user.id 
           })
           .select()
@@ -175,6 +181,15 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       });
       return;
     }
+    // Validação para Outros Custos
+    if (otherCosts && (isNaN(parseFloat(otherCosts)) || parseFloat(otherCosts) < 0)) {
+      toast({
+        title: "Outros Custos inválidos",
+        description: "O valor de 'Outros Custos' deve ser um número positivo.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     upsertServiceMutation.mutate({
       id: service?.id,
@@ -183,6 +198,7 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
       price: parseFloat(price),
       labor_cost_per_hour: parseFloat(laborCostPerHour),
       execution_time_minutes: parsedExecutionTime,
+      other_costs: parseFloat(otherCosts) || 0, // Usar 0 se vazio
       user_id: user!.id,
     });
   };
@@ -229,6 +245,18 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
               value={executionTimeHHMM} 
               onChange={(e) => setExecutionTimeHHMM(e.target.value)} 
               className="bg-background" 
+            />
+          </div>
+          <div className="space-y-2"> {/* Novo campo para Outros Custos */}
+            <Label htmlFor="other-costs">Outros Custos (R$)</Label>
+            <Input 
+              id="other-costs" 
+              type="number" 
+              step="0.01" 
+              value={otherCosts} 
+              onChange={(e) => setOtherCosts(e.target.value)} 
+              className="bg-background" 
+              placeholder="Ex: 15.00 (custos adicionais)"
             />
           </div>
         </div>
