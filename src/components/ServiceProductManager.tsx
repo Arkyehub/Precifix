@@ -147,7 +147,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                               <div className="mt-2 space-y-1">
                                 {product.type === 'diluted' && product.container_size > 0 && (
                                   <p className="text-sm text-primary-strong font-medium">
-                                    Custo/Recipiente diluído: R$ {costPerContainer.toFixed(4)}
+                                    Custo/Recipiente diluído: R$ {costPerContainer.toFixed(2)}
                                   </p>
                                 )}
                                 <p className="text-sm text-primary-strong font-bold">
