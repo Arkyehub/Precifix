@@ -33,6 +33,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['hasLinkedProducts', user?.id] }); // Invalidate hasLinkedProducts
       toast({
         title: "Produto desvinculado!",
         description: "O produto foi removido do serviço.",

@@ -173,6 +173,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services', user?.id] }); // Invalidate services to refetch product links
+      queryClient.invalidateQueries({ queryKey: ['hasLinkedProducts', user?.id] }); // Invalidate hasLinkedProducts
       toast({
         title: "Produto vinculado!",
         description: "O produto foi adicionado/atualizado no serviço.",
