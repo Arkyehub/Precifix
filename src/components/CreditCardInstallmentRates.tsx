@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-// Removido import { Input } from '@/components/ui/input'; // Não estamos usando o componente Input do shadcn/ui
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Percent } from 'lucide-react';
 import { PaymentMethodInstallment } from './PaymentMethodFormDialog';
-// import { cn } from '@/lib/utils'; // Não estamos usando cn para este input específico
 
 interface CreditCardInstallmentRatesProps {
   initialInstallmentRates: PaymentMethodInstallment[];
   onRatesChange: (rates: PaymentMethodInstallment[]) => void;
 }
 
-// Define a local interface para gerenciar o estado da string de entrada
 interface LocalInstallmentRate extends PaymentMethodInstallment {
   inputValue: string;
 }
@@ -27,7 +24,7 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
         installments: i + 1,
         rate: 0.00,
         created_at: new Date().toISOString(),
-        inputValue: '', // Inicializa com string vazia para novas entradas
+        inputValue: '',
       }));
       setRates(defaultRates);
     } else {
@@ -41,8 +38,7 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
           installments: installmentNum,
           rate: existing?.rate || 0.00,
           created_at: existing?.created_at || new Date().toISOString(),
-          // Inicializa inputValue: se a taxa for 0 ou undefined, começa com string vazia, caso contrário, usa sua representação em string
-          inputValue: (existing?.rate === 0 || existing?.rate === undefined) ? '' : (existing.rate).toString().replace('.', ','), // Substitui ponto por vírgula para exibição
+          inputValue: (existing?.rate === 0 || existing?.rate === undefined) ? '' : (existing.rate).toString().replace('.', ','),
         };
       });
       setRates(fullRates);
@@ -50,23 +46,21 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
   }, [initialInstallmentRates]);
 
   const handleRateChange = (installmentNum: number, value: string) => {
-    console.log(`Input para ${installmentNum}x:`, value); // Log do valor bruto de entrada
+    console.log(`Input para ${installmentNum}x:`, value);
     const newRates = rates.map(item => {
       if (item.installments === installmentNum) {
-        // Substitui vírgula por ponto para o parseFloat
         const parsedValueString = value.replace(',', '.');
         const parsedValue = parseFloat(parsedValueString);
         
         return {
           ...item,
-          rate: isNaN(parsedValue) ? 0 : parsedValue, // Define a taxa como 0 se a entrada não for um número válido
-          inputValue: value, // Mantém a string bruta para o campo de entrada (com vírgula se digitada)
+          rate: isNaN(parsedValue) ? 0 : parsedValue,
+          inputValue: value,
         };
       }
       return item;
     });
     setRates(newRates);
-    // Passa os objetos PaymentMethodInstallment reais para o pai
     onRatesChange(newRates.map(({ inputValue, ...rest }) => rest));
   };
 
@@ -85,25 +79,45 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
             <Label htmlFor={`installments-${item.installments}`} className="w-10 text-right">
               {item.installments}x:
             </Label>
-            <input // Usando input nativo do HTML
-              id={`installments-${item.installments}`}
-              type="text" 
-              value={item.inputValue} 
-              onChange={(e) => handleRateChange(item.installments, e.target.value)}
-              // Estilos inline básicos para depuração
-              style={{
-                flex: 1,
-                height: '40px',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid hsl(var(--input))',
-                backgroundColor: 'hsl(var(--background))',
-                color: 'hsl(var(--foreground))',
-                fontSize: '14px',
-                outline: 'none',
-                boxShadow: 'none',
-              }}
-            />
+            {item.installments === 1 ? ( // Torna o primeiro input não controlado para teste
+              <input
+                id={`installments-${item.installments}`}
+                type="text"
+                defaultValue={item.inputValue} // Usa defaultValue para input não controlado
+                onBlur={(e) => handleRateChange(item.installments, e.target.value)} // Atualiza no onBlur
+                style={{
+                  flex: 1,
+                  height: '40px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid hsl(var(--input))',
+                  backgroundColor: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: 'none',
+                }}
+              />
+            ) : ( // Mantém os outros inputs controlados
+              <input
+                id={`installments-${item.installments}`}
+                type="text"
+                value={item.inputValue}
+                onChange={(e) => handleRateChange(item.installments, e.target.value)}
+                style={{
+                  flex: 1,
+                  height: '40px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid hsl(var(--input))',
+                  backgroundColor: 'hsl(var(--background))',
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: 'none',
+                }}
+              />
+            )}
             <span className="text-muted-foreground">%</span>
           </div>
         ))}
