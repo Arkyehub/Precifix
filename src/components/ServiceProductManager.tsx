@@ -121,7 +121,7 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                                 onClick={() => onAddProductToService(service.id, product.id)} // Chamada para editar produto vinculado
                               >
                                 {product.name}
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
+                                <span className={`ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 ${product.type === 'ready-to-use' ? 'text-blue-800' : 'text-primary-strong'}`}>
                                   {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
                                 </span>
                               </h5>
