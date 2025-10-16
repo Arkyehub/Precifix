@@ -18,8 +18,7 @@ export const ProductCostCalculationMethod = () => {
   const navigate = useNavigate();
 
   const [isConfirmSwitchToPerServiceDialogOpen, setIsConfirmSwitchToPerServiceDialogOpen] = useState(false);
-  const [isConfirmSwitchToMonthlyDialogOpen, setIsConfirmSwitchToMonthlyDialogOpen] = useState(false);
-  const [isClearingLinks, setIsClearingLinks] = useState(false);
+  // Removido isConfirmSwitchToMonthlyDialogOpen e isClearingLinks
 
   // Query para verificar a existência de "Produtos Gastos no Mês"
   const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost, refetch: refetchMonthlyCostItem } = useQuery<OperationalCost | null>({
@@ -41,39 +40,7 @@ export const ProductCostCalculationMethod = () => {
     enabled: !!user,
   });
 
-  // Query para verificar se existem produtos vinculados a serviços
-  const { data: hasLinkedProducts, isLoading: isLoadingLinkedProducts, refetch: refetchHasLinkedProducts } = useQuery<boolean>({
-    queryKey: ['hasLinkedProducts', user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data: userServices, error: fetchServicesError } = await supabase
-        .from('services')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (fetchServicesError) {
-        console.error("Error fetching user services to check for linked products:", fetchServicesError);
-        return false;
-      }
-
-      const serviceIds = userServices.map(s => s.id);
-
-      if (serviceIds.length === 0) return false; // If no services, no linked products possible
-
-      const { count, error } = await supabase
-        .from('service_product_links')
-        .select('id', { count: 'exact', head: true })
-        .in('service_id', serviceIds)
-        .limit(1); // Just need to know if at least one exists
-      
-      if (error) {
-        console.error("Error checking for linked products:", error);
-        return false;
-      }
-      return (count || 0) > 0;
-    },
-    enabled: !!user,
-  });
+  // Removido a query hasLinkedProducts
 
   // Estado derivado para o método de cálculo
   const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
@@ -108,63 +75,7 @@ export const ProductCostCalculationMethod = () => {
     },
   });
 
-  // Mutação para limpar todos os vínculos de produtos (usado ao mudar para 'monthly-average')
-  const clearAllProductLinksForMonthlyModeMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      setIsClearingLinks(true); // Inicia o carregamento
-      const { data: userServices, error: fetchError } = await supabase
-        .from('services')
-        .select('id')
-        .eq('user_id', userId);
-
-      if (fetchError) throw fetchError;
-
-      const serviceIds = userServices.map(s => s.id);
-
-      if (serviceIds.length > 0) {
-        const { error: deleteLinksError } = await supabase
-          .from('service_product_links')
-          .delete()
-          .in('service_id', serviceIds);
-        if (deleteLinksError) throw deleteLinksError;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['hasLinkedProducts', user?.id] }); // Invalidar a query de verificação de links
-      toast({
-        title: "Vínculos de produtos limpos!",
-        description: "Todos os produtos foram desvinculados dos seus serviços.",
-      });
-      setIsConfirmSwitchToMonthlyDialogOpen(false); // Fecha o diálogo de confirmação
-      setIsClearingLinks(false); // Finaliza o carregamento
-      // Agora navega para gerenciar custos
-      if (productsMonthlyCostItem) {
-        navigate('/manage-costs', {
-          state: {
-            editingCostId: productsMonthlyCostItem.id,
-          },
-        });
-      } else {
-        navigate('/manage-costs', {
-          state: {
-            openAddCostDialog: true,
-            defaultDescription: 'Produtos Gastos no Mês',
-            defaultType: 'variable',
-          },
-        });
-      }
-    },
-    onError: (err) => {
-      console.error("Error clearing product links for monthly mode:", err);
-      toast({
-        title: "Erro ao limpar vínculos de produtos",
-        description: err.message,
-        variant: "destructive",
-      });
-      setIsClearingLinks(false); // Finaliza o carregamento
-    },
-  });
+  // Removido a mutação clearAllProductLinksForMonthlyModeMutation
 
   const handleConfirmSwitchToPerService = () => {
     if (productsMonthlyCostItem?.id) {
@@ -182,40 +93,34 @@ export const ProductCostCalculationMethod = () => {
       return;
     }
 
-    // Trigger refetch for both queries and await their completion
+    // Trigger refetch for productsMonthlyCostItem and await its completion
     await refetchMonthlyCostItem();
-    await refetchHasLinkedProducts();
 
     // Get the latest data directly from the query client's cache after refetch
     const latestProductsMonthlyCostItem = queryClient.getQueryData<OperationalCost | null>(['productsMonthlyCostItem', user?.id]);
-    const latestHasLinkedProducts = queryClient.getQueryData<boolean>(['hasLinkedProducts', user?.id]);
 
     console.log("Latest productsMonthlyCostItem (after refetch):", latestProductsMonthlyCostItem);
-    console.log("Latest hasLinkedProducts (after refetch):", latestHasLinkedProducts);
 
     if (value === 'monthly-average') {
-      if (latestHasLinkedProducts) { // Use the freshly fetched value
-        setIsConfirmSwitchToMonthlyDialogOpen(true);
-      } else {
-        toast({
-          title: "Método de cálculo alterado!",
-          description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
+      // Não precisa verificar hasLinkedProducts nem abrir diálogo de confirmação para apagar vínculos
+      toast({
+        title: "Método de cálculo alterado!",
+        description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
+      });
+      if (latestProductsMonthlyCostItem) {
+        navigate('/manage-costs', {
+          state: {
+            editingCostId: latestProductsMonthlyCostItem.id,
+          },
         });
-        if (latestProductsMonthlyCostItem) {
-          navigate('/manage-costs', {
-            state: {
-              editingCostId: latestProductsMonthlyCostItem.id,
-            },
-          });
-        } else {
-          navigate('/manage-costs', {
-            state: {
-              openAddCostDialog: true,
-              defaultDescription: 'Produtos Gastos no Mês',
-              defaultType: 'variable',
-            },
-          });
-        }
+      } else {
+        navigate('/manage-costs', {
+          state: {
+            openAddCostDialog: true,
+            defaultDescription: 'Produtos Gastos no Mês',
+            defaultType: 'variable',
+          },
+        });
       }
     } else { // Attempting to switch to 'per-service'
       if (latestProductsMonthlyCostItem) { // Use the freshly fetched value
@@ -225,7 +130,7 @@ export const ProductCostCalculationMethod = () => {
     }
   };
 
-  if (isLoadingMonthlyCost || isLoadingLinkedProducts) {
+  if (isLoadingMonthlyCost) { // Removido isLoadingLinkedProducts
     return (
       <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
         <CardHeader>
@@ -265,7 +170,7 @@ export const ProductCostCalculationMethod = () => {
             <RadioGroupItem 
               value="per-service" 
               id="per-service" 
-              disabled={isLoadingMonthlyCost || isLoadingLinkedProducts} 
+              disabled={isLoadingMonthlyCost} // Removido isLoadingLinkedProducts
             />
             <Label htmlFor="per-service" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Detalhado</strong> (Para cada Serviço)</h4>
@@ -279,7 +184,7 @@ export const ProductCostCalculationMethod = () => {
             <RadioGroupItem 
               value="monthly-average" 
               id="monthly-average" 
-              disabled={isLoadingMonthlyCost || isLoadingLinkedProducts} 
+              disabled={isLoadingMonthlyCost} // Removido isLoadingLinkedProducts
             />
             <Label htmlFor="monthly-average" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Simplificado</strong> (Média Mensal)</h4>
@@ -315,33 +220,7 @@ export const ProductCostCalculationMethod = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Diálogo de Confirmação para mudar para Cálculo Simplificado (Mensal) */}
-      <AlertDialog open={isConfirmSwitchToMonthlyDialogOpen} onOpenChange={setIsConfirmSwitchToMonthlyDialogOpen}>
-        <AlertDialogContent className="bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Alteração da Fórmula de Cálculo?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ao mudar para "Cálculo Simplificado (Média Mensal)", todos os produtos vinculados aos seus serviços serão
-              <span className="font-bold text-destructive"> permanentemente apagados</span>.
-              Você realmente deseja continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isClearingLinks}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => user && clearAllProductLinksForMonthlyModeMutation.mutate(user.id)} 
-              disabled={isClearingLinks}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isClearingLinks ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                "Continuar e Apagar Vínculos"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Removido Diálogo de Confirmação para mudar para Cálculo Simplificado (Mensal) */}
     </Card>
   );
 };
