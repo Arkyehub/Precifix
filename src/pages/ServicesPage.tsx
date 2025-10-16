@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Info, Loader2 } from "lucide-react"; // Removido Eye, EyeOff, Clock, DollarSign as DollarIcon
+import { Plus, Car, Pencil, Trash2, Info, Loader2 } from "lucide-react"; // Removido Eraser, Eye, EyeOff, Clock, DollarSign as DollarIcon
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -198,49 +198,7 @@ const ServicesPage = () => {
     },
   });
 
-  const clearAllServicesMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Usuário não autenticado.");
-      const { data: userServices, error: fetchError } = await supabase
-        .from('services')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (fetchError) throw fetchError;
-
-      const serviceIds = userServices.map(s => s.id);
-
-      if (serviceIds.length > 0) {
-        const { error: deleteLinksError } = await supabase
-          .from('service_product_links')
-          .delete()
-          .in('service_id', serviceIds);
-        if (deleteLinksError) throw deleteLinksError;
-      }
-
-      const { error } = await supabase
-        .from('services')
-        .delete()
-        .eq('user_id', user.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['services', user?.id] });
-      toast({
-        title: "Serviços limpos!",
-        description: "Todos os seus serviços foram removidos.",
-      });
-      hasAddedDefaultServicesRef.current = false;
-    },
-    onError: (err) => {
-      console.error("Error clearing all services:", err);
-      toast({
-        title: "Erro ao limpar serviços",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
+  // Removido clearAllServicesMutation e handleClearAllServices
 
   const handleAddService = () => {
     setEditingService(undefined);
@@ -254,10 +212,6 @@ const ServicesPage = () => {
 
   const handleDeleteService = (id: string) => {
     deleteServiceMutation.mutate(id);
-  };
-
-  const handleClearAllServices = () => {
-    clearAllServicesMutation.mutate();
   };
 
   const handleAddProductToService = (serviceId: string, productId: string | null = null) => {
@@ -317,13 +271,13 @@ const ServicesPage = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           {services && services.length > 0 ? (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Serviços Cadastrados</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            <div className="space-y-2"> {/* Espaçamento diminuído */}
+              <h3 className="text-sm font-semibold text-foreground mb-2">Serviços Cadastrados</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2"> {/* Espaçamento diminuído */}
                 {services.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg" // Removido hover:bg-muted/50 transition-colors
                   >
                     <div className="flex-1 flex items-center gap-2">
                       <span className="font-medium text-foreground">{service.name}</span>
@@ -334,7 +288,7 @@ const ServicesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditService(service)}
-                        className="text-muted-foreground hover:text-primary"
+                        className="text-muted-foreground hover:text-primary" // Ícone muda para primário
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -343,7 +297,7 @@ const ServicesPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-muted-foreground hover:text-destructive"
+                            className="text-muted-foreground hover:text-destructive" // Ícone muda para destrutivo
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -382,34 +336,7 @@ const ServicesPage = () => {
             Adicionar Novo Serviço
           </Button>
 
-          {services && services.length > 0 && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full mt-4 border-destructive text-destructive hover:bg-destructive/10"
-                  disabled={clearAllServicesMutation.isPending}
-                >
-                  <Eraser className="mr-2 h-4 w-4" />
-                  {clearAllServicesMutation.isPending ? "Limpando..." : "Limpar Todos os Serviços"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-card">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Tem certeza que deseja limpar TUDO?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação é irreversível e excluirá permanentemente TODOS os seus serviços cadastrados.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearAllServices} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Sim, Limpar Tudo
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          {/* Botão "Limpar Todos os Serviços" removido */}
         </CardContent>
       </Card>
 
