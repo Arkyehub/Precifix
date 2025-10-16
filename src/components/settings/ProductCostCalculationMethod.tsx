@@ -183,25 +183,28 @@ export const ProductCostCalculationMethod = () => {
     }
 
     // Trigger refetch for both queries and await their completion
-    // This ensures `productsMonthlyCostItem` and `hasLinkedProducts` are up-to-date
     await refetchMonthlyCostItem();
     await refetchHasLinkedProducts();
 
-    // Now, `productsMonthlyCostItem` and `hasLinkedProducts` will reflect the latest data
-    // We can use them directly for the decision logic.
+    // Get the latest data directly from the query client's cache after refetch
+    const latestProductsMonthlyCostItem = queryClient.getQueryData<OperationalCost | null>(['productsMonthlyCostItem', user?.id]);
+    const latestHasLinkedProducts = queryClient.getQueryData<boolean>(['hasLinkedProducts', user?.id]);
+
+    console.log("Latest productsMonthlyCostItem (after refetch):", latestProductsMonthlyCostItem);
+    console.log("Latest hasLinkedProducts (after refetch):", latestHasLinkedProducts);
 
     if (value === 'monthly-average') {
-      if (hasLinkedProducts) { // This `hasLinkedProducts` now has the latest refetched data
+      if (latestHasLinkedProducts) { // Use the freshly fetched value
         setIsConfirmSwitchToMonthlyDialogOpen(true);
       } else {
         toast({
           title: "Método de cálculo alterado!",
           description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
         });
-        if (productsMonthlyCostItem) { // This `productsMonthlyCostItem` now has the latest refetched data
+        if (latestProductsMonthlyCostItem) {
           navigate('/manage-costs', {
             state: {
-              editingCostId: productsMonthlyCostItem.id,
+              editingCostId: latestProductsMonthlyCostItem.id,
             },
           });
         } else {
@@ -215,7 +218,7 @@ export const ProductCostCalculationMethod = () => {
         }
       }
     } else { // Attempting to switch to 'per-service'
-      if (productsMonthlyCostItem) { // This `productsMonthlyCostItem` now has the latest refetched data
+      if (latestProductsMonthlyCostItem) { // Use the freshly fetched value
         setIsConfirmSwitchToPerServiceDialogOpen(true);
       }
       // If 'Produtos Gastos no Mês' does not exist, the state is already 'per-service', no action is needed.
