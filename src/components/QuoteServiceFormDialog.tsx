@@ -170,11 +170,11 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-card">
+      <DialogContent className="sm:max-w-[500px] bg-card flex flex-col max-h-[90vh]"> {/* Adicionado flex-col e max-h */}
         <DialogHeader>
           <DialogTitle>Editar Serviço para Orçamento: {service.name}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 overflow-y-auto flex-1"> {/* Adicionado overflow-y-auto e flex-1 */}
           <div className="space-y-2">
             <Label htmlFor="quote-price">Valor Cobrado (R$) *</Label>
             <Input 
