@@ -50,6 +50,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
   const [usagePerVehicle, setUsagePerVehicle] = useState('');
   const [selectedProductDetails, setSelectedProductDetails] = useState<CatalogProduct | null>(null);
   const [editableDilutionRatioInput, setEditableDilutionRatioInput] = useState(''); // New state for editable dilution
+  const [containerSize, setContainerSize] = useState(''); // Novo estado para container_size
 
   // Fetch product catalog
   const { data: catalogProducts, isLoading: isLoadingCatalog } = useQuery<CatalogProduct[]>({
@@ -73,6 +74,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
       setUsagePerVehicle('');
       setSelectedProductDetails(null);
       setEditableDilutionRatioInput(''); // Reset editable dilution
+      setContainerSize(''); // Reset container size
     } else if (productId && serviceId) {
       // Se estamos editando um vínculo existente
       setSelectedProductId(productId);
@@ -83,6 +85,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
       setUsagePerVehicle('');
       setSelectedProductDetails(null);
       setEditableDilutionRatioInput('');
+      setContainerSize('');
     }
   }, [isOpen, productId, serviceId]);
 
@@ -98,7 +101,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
         if (serviceId && productId === selectedProductId) { // Verificar se o productId corresponde ao selecionado
           supabase
             .from('service_product_links')
-            .select('usage_per_vehicle, dilution_ratio')
+            .select('usage_per_vehicle, dilution_ratio, container_size')
             .eq('service_id', serviceId)
             .eq('product_id', product.id)
             .single()
@@ -106,6 +109,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
               if (data) {
                 setUsagePerVehicle(data.usage_per_vehicle?.toFixed(0) || ''); // Usage per vehicle can be integer
                 setEditableDilutionRatioInput(formatDilutionRatioForInput(data.dilution_ratio || 0));
+                setContainerSize(data.container_size?.toFixed(0) || ''); // Set container size
               } else if (error && (error as any).code !== 'PGRST116') {
                 console.error("Error fetching existing product link details:", error);
               }
@@ -113,21 +117,24 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
         } else {
           // Se não é um vínculo existente ou o produto selecionado mudou, limpar os campos de uso e diluição
           setUsagePerVehicle('');
+          setContainerSize(''); // Clear container size
           // A diluição já foi definida para o padrão do catálogo acima
         }
       } else {
         setEditableDilutionRatioInput('');
         setUsagePerVehicle('');
+        setContainerSize('');
       }
     } else {
       setSelectedProductDetails(null);
       setEditableDilutionRatioInput('');
       setUsagePerVehicle('');
+      setContainerSize('');
     }
   }, [selectedProductId, catalogProducts, serviceId, productId]);
 
   const addProductLinkMutation = useMutation({
-    mutationFn: async ({ serviceId, productId, usage, dilution }: { serviceId: string; productId: string; usage: number; dilution: number }) => {
+    mutationFn: async ({ serviceId, productId, usage, dilution, containerSize }: { serviceId: string; productId: string; usage: number; dilution: number; containerSize: number }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
       // Check if link already exists using the composite key
@@ -146,7 +153,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
         // Update existing link using the composite key
         const { data, error } = await supabase
           .from('service_product_links')
-          .update({ usage_per_vehicle: usage, dilution_ratio: dilution }) // Update dilution_ratio
+          .update({ usage_per_vehicle: usage, dilution_ratio: dilution, container_size: containerSize }) // Update dilution_ratio and container_size
           .eq('service_id', serviceId)
           .eq('product_id', productId)
           .select()
@@ -157,7 +164,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
         // Insert new link
         const { data, error } = await supabase
           .from('service_product_links')
-          .insert({ service_id: serviceId, product_id: productId, usage_per_vehicle: usage, dilution_ratio: dilution }) // Insert dilution_ratio
+          .insert({ service_id: serviceId, product_id: productId, usage_per_vehicle: usage, dilution_ratio: dilution, container_size: containerSize }) // Insert dilution_ratio and container_size
           .select()
           .single();
         if (error) throw error;
@@ -210,11 +217,22 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
       return;
     }
 
+    const parsedContainerSize = parseFloat(containerSize);
+    if (selectedProductDetails?.type === 'diluted' && (!containerSize || isNaN(parsedContainerSize) || parsedContainerSize <= 0)) {
+      toast({
+        title: "Tamanho do recipiente inválido",
+        description: "O tamanho do recipiente deve ser um número positivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     addProductLinkMutation.mutate({
       serviceId,
       productId: selectedProductId,
       usage: parsedUsage,
       dilution: selectedProductDetails?.type === 'diluted' ? parsedDilution : 0, // Only save dilution if product is diluted
+      containerSize: selectedProductDetails?.type === 'diluted' ? parsedContainerSize : 0, // Only save container size if product is diluted
     });
   };
 
@@ -272,31 +290,46 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
           )}
 
           {selectedProductDetails?.type === 'diluted' && (
-            <div className="space-y-2">
-              <Label htmlFor="dilution-ratio">Proporção de Diluição (1:X) *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="dilution-ratio"
-                  type="text"
-                  placeholder="Ex: 1:100 ou 100"
-                  value={editableDilutionRatioInput}
-                  onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
-                  className="flex-1 bg-background"
-                  disabled={!selectedProductId}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleResetDilution}
-                  disabled={!selectedProductId || !selectedProductDetails}
-                  className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
-                  title="Restaurar diluição padrão do catálogo"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="dilution-ratio">Proporção de Diluição (1:X) *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="dilution-ratio"
+                    type="text"
+                    placeholder="Ex: 1:100 ou 100"
+                    value={editableDilutionRatioInput}
+                    onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
+                    className="flex-1 bg-background"
+                    disabled={!selectedProductId}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleResetDilution}
+                    disabled={!selectedProductId || !selectedProductDetails}
+                    className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
+                    title="Restaurar diluição padrão do catálogo"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="container-size">Tamanho do Recipiente (ml) *</Label>
+                <Input
+                  id="container-size"
+                  type="number"
+                  step="1"
+                  value={containerSize}
+                  onChange={(e) => setContainerSize(e.target.value)}
+                  className="bg-background"
+                  disabled={!selectedProductId}
+                  placeholder="Ex: 500 (para um borrifador de 500ml)"
+                />
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -314,7 +347,7 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={addProductLinkMutation.isPending || !selectedProductId || !usagePerVehicle || (selectedProductDetails?.type === 'diluted' && !editableDilutionRatioInput)}>
+          <Button onClick={handleSubmit} disabled={addProductLinkMutation.isPending || !selectedProductId || !usagePerVehicle || (selectedProductDetails?.type === 'diluted' && (!editableDilutionRatioInput || !containerSize))}>
             {addProductLinkMutation.isPending ? "Salvando..." : (productId ? "Salvar Alterações" : "Vincular Produto")}
           </Button>
         </DialogFooter>
