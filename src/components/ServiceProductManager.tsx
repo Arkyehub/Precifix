@@ -102,11 +102,13 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                       };
                       const costPerLiter = calculateProductCostPerLiter(productForCalc);
                       const costPerApplication = calculateProductCost(productForCalc);
-                      const concentratedProductUsed = product.type === 'diluted' 
-                        ? (product.usage_per_vehicle / product.dilution_ratio) 
+                      
+                      // Cálculos baseados no container_size
+                      const concentratedProductInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
+                        ? (product.container_size / product.dilution_ratio)
                         : 0;
-                      const waterNeededFor1LiterSolution = product.type === 'diluted' && product.dilution_ratio > 0
-                        ? (1000 - (1000 / product.dilution_ratio))
+                      const waterNeededInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
+                        ? (product.container_size - concentratedProductInContainer)
                         : 0;
 
                       return (
@@ -128,9 +130,12 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
                                 {product.type === 'diluted' && (
                                   <>
                                     <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
-                                    <span>Produto concentrado na aplicação: {concentratedProductUsed.toFixed(0)} ml</span>
-                                    {waterNeededFor1LiterSolution > 0 && (
-                                      <span>Água para 1L de solução: {waterNeededFor1LiterSolution.toFixed(0)} ml</span>
+                                    {product.container_size > 0 && (
+                                      <>
+                                        <span>Tamanho do Recipiente: {product.container_size.toFixed(0)} ml</span>
+                                        <span>Quantidade do produto no Recipiente: {concentratedProductInContainer.toFixed(0)} ml</span>
+                                        <span>Quantidade de água no Recipiente: {waterNeededInContainer.toFixed(0)} ml</span>
+                                      </>
                                     )}
                                   </>
                                 )}
