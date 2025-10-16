@@ -85,8 +85,8 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
             </Label>
             <Input
               id={`installments-${item.installments}`}
-              type="text" // Alterado para 'text'
-              inputMode="decimal" // Sugere teclado decimal em dispositivos móveis
+              type="text" // Mantido como 'text'
+              // inputMode="decimal" removido para garantir que a digitação de vírgulas e pontos funcione
               value={item.inputValue} // Usa o valor da string
               onChange={(e) => handleRateChange(item.installments, e.target.value)}
               className="flex-1 bg-background"
