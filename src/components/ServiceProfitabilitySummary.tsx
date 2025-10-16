@@ -12,9 +12,10 @@ import {
 
 interface ServiceProfitabilitySummaryProps {
   services: Service[];
+  productCostCalculationMethod: 'per-service' | 'monthly-average'; // Nova prop
 }
 
-export const ServiceProfitabilitySummary = ({ services }: ServiceProfitabilitySummaryProps) => {
+export const ServiceProfitabilitySummary = ({ services, productCostCalculationMethod }: ServiceProfitabilitySummaryProps) => {
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
       <CardHeader>
@@ -37,17 +38,19 @@ export const ServiceProfitabilitySummary = ({ services }: ServiceProfitabilitySu
               const laborCost = (service.execution_time_minutes / 60) * service.labor_cost_per_hour;
               
               let productsCost = 0;
-              service.products?.forEach(product => {
-                const productForCalc: ProductForCalculation = {
-                  gallonPrice: product.price,
-                  gallonVolume: product.size * 1000, // Convert liters to ml
-                  dilutionRatio: product.dilution_ratio,
-                  usagePerVehicle: product.usage_per_vehicle,
-                  type: product.type,
-                  containerSize: product.container_size,
-                };
-                productsCost += calculateProductCost(productForCalc);
-              });
+              if (productCostCalculationMethod === 'per-service') { // Calcular custo de produtos apenas no modo 'per-service'
+                service.products?.forEach(product => {
+                  const productForCalc: ProductForCalculation = {
+                    gallonPrice: product.price,
+                    gallonVolume: product.size * 1000, // Convert liters to ml
+                    dilutionRatio: product.dilution_ratio,
+                    usagePerVehicle: product.usage_per_vehicle,
+                    type: product.type,
+                    containerSize: product.container_size,
+                  };
+                  productsCost += calculateProductCost(productForCalc);
+                });
+              }
 
               const otherCosts = service.other_costs;
               const totalServiceCost = laborCost + productsCost + otherCosts;
@@ -81,8 +84,14 @@ export const ServiceProfitabilitySummary = ({ services }: ServiceProfitabilitySu
                         <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Custo Mão de Obra Total:</span>
                         <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
 
-                        <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos:</span>
-                        <span className="text-foreground text-right">R$ {productsCost.toFixed(2)}</span>
+                        {productCostCalculationMethod === 'per-service' ? (
+                          <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos:</span>
+                        ) : (
+                          <span className="text-muted-foreground flex items-center gap-1"><SprayCan className="h-3 w-3" /> Custo Produtos (Média Mensal):</span>
+                        )}
+                        <span className="text-foreground text-right">
+                          {productCostCalculationMethod === 'per-service' ? `R$ ${productsCost.toFixed(2)}` : 'N/A (Custo geral)'}
+                        </span>
 
                         <span className="text-muted-foreground flex items-center gap-1"><Receipt className="h-3 w-3" /> Outros Custos:</span>
                         <span className="text-foreground text-right">R$ {otherCosts.toFixed(2)}</span>

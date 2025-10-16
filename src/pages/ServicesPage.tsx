@@ -336,7 +336,10 @@ const ServicesPage = () => {
 
       {/* Nova Seção: Demonstrativo de Lucro */}
       <div className="mt-8">
-        <ServiceProfitabilitySummary services={services || []} />
+        <ServiceProfitabilitySummary 
+          services={services || []} 
+          productCostCalculationMethod={productCostCalculationMethod} // Passando a nova prop
+        />
       </div>
 
       {/* Seção: Produtos Utilizados nos Serviços - Renderização Condicional */}
