@@ -52,6 +52,7 @@ export const QuoteCalculator = () => {
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]); // Estado para serviços com overrides
   const [otherCostsGlobal, setOtherCostsGlobal] = useState(0); // Outros custos globais, se houver
   const [profitMargin, setProfitMargin] = useState(40);
+  const [displayProfitMargin, setDisplayProfitMargin] = useState('40,00'); // Novo estado para o valor do input como string
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
   const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
@@ -149,6 +150,11 @@ export const QuoteCalculator = () => {
 
     setQuotedServices(newQuotedServices);
   }, [selectedServiceIds, allServices]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Efeito para manter displayProfitMargin sincronizado com profitMargin
+  useEffect(() => {
+    setDisplayProfitMargin(profitMargin.toFixed(2).replace('.', ','));
+  }, [profitMargin]);
 
   // Função para abrir o diálogo de edição de serviço
   const handleEditServiceForQuote = (service: QuotedService) => {
@@ -324,10 +330,16 @@ export const QuoteCalculator = () => {
                   <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
                   <Input
                     id="profit-margin"
-                    type="number"
+                    type="text" // Alterado para type="text"
                     step="0.1"
-                    value={profitMargin.toFixed(2) || ""}
-                    onChange={(e) => setProfitMargin(parseFloat(e.target.value) || 0)}
+                    value={displayProfitMargin} // Usar o estado de string
+                    onChange={(e) => setDisplayProfitMargin(e.target.value)} // Atualizar o estado de string
+                    onBlur={(e) => { // No blur, parsear e atualizar o estado numérico e reformatar a string
+                      const rawValue = e.target.value.replace(',', '.'); // Substituir vírgula por ponto para parseFloat
+                      const parsedValue = parseFloat(rawValue) || 0;
+                      setProfitMargin(parsedValue);
+                      setDisplayProfitMargin(parsedValue.toFixed(2).replace('.', ',')); // Reformatar com vírgula
+                    }}
                     className="bg-background text-lg font-semibold"
                   />
                   <p className="text-xs text-muted-foreground">

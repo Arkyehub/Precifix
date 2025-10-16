@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, DollarSign, Clock, Target } from "lucide-react";
+import React, { useState, useEffect } from "react"; // Importar React e hooks
 
 interface ResultsProps {
   totalCost: number;
@@ -11,6 +12,13 @@ interface ResultsProps {
 }
 
 export function Results({ totalCost, profitMargin, executionTime, onMarginChange }: ResultsProps) {
+  const [displayProfitMargin, setDisplayProfitMargin] = useState(profitMargin.toFixed(2).replace('.', ',')); // Estado para o valor do input como string
+
+  // Efeito para manter displayProfitMargin sincronizado com a prop profitMargin
+  useEffect(() => {
+    setDisplayProfitMargin(profitMargin.toFixed(2).replace('.', ','));
+  }, [profitMargin]);
+
   const finalPrice = totalCost / (1 - profitMargin / 100);
   const netProfit = finalPrice - totalCost;
   const profitPercentage = (netProfit / finalPrice) * 100;
@@ -28,10 +36,16 @@ export function Results({ totalCost, profitMargin, executionTime, onMarginChange
           <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
           <Input
             id="profit-margin"
-            type="number"
+            type="text" // Alterado para type="text"
             step="0.1"
-            value={profitMargin.toFixed(2) || ""}
-            onChange={(e) => onMarginChange(parseFloat(e.target.value) || 0)}
+            value={displayProfitMargin} // Usar o estado de string
+            onChange={(e) => setDisplayProfitMargin(e.target.value)} // Atualizar o estado de string
+            onBlur={(e) => { // No blur, parsear e atualizar o estado numérico e reformatar a string
+              const rawValue = e.target.value.replace(',', '.'); // Substituir vírgula por ponto para parseFloat
+              const parsedValue = parseFloat(rawValue) || 0;
+              onMarginChange(parsedValue); // Chamar o handler do pai
+              setDisplayProfitMargin(parsedValue.toFixed(2).replace('.', ',')); // Reformatar com vírgula
+            }}
             className="bg-background text-lg font-semibold"
           />
           <p className="text-xs text-muted-foreground">
