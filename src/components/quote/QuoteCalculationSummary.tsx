@@ -11,7 +11,7 @@ interface QuoteCalculationSummaryProps {
   totalOtherCosts: number;
   otherCostsGlobal: number;
   totalCost: number;
-  totalChargedValue: number;
+  totalServiceValue: number; // Renamed from totalChargedValue
   currentProfitMarginPercentage: number;
   profitMargin: number;
   displayProfitMargin: string;
@@ -21,6 +21,7 @@ interface QuoteCalculationSummaryProps {
   selectedPaymentMethodId: string | null;
   paymentFee: number;
   finalPriceWithFee: number;
+  valueAfterDiscount: number; // Added to pass the value after discount
 }
 
 export const QuoteCalculationSummary = ({
@@ -30,7 +31,7 @@ export const QuoteCalculationSummary = ({
   totalOtherCosts,
   otherCostsGlobal,
   totalCost,
-  totalChargedValue,
+  totalServiceValue, // Renamed
   currentProfitMarginPercentage,
   profitMargin,
   displayProfitMargin,
@@ -40,6 +41,7 @@ export const QuoteCalculationSummary = ({
   selectedPaymentMethodId,
   paymentFee,
   finalPriceWithFee,
+  valueAfterDiscount, // Added
 }: QuoteCalculationSummaryProps) => {
 
   const handleProfitMarginBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -79,12 +81,12 @@ export const QuoteCalculationSummary = ({
       </div>
       
       {/* Nova estrutura para Comparativo de Margem de Lucro e Preço */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2"> {/* Alterado para 3 colunas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
         {/* Coluna de Valores Atuais */}
         <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
           <div className="flex justify-between items-center">
-            <span className="font-medium text-foreground">Valor Atual à Receber:</span>
-            <span className="text-3xl font-bold text-accent">R$ {totalChargedValue.toFixed(2)}</span>
+            <span className="font-medium text-foreground">Valor do Serviço:</span> {/* Changed label */}
+            <span className="text-3xl font-bold text-accent">R$ {totalServiceValue.toFixed(2)}</span> {/* Uses totalServiceValue */}
           </div>
           <div className="flex justify-between items-center mt-2">
             <span className="font-medium text-foreground">Margem de Lucro Atual:</span>
@@ -129,7 +131,7 @@ export const QuoteCalculationSummary = ({
       {/* Preço Final com Taxa */}
       <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4">
         <div className="flex justify-between items-center">
-          <span className="font-medium text-foreground">Preço Final com Taxa:</span>
+          <span className="font-medium text-foreground">Valor a Receber (com desconto e taxa):</span> {/* Changed label */}
           <span className="text-3xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
         </div>
       </div>

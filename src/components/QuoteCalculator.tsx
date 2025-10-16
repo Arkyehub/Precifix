@@ -241,8 +241,8 @@ export const QuoteCalculator = () => {
   // Calculate total cost (soma de todos os custos operacionais e de produtos)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
 
-  // Calcular o Valor Atual à Receber (soma dos preços de venda dos serviços)
-  const totalChargedValue = quotedServices.reduce((sum, service) => 
+  // Calcular o Valor do Serviço (soma dos preços de venda dos serviços)
+  const totalServiceValue = quotedServices.reduce((sum, service) => 
     sum + (service.quote_price ?? service.price), 0);
 
   // Efeito para calcular o desconto
@@ -253,14 +253,14 @@ export const QuoteCalculator = () => {
     if (discountType === 'amount') {
       newCalculatedDiscount = parsedDiscountValue;
     } else { // percentage
-      newCalculatedDiscount = totalChargedValue * (parsedDiscountValue / 100);
+      newCalculatedDiscount = totalServiceValue * (parsedDiscountValue / 100);
     }
     // Garantir que o desconto não seja maior que o valor total
-    setCalculatedDiscount(Math.min(newCalculatedDiscount, totalChargedValue));
-  }, [discountValueInput, discountType, totalChargedValue]);
+    setCalculatedDiscount(Math.min(newCalculatedDiscount, totalServiceValue));
+  }, [discountValueInput, discountType, totalServiceValue]);
 
   // Valor após o desconto ser aplicado
-  const valueAfterDiscount = totalChargedValue - calculatedDiscount;
+  const valueAfterDiscount = totalServiceValue - calculatedDiscount;
 
   // Effect to calculate payment fee
   useEffect(() => {
@@ -377,7 +377,7 @@ export const QuoteCalculator = () => {
             totalOtherCosts={totalOtherCosts}
             otherCostsGlobal={otherCostsGlobal}
             totalCost={totalCost}
-            totalChargedValue={valueAfterDiscount} // Passar o valor após o desconto
+            totalServiceValue={totalServiceValue} // Renamed prop
             currentProfitMarginPercentage={currentProfitMarginPercentage}
             profitMargin={profitMargin}
             displayProfitMargin={displayProfitMargin}
@@ -387,6 +387,7 @@ export const QuoteCalculator = () => {
             selectedPaymentMethodId={selectedPaymentMethodId}
             paymentFee={paymentFee}
             finalPriceWithFee={finalPriceWithFee}
+            valueAfterDiscount={valueAfterDiscount} // Pass the new prop
           />
         </CardContent>
       </Card>
