@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, Pencil, Trash2, Eraser, Clock, DollarSign as DollarIcon, Eye, EyeOff, Info, Loader2 } from "lucide-react";
+import { Plus, Car, Pencil, Trash2, Eraser, Info, Loader2 } from "lucide-react"; // Removido Eye, EyeOff, Clock, DollarSign as DollarIcon
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -11,9 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceProductManager } from "@/components/ServiceProductManager";
 import { AddProductToServiceDialog } from '@/components/AddProductToServiceDialog';
-import { calculateProductCostPerLiter } from '@/lib/cost-calculations'; // Importar a nova função de cálculo
+import { ServiceProfitabilitySummary } from '@/components/ServiceProfitabilitySummary'; // Importar o novo componente
 
-// Utility function to format minutes to HH:MM
+// Utility function to format minutes to HH:MM (mantido para referência, mas não usado diretamente no display simplificado)
 const formatMinutesToHHMM = (totalMinutes: number): string => {
   if (isNaN(totalMinutes) || totalMinutes < 0) return "00:00";
   const hours = Math.floor(totalMinutes / 60);
@@ -46,11 +46,11 @@ const ServicesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | undefined>(undefined);
   const hasAddedDefaultServicesRef = useRef(false);
-  const [showDetails, setShowDetails] = useState(false);
+  // const [showDetails, setShowDetails] = useState(false); // Removido
 
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [serviceIdForProductAdd, setServiceIdForProductAdd] = useState<string | null>(null);
-  const [productIdForProductAdd, setProductIdForProductAdd] = useState<string | null>(null); // Novo estado para productId
+  const [productIdForProductAdd, setProductIdForProductAdd] = useState<string | null>(null);
 
   const { data: services, isLoading, error } = useQuery<Service[]>({
     queryKey: ['services', user?.id],
@@ -68,7 +68,7 @@ const ServicesPage = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle, dilution_ratio, container_size') // Buscar container_size
+          .select('product_id, usage_per_vehicle, dilution_ratio, container_size')
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -80,7 +80,7 @@ const ServicesPage = () => {
         if (productIds.length > 0) {
           const { data: productsData, error: productsError } = await supabase
             .from('product_catalog_items')
-            .select('id, name, size, price, type, dilution_ratio') // Adicionado size, price, type, dilution_ratio
+            .select('id, name, size, price, type, dilution_ratio')
             .in('id', productIds);
           if (productsError) {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
@@ -92,7 +92,7 @@ const ServicesPage = () => {
               ...product, 
               usage_per_vehicle: link?.usage_per_vehicle || 0,
               dilution_ratio: link?.dilution_ratio || 0,
-              container_size: link?.container_size || 0, // Adicionado container_size
+              container_size: link?.container_size || 0,
             };
           });
           return { ...service, products: productsWithUsageAndDilution };
@@ -156,8 +156,6 @@ const ServicesPage = () => {
     },
   });
 
-  // REMOVIDO: clearAllProductLinksMutation e seu useEffect, pois a lógica foi movida para ProductCatalog.tsx
-
   useEffect(() => {
     const shouldAddDefaults =
       user &&
@@ -173,8 +171,6 @@ const ServicesPage = () => {
       addDefaultServicesMutation.mutate(user.id);
     }
   }, [user, isLoading, error, services, addDefaultServicesMutation.isPending, addDefaultServicesMutation]);
-
-  // REMOVIDO: useEffect que disparava clearAllProductLinksMutation
 
   const deleteServiceMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -266,11 +262,11 @@ const ServicesPage = () => {
 
   const handleAddProductToService = (serviceId: string, productId: string | null = null) => {
     setServiceIdForProductAdd(serviceId);
-    setProductIdForProductAdd(productId); // Definir o productId
+    setProductIdForProductAdd(productId);
     setIsAddProductDialogOpen(true);
   };
 
-  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) { // Removido clearAllProductLinksMutation.isPending
+  if (isLoading || addDefaultServicesMutation.isPending || isLoadingMonthlyCost) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -315,63 +311,30 @@ const ServicesPage = () => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-muted-foreground hover:text-primary"
-                title={showDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
-              >
-                {showDetails ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </Button>
+              {/* Botão de olho removido */}
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {services && services.length > 0 ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Serviços Cadastrados</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Serviços Cadastrados</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 {services.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-border/50"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{service.name}</p>
-                      <p className="text-sm text-primary font-semibold mt-1">R$ {service.price.toFixed(2)}</p>
-                      
-                      {showDetails && (
-                        <>
-                          {service.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
-                          )}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <DollarIcon className="h-3 w-3" />
-                            <span>Custo/Hora: R$ {service.labor_cost_per_hour.toFixed(2)}</span>
-                            <Clock className="h-3 w-3 ml-2" />
-                            <span>Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</span>
-                          </div>
-                          {productCostCalculationMethod === 'per-service' && service.products && service.products.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {service.products.map(product => (
-                                <span key={product.id} className="text-xs px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
-                                  {product.name} ({product.usage_per_vehicle.toFixed(0)} ml)
-                                  {product.dilution_ratio > 0 && ` | Diluição: 1:${product.dilution_ratio.toFixed(0)}`}
-                                  {product.container_size > 0 && ` | Recipiente: ${product.container_size.toFixed(0)} ml`}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
+                    <div className="flex-1 flex items-center gap-2">
+                      <span className="font-medium text-foreground">{service.name}</span>
+                      <span className="text-sm text-primary font-semibold">R$ {service.price.toFixed(2)}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditService(service)}
-                        className="text-primary hover:bg-primary/10"
+                        className="text-muted-foreground hover:text-primary"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -380,7 +343,7 @@ const ServicesPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-destructive hover:bg-destructive/10"
+                            className="text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -450,13 +413,18 @@ const ServicesPage = () => {
         </CardContent>
       </Card>
 
-      {/* Nova Seção: Produtos Utilizados nos Serviços - Renderização Condicional */}
+      {/* Nova Seção: Demonstrativo de Lucro */}
+      <div className="mt-8">
+        <ServiceProfitabilitySummary services={services || []} />
+      </div>
+
+      {/* Seção: Produtos Utilizados nos Serviços - Renderização Condicional */}
       {productCostCalculationMethod === 'per-service' && (
         <div className="mt-8">
           <ServiceProductManager
             services={services || []}
             onAddProductToService={handleAddProductToService}
-            showDetails={showDetails}
+            // showDetails removido daqui
           />
         </div>
       )}
@@ -475,7 +443,7 @@ const ServicesPage = () => {
           setProductIdForProductAdd(null);
         }}
         serviceId={serviceIdForProductAdd}
-        productId={productIdForProductAdd} // Passar o productId
+        productId={productIdForProductAdd}
       />
     </div>
   );

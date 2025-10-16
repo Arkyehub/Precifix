@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Car, Trash2, DollarSign, Percent } from "lucide-react"; // Adicionado DollarSign e Percent
+import { Plus, Package, Car, Trash2 } from "lucide-react"; // Removido DollarSign e Percent
 import { Service } from "@/components/ServiceFormDialog"; // Assumindo que Service type é exportado
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,10 +13,10 @@ import { formatDilutionRatio, calculateProductCost, calculateProductCostPerConta
 interface ServiceProductManagerProps {
   services: Service[];
   onAddProductToService: (serviceId: string, productId?: string) => void;
-  showDetails: boolean; // Nova prop para controlar a visibilidade dos detalhes
+  // showDetails: boolean; // Prop removida
 }
 
-export const ServiceProductManager = ({ services, onAddProductToService, showDetails }: ServiceProductManagerProps) => {
+export const ServiceProductManager = ({ services, onAddProductToService }: ServiceProductManagerProps) => { // showDetails removido dos props
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -66,28 +66,6 @@ export const ServiceProductManager = ({ services, onAddProductToService, showDet
         {services.length > 0 ? (
           <div className="space-y-4">
             {services.map((service) => {
-              // Cálculos para o Demonstrativo de Lucro
-              const laborCost = (service.execution_time_minutes / 60) * service.labor_cost_per_hour;
-              
-              let productsCost = 0;
-              service.products?.forEach(product => {
-                const productForCalc: ProductForCalculation = {
-                  gallonPrice: product.price,
-                  gallonVolume: product.size * 1000, // Convert liters to ml
-                  dilutionRatio: product.dilution_ratio,
-                  usagePerVehicle: product.usage_per_vehicle,
-                  type: product.type,
-                  containerSize: product.container_size,
-                };
-                productsCost += calculateProductCost(productForCalc);
-              });
-
-              const otherCosts = service.other_costs;
-              const totalServiceCost = laborCost + productsCost + otherCosts;
-              const chargedValue = service.price;
-              const netProfit = chargedValue - totalServiceCost;
-              const profitMarginPercentage = chargedValue > 0 ? (netProfit / chargedValue) * 100 : 0;
-
               return (
                 <div key={service.id} className="p-4 rounded-lg border bg-background/50">
                   <div className="flex items-center justify-between mb-2">
@@ -105,7 +83,7 @@ export const ServiceProductManager = ({ services, onAddProductToService, showDet
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  {showDetails && service.products && service.products.length > 0 ? (
+                  {service.products && service.products.length > 0 ? (
                     <ul className="list-none space-y-3 ml-4">
                       {service.products.map(product => {
                         const productForCalc: ProductForCalculation = {
@@ -206,45 +184,7 @@ export const ServiceProductManager = ({ services, onAddProductToService, showDet
                       })}
                     </ul>
                   ) : (
-                    showDetails && <p className="text-sm text-muted-foreground italic ml-4">Nenhum produto vinculado.</p>
-                  )}
-
-                  {showDetails && (
-                    <div className="p-3 rounded-md bg-gradient-to-r from-mediumslateblue/10 to-mediumslateblue/5 border border-mediumslateblue/30 mt-4">
-                      <h5 className="font-semibold text-mediumslateblue mb-2">Demonstrativo de Lucro</h5>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                        <span className="text-muted-foreground">Custo Mão de Obra:</span>
-                        <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
-
-                        <span className="text-muted-foreground">Custo Produtos:</span>
-                        <span className="text-foreground text-right">R$ {productsCost.toFixed(2)}</span>
-
-                        <span className="text-muted-foreground">Outros Custos:</span>
-                        <span className="text-foreground text-right">R$ {otherCosts.toFixed(2)}</span>
-
-                        <div className="col-span-2 border-t border-border/50 my-1"></div>
-
-                        <span className="font-bold text-foreground">Custo Total:</span>
-                        <span className="font-bold text-foreground text-right">R$ {totalServiceCost.toFixed(2)}</span>
-
-                        <span className="font-bold text-foreground">Valor Cobrado:</span>
-                        <span className="font-bold text-primary text-right text-lg">R$ {chargedValue.toFixed(2)}</span>
-
-                        <div className="col-span-2 border-t border-border/50 my-1"></div>
-
-                        <span className="font-bold text-foreground flex items-center gap-1">
-                          <DollarSign className="h-4 w-4 text-success" />
-                          Lucro Líquido:
-                        </span>
-                        <span className="font-bold text-success text-right text-lg">R$ {netProfit.toFixed(2)}</span>
-
-                        <span className="font-bold text-foreground flex items-center gap-1">
-                          <Percent className="h-4 w-4 text-success" />
-                          Margem de Lucro:
-                        </span>
-                        <span className="font-bold text-success text-right text-lg">{profitMarginPercentage.toFixed(1)}%</span>
-                      </div>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic ml-4">Nenhum produto vinculado.</p>
                   )}
                 </div>
               );
