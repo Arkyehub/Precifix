@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Package, DollarSign, FileText, Percent, Pencil, CreditCard, Tag } from "lucide-react"; // Adicionado Tag para o ícone de desconto
+import { FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
-import { LoadHourlyCostButton } from './LoadHourlyCostButton';
+import { calculateProductCost, formatMinutesToHHMM, parseHHMMToMinutes } from "@/lib/cost-calculations";
 import { QuoteGenerator } from './QuoteGenerator';
-import { calculateProductCost, formatDilutionRatio, ProductForCalculation, formatMinutesToHHMM, parseHHMMToMinutes } from "@/lib/cost-calculations";
 import { QuoteServiceFormDialog, QuotedService } from './QuoteServiceFormDialog';
-import { PaymentMethod, PaymentMethodInstallment } from './PaymentMethodFormDialog';
+import { PaymentMethod } from './PaymentMethodFormDialog';
+import { QuoteServiceSelection } from '@/components/quote/QuoteServiceSelection';
+import { QuoteSelectedServicesList } from '@/components/quote/QuoteSelectedServicesList';
+import { QuoteGlobalCostsInput } from '@/components/quote/QuoteGlobalCostsInput';
+import { QuoteDiscountSection } from '@/components/quote/QuoteDiscountSection';
+import { QuotePaymentMethodSection } from '@/components/quote/QuotePaymentMethodSection';
+import { QuoteCalculationSummary } from '@/components/quote/QuoteCalculationSummary';
 
 interface Service {
   id: string;
@@ -60,7 +60,7 @@ export const QuoteCalculator = () => {
   const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null);
   const [paymentFee, setPaymentFee] = useState(0);
 
-  // Novos estados para o desconto
+  // Estados para o desconto
   const [discountValueInput, setDiscountValueInput] = useState('0,00'); // Valor digitado no input
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount'); // Tipo de desconto
   const [calculatedDiscount, setCalculatedDiscount] = useState(0); // Valor do desconto em R$
@@ -214,7 +214,7 @@ export const QuoteCalculator = () => {
     if (productCostCalculationMethod === 'per-service') {
       const productsToUse = service.quote_products ?? service.products;
       productsToUse?.forEach(product => {
-        const productForCalc: ProductForCalculation = {
+        const productForCalc = {
           gallonPrice: product.price,
           gallonVolume: product.size * 1000, // Convert liters to ml
           dilutionRatio: product.dilution_ratio,
@@ -322,243 +322,72 @@ export const QuoteCalculator = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="select-services">Adicionar Serviços *</Label>
-            <MultiSelect
-              options={serviceOptions}
-              selected={selectedServiceIds}
-              onSelectChange={setSelectedServiceIds}
-              placeholder="Selecione os serviços para o orçamento"
-            />
-            {selectedServiceIds.length === 0 && (
-              <p className="text-sm text-destructive mt-2">Por favor, selecione pelo menos um serviço.</p>
-            )}
-          </div>
+          <QuoteServiceSelection
+            serviceOptions={serviceOptions}
+            selectedServiceIds={selectedServiceIds}
+            onSelectChange={setSelectedServiceIds}
+          />
 
-          {quotedServices.length > 0 && (
-            <div className="space-y-4 pt-4 border-t border-border/50">
-              <h3 className="text-sm font-medium text-foreground">Serviços Selecionados para Orçamento</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {quotedServices.map(service => (
-                  <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/50">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{service.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Valor: R$ {(service.quote_price ?? service.price).toFixed(2)} | Tempo: {formatMinutesToHHMM(service.quote_execution_time_minutes ?? service.execution_time_minutes)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditServiceForQuote(service)}
-                      className="text-primary hover:bg-primary/10"
-                      title={`Editar ${service.name} para este orçamento`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <QuoteSelectedServicesList
+            quotedServices={quotedServices}
+            onEditServiceForQuote={handleEditServiceForQuote}
+          />
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="other-costs-global" className="text-sm">Outros Custos Globais (R$)</Label>
-            <Input
-              id="other-costs-global"
-              type="number"
-              step="0.01"
-              value={otherCostsGlobal.toFixed(2) || ""}
-              onChange={(e) => setOtherCostsGlobal(parseFloat(e.target.value) || 0)}
-              className="bg-background"
-            />
-            <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
-          </div>
+          <QuoteGlobalCostsInput
+            otherCostsGlobal={otherCostsGlobal}
+            onOtherCostsGlobalChange={setOtherCostsGlobal}
+          />
 
-          {/* Seção para Desconto */}
-          <div className="space-y-2 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Tag className="h-4 w-4 text-primary" />
-              <Label htmlFor="discount-value" className="text-sm font-medium">Desconto</Label>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                id="discount-value"
-                type="text"
-                step="0.01"
-                value={discountValueInput}
-                onChange={(e) => setDiscountValueInput(e.target.value)}
-                onBlur={(e) => {
-                  const rawValue = e.target.value.replace(',', '.');
-                  const parsedValue = parseFloat(rawValue) || 0;
-                  setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
-                }}
-                className="flex-1 bg-background"
-                placeholder="0,00"
-              />
-              <Select value={discountType} onValueChange={(value: 'amount' | 'percentage') => setDiscountType(value)}>
-                <SelectTrigger className="w-[120px] bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amount">Valor (R$)</SelectItem>
-                  <SelectItem value="percentage">Porcentagem (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {calculatedDiscount > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">Desconto aplicado: R$ {calculatedDiscount.toFixed(2)}</p>
-            )}
-          </div>
+          <QuoteDiscountSection
+            discountValueInput={discountValueInput}
+            onDiscountValueInputChange={setDiscountValueInput}
+            onDiscountValueInputBlur={(value) => {
+              const rawValue = value.replace(',', '.');
+              const parsedValue = parseFloat(rawValue) || 0;
+              setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
+            }}
+            discountType={discountType}
+            onDiscountTypeChange={setDiscountType}
+            calculatedDiscount={calculatedDiscount}
+          />
 
-          {/* Seção para Forma de Pagamento */}
-          <div className="space-y-2 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 text-primary" />
-              <Label htmlFor="payment-method-select" className="text-sm font-medium">Forma de Pagamento</Label>
-            </div>
-            <Select 
-              value={selectedPaymentMethodId || ''} 
-              onValueChange={(value) => {
-                setSelectedPaymentMethodId(value);
-                const method = paymentMethods?.find(pm => pm.id === value);
-                if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                  const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
-                  setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
-                } else {
-                  setSelectedInstallments(null);
-                }
-              }}
-              disabled={isLoadingPaymentMethods}
-            >
-              <SelectTrigger id="payment-method-select" className="bg-background">
-                <SelectValue placeholder="Selecione a forma de pagamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {paymentMethods?.map((method) => (
-                  <SelectItem key={method.id} value={method.id}>
-                    {method.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isLoadingPaymentMethods && <p className="text-sm text-muted-foreground mt-2">Carregando formas de pagamento...</p>}
+          <QuotePaymentMethodSection
+            paymentMethods={paymentMethods}
+            isLoadingPaymentMethods={isLoadingPaymentMethods}
+            selectedPaymentMethodId={selectedPaymentMethodId}
+            onPaymentMethodSelectChange={(value) => {
+              setSelectedPaymentMethodId(value);
+              const method = paymentMethods?.find(pm => pm.id === value);
+              if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
+                const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
+                setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
+              } else {
+                setSelectedInstallments(null);
+              }
+            }}
+            selectedInstallments={selectedInstallments}
+            onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
+            currentPaymentMethod={currentPaymentMethod}
+          />
 
-            {/* Seleção de Parcelas para Cartão de Crédito */}
-            {currentPaymentMethod?.type === 'credit_card' && currentPaymentMethod.installments && currentPaymentMethod.installments.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <Label htmlFor="installments-select" className="text-sm">Número de Parcelas</Label>
-                <Select
-                  value={selectedInstallments?.toString() || ''}
-                  onValueChange={(value) => setSelectedInstallments(parseInt(value, 10))}
-                >
-                  <SelectTrigger id="installments-select" className="bg-background">
-                    <SelectValue placeholder="Selecione as parcelas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currentPaymentMethod.installments
-                      .filter(inst => inst.rate > 0)
-                      .map((inst) => (
-                        <SelectItem key={inst.installments} value={inst.installments.toString()}>
-                          {inst.installments}x ({inst.rate.toFixed(2)}%)
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-border/50 space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Tempo Total de Execução:</span>
-              <span className="font-medium text-foreground">{formatMinutesToHHMM(totalExecutionTime)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Custo de Produtos (estimado):</span>
-              <span className="font-medium text-foreground">R$ {totalProductsCost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Custo de Mão de Obra:</span>
-              <span className="font-medium text-foreground">R$ {totalLaborCost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Outros Custos por Serviço:</span>
-              <span className="font-medium text-foreground">R$ {totalOtherCosts.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Outros Custos Globais:</span>
-              <span className="font-medium text-foreground">R$ {otherCostsGlobal.toFixed(2)}</span>
-            </div>
-            <div className="p-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg border border-primary/30 mt-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground">Custo Total da Operação:</span>
-                <span className="text-2xl font-bold text-primary">R$ {totalCost.toFixed(2)}</span>
-              </div>
-            </div>
-            
-            {/* Nova estrutura para Comparativo de Margem de Lucro e Preço */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2"> {/* Alterado para 3 colunas */}
-              {/* Coluna de Valores Atuais */}
-              <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-foreground">Valor Atual à Receber:</span>
-                  <span className="text-3xl font-bold text-accent">R$ {totalChargedValue.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="font-medium text-foreground">Margem de Lucro Atual:</span>
-                  <span className="text-xl font-bold text-accent">{currentProfitMarginPercentage.toFixed(1)}%</span>
-                </div>
-              </div>
-
-              {/* Coluna de Margem Desejada e Preço Sugerido */}
-              <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50">
-                <div className="space-y-2">
-                  <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
-                  <Input
-                    id="profit-margin"
-                    type="text"
-                    step="0.1"
-                    value={displayProfitMargin}
-                    onChange={(e) => setDisplayProfitMargin(e.target.value)}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value.replace(',', '.');
-                      const parsedValue = parseFloat(rawValue) || 0;
-                      setProfitMargin(parsedValue);
-                      setDisplayProfitMargin(parsedValue.toFixed(2).replace('.', ','));
-                    }}
-                    className="bg-background text-lg font-semibold"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ajuste a margem para ver um preço sugerido.
-                  </p>
-                </div>
-                <div className="flex justify-between items-center mt-4">
-                  <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
-                  <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Demonstrativo da Taxa da Forma de Pagamento */}
-            {selectedPaymentMethodId && paymentFee > 0 && (
-              <div className="p-4 bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/30 mt-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-foreground">Taxa da Forma de Pagamento:</span>
-                  <span className="text-xl font-bold text-blue-500">R$ {paymentFee.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Preço Final com Taxa */}
-            <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground">Preço Final com Taxa:</span>
-                <span className="text-3xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
-              </div>
-            </div>
-
-          </div>
+          <QuoteCalculationSummary
+            totalExecutionTime={totalExecutionTime}
+            totalProductsCost={totalProductsCost}
+            totalLaborCost={totalLaborCost}
+            totalOtherCosts={totalOtherCosts}
+            otherCostsGlobal={otherCostsGlobal}
+            totalCost={totalCost}
+            totalChargedValue={valueAfterDiscount} // Passar o valor após o desconto
+            currentProfitMarginPercentage={currentProfitMarginPercentage}
+            profitMargin={profitMargin}
+            displayProfitMargin={displayProfitMargin}
+            onProfitMarginChange={setProfitMargin}
+            onDisplayProfitMarginChange={setDisplayProfitMargin}
+            suggestedPriceBasedOnDesiredMargin={suggestedPriceBasedOnDesiredMargin}
+            selectedPaymentMethodId={selectedPaymentMethodId}
+            paymentFee={paymentFee}
+            finalPriceWithFee={finalPriceWithFee}
+          />
         </CardContent>
       </Card>
 
