@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Percent } from 'lucide-react';
 import { PaymentMethodInstallment } from './PaymentMethodFormDialog';
+import { cn } from '@/lib/utils'; // Importar cn para aplicar as classes do shadcn/ui
 
 interface CreditCardInstallmentRatesProps {
   initialInstallmentRates: PaymentMethodInstallment[];
@@ -10,11 +11,15 @@ interface CreditCardInstallmentRatesProps {
 }
 
 interface LocalInstallmentRate extends PaymentMethodInstallment {
-  inputValue: string;
+  // Não precisamos mais de inputValue no estado local, pois o input será não controlado.
+  // O valor será lido diretamente do evento onBlur.
 }
 
 export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesChange }: CreditCardInstallmentRatesProps) => {
   const [rates, setRates] = useState<LocalInstallmentRate[]>([]);
+
+  // Usamos um ref para armazenar o estado interno dos inputs não controlados
+  const inputRefs = React.useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (initialInstallmentRates.length === 0) {
@@ -24,7 +29,6 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
         installments: i + 1,
         rate: 0.00,
         created_at: new Date().toISOString(),
-        inputValue: '',
       }));
       setRates(defaultRates);
     } else {
@@ -38,15 +42,16 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
           installments: installmentNum,
           rate: existing?.rate || 0.00,
           created_at: existing?.created_at || new Date().toISOString(),
-          inputValue: (existing?.rate === 0 || existing?.rate === undefined) ? '' : (existing.rate).toString().replace('.', ','),
         };
       });
       setRates(fullRates);
     }
   }, [initialInstallmentRates]);
 
-  const handleRateChange = (installmentNum: number, value: string) => {
-    console.log(`Input para ${installmentNum}x:`, value);
+  const handleBlur = (installmentNum: number, event: React.FocusEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    console.log(`Input para ${installmentNum}x (onBlur):`, value); // Log do valor bruto de entrada
+
     const newRates = rates.map(item => {
       if (item.installments === installmentNum) {
         const parsedValueString = value.replace(',', '.');
@@ -55,13 +60,17 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
         return {
           ...item,
           rate: isNaN(parsedValue) ? 0 : parsedValue,
-          inputValue: value,
         };
       }
       return item;
     });
     setRates(newRates);
-    onRatesChange(newRates.map(({ inputValue, ...rest }) => rest));
+    onRatesChange(newRates); // Passa os objetos PaymentMethodInstallment reais para o pai
+  };
+
+  // Função para formatar o valor para exibição no defaultValue
+  const formatRateForDisplay = (rate: number): string => {
+    return (rate === 0 || rate === undefined) ? '' : rate.toFixed(2).replace('.', ',');
   };
 
   return (
@@ -79,45 +88,18 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
             <Label htmlFor={`installments-${item.installments}`} className="w-10 text-right">
               {item.installments}x:
             </Label>
-            {item.installments === 1 ? ( // Torna o primeiro input não controlado para teste
-              <input
-                id={`installments-${item.installments}`}
-                type="text"
-                defaultValue={item.inputValue} // Usa defaultValue para input não controlado
-                onBlur={(e) => handleRateChange(item.installments, e.target.value)} // Atualiza no onBlur
-                style={{
-                  flex: 1,
-                  height: '40px',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid hsl(var(--input))',
-                  backgroundColor: 'hsl(var(--background))',
-                  color: 'hsl(var(--foreground))',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxShadow: 'none',
-                }}
-              />
-            ) : ( // Mantém os outros inputs controlados
-              <input
-                id={`installments-${item.installments}`}
-                type="text"
-                value={item.inputValue}
-                onChange={(e) => handleRateChange(item.installments, e.target.value)}
-                style={{
-                  flex: 1,
-                  height: '40px',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid hsl(var(--input))',
-                  backgroundColor: 'hsl(var(--background))',
-                  color: 'hsl(var(--foreground))',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxShadow: 'none',
-                }}
-              />
-            )}
+            <input // Usando input nativo do HTML e tornando-o não controlado
+              id={`installments-${item.installments}`}
+              type="text" 
+              key={item.id} // Adicionar key para garantir que o defaultValue seja atualizado corretamente
+              defaultValue={formatRateForDisplay(item.rate)} // Usa defaultValue
+              onBlur={(e) => handleBlur(item.installments, e)} // Atualiza no onBlur
+              ref={el => (inputRefs.current[item.installments] = el)} // Armazena a referência
+              className={cn( // Aplicando as classes de estilo do shadcn/ui
+                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "flex-1 bg-background" // Classes específicas do componente
+              )}
+            />
             <span className="text-muted-foreground">%</span>
           </div>
         ))}
