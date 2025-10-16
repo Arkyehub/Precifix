@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { LoadHourlyCostButton } from './LoadHourlyCostButton';
 import { formatMinutesToHHMM, parseHHMMToMinutes, calculateProductCost, ProductForCalculation } from '@/lib/cost-calculations';
-import { Package, Pencil, Trash2, DollarSign, Clock, Receipt } from 'lucide-react';
+import { Package, Pencil, Trash2, DollarSign, Clock, Receipt, Plus } from 'lucide-react'; // Importar Plus
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatDilutionRatio } from '@/lib/cost-calculations';
-import { QuoteProductFormDialog } from './QuoteProductFormDialog'; // Importar o novo diálogo
+import { QuoteProductFormDialog } from './QuoteProductFormDialog';
+import { AddProductToQuoteServiceDialog } from './AddProductToQuoteServiceDialog'; // Importar o novo diálogo
 
 // Nova interface para produtos dentro do contexto do orçamento
 export interface QuotedProductForQuote {
@@ -67,6 +68,8 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
   const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
   const [productToEditInDialog, setProductToEditInDialog] = useState<QuotedProductForQuote | null>(null);
   const [originalProductDilution, setOriginalProductDilution] = useState(0); // Para o reset de diluição
+
+  const [isAddProductToQuoteDialogOpen, setIsAddProductToQuoteDialogOpen] = useState(false); // Novo estado para o diálogo de adicionar produto
 
   useEffect(() => {
     if (service) {
@@ -155,6 +158,16 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
     });
   };
 
+  const handleAddProductToQuote = (newProduct: QuotedProductForQuote) => {
+    setQuoteProducts(prev => [...prev, newProduct]);
+    toast({
+      title: "Produto adicionado ao serviço!",
+      description: `${newProduct.name} foi adicionado a este serviço para o orçamento atual.`,
+    });
+  };
+
+  const existingProductIds = quoteProducts.map(p => p.id);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] bg-card">
@@ -213,9 +226,20 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
 
           {productCostCalculationMethod === 'per-service' && (
             <div className="space-y-2 pt-4 border-t border-border/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Package className="h-4 w-4 text-primary" />
-                <Label className="text-sm font-medium">Produtos Vinculados</Label>
+              <div className="flex items-center justify-between mb-2"> {/* Adicionado justify-between */}
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-medium">Produtos Vinculados</Label>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-primary hover:bg-primary/10" 
+                  title="Adicionar produto"
+                  onClick={() => setIsAddProductToQuoteDialogOpen(true)} // Abrir o novo diálogo
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
               {quoteProducts.length > 0 ? (
                 <ul className="space-y-2">
@@ -290,6 +314,13 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
           originalDilutionRatio={originalProductDilution}
         />
       )}
+
+      <AddProductToQuoteServiceDialog
+        isOpen={isAddProductToQuoteDialogOpen}
+        onClose={() => setIsAddProductToQuoteDialogOpen(false)}
+        onAdd={handleAddProductToQuote}
+        existingProductIds={existingProductIds}
+      />
     </Dialog>
   );
 };
