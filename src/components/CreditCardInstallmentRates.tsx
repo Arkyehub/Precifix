@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+// Removido import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Percent } from 'lucide-react';
 import { PaymentMethodInstallment } from './PaymentMethodFormDialog';
+import { cn } from '@/lib/utils'; // Importar cn para aplicar as classes do shadcn/ui
 
 interface CreditCardInstallmentRatesProps {
   initialInstallmentRates: PaymentMethodInstallment[];
@@ -83,13 +84,15 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
             <Label htmlFor={`installments-${item.installments}`} className="w-10 text-right">
               {item.installments}x:
             </Label>
-            <Input
+            <input // Usando input nativo do HTML
               id={`installments-${item.installments}`}
-              type="text" // Mantido como 'text'
-              // inputMode="decimal" removido para garantir que a digitação de vírgulas e pontos funcione
-              value={item.inputValue} // Usa o valor da string
+              type="text" 
+              value={item.inputValue} 
               onChange={(e) => handleRateChange(item.installments, e.target.value)}
-              className="flex-1 bg-background"
+              className={cn( // Aplicando as classes de estilo do shadcn/ui
+                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "flex-1 bg-background" // Classes específicas do componente
+              )}
             />
             <span className="text-muted-foreground">%</span>
           </div>
