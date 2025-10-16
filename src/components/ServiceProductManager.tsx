@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Car, Trash2 } from "lucide-react";
+import { Plus, Package, Car, Trash2, DollarSign, Percent } from "lucide-react"; // Adicionado DollarSign e Percent
 import { Service } from "@/components/ServiceFormDialog"; // Assumindo que Service type é exportado
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,20 +9,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useToast } from '@/hooks/use-toast';
 import { formatDilutionRatio, calculateProductCost, calculateProductCostPerContainer, ProductForCalculation } from '@/lib/cost-calculations'; // Importar formatDilutionRatio e as novas funções de cálculo
-// REMOVIDO: import { ProductFormDialog, CatalogProduct } from "@/components/ProductFormDialog"; // ProductFormDialog não será mais usado aqui
 
 interface ServiceProductManagerProps {
   services: Service[];
-  onAddProductToService: (serviceId: string, productId?: string) => void; // Atualizado para aceitar productId opcional
+  onAddProductToService: (serviceId: string, productId?: string) => void;
+  showDetails: boolean; // Nova prop para controlar a visibilidade dos detalhes
 }
 
-export const ServiceProductManager = ({ services, onAddProductToService }: ServiceProductManagerProps) => {
+export const ServiceProductManager = ({ services, onAddProductToService, showDetails }: ServiceProductManagerProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  // REMOVIDO: const [isProductFormDialogOpen, setIsProductFormDialogOpen] = useState(false);
-  // REMOVIDO: const [editingCatalogProduct, setEditingCatalogProduct] = useState<CatalogProduct | undefined>(undefined);
 
   const deleteProductLinkMutation = useMutation({
     mutationFn: async ({ serviceId, productId }: { serviceId: string; productId: string }) => {
@@ -50,11 +47,6 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
     },
   });
 
-  // REMOVIDO: const handleEditProduct = (productToEdit: CatalogProduct) => {
-  // REMOVIDO:   setEditingCatalogProduct(productToEdit);
-  // REMOVIDO:   setIsProductFormDialogOpen(true);
-  // REMOVIDO: };
-
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
       <CardHeader>
@@ -73,128 +65,190 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
       <CardContent className="space-y-6">
         {services.length > 0 ? (
           <div className="space-y-4">
-            {services.map((service) => (
-              <div key={service.id} className="p-4 rounded-lg border bg-background/50">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2">
-                    <Car className="h-4 w-4 text-muted-foreground" />
-                    {service.name}
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onAddProductToService(service.id)} // Chamada para adicionar novo produto
-                    className="text-primary hover:bg-primary/10"
-                    title={`Adicionar produtos a ${service.name}`}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {service.products && service.products.length > 0 ? (
-                  <ul className="list-none space-y-3 ml-4">
-                    {service.products.map(product => {
-                      const productForCalc: ProductForCalculation = {
-                        gallonPrice: product.price,
-                        gallonVolume: product.size * 1000, // Convert liters to ml
-                        dilutionRatio: product.dilution_ratio,
-                        usagePerVehicle: product.usage_per_vehicle,
-                        type: product.type,
-                        containerSize: product.container_size, // Passar container_size
-                      };
-                      const costPerApplication = calculateProductCost(productForCalc);
-                      const costPerContainer = calculateProductCostPerContainer(productForCalc);
-                      
-                      // Cálculos baseados no container_size
-                      const concentratedProductInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
-                        ? (product.container_size / product.dilution_ratio)
-                        : 0;
-                      const waterNeededInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
-                        ? (product.container_size - concentratedProductInContainer)
-                        : 0;
+            {services.map((service) => {
+              // Cálculos para o Demonstrativo de Lucro
+              const laborCost = (service.execution_time_minutes / 60) * service.labor_cost_per_hour;
+              
+              let productsCost = 0;
+              service.products?.forEach(product => {
+                const productForCalc: ProductForCalculation = {
+                  gallonPrice: product.price,
+                  gallonVolume: product.size * 1000, // Convert liters to ml
+                  dilutionRatio: product.dilution_ratio,
+                  usagePerVehicle: product.usage_per_vehicle,
+                  type: product.type,
+                  containerSize: product.container_size,
+                };
+                productsCost += calculateProductCost(productForCalc);
+              });
 
-                      return (
-                        <li key={product.id} className="flex flex-col p-3 rounded-md bg-muted/20 border border-border/50 relative group">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h5 
-                                className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => onAddProductToService(service.id, product.id)} // Chamada para editar produto vinculado
-                              >
-                                {product.name}
-                                <span className={`ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 ${product.type === 'ready-to-use' ? 'text-blue-800' : 'text-primary-strong'}`}>
-                                  {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
-                                </span>
-                              </h5>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-                                <span>Preço: R$ {product.price.toFixed(2)}</span>
-                                <span>Volume Concentrado: {(product.size * 1000).toFixed(0)} ml</span>
-                                {product.type === 'diluted' && (
-                                  <>
-                                    <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
-                                    {product.container_size > 0 && (
-                                      <>
-                                        <span>Tamanho do Recipiente: {product.container_size.toFixed(0)} ml</span>
-                                        <span>Quantidade do produto no Recipiente: {concentratedProductInContainer.toFixed(0)} ml</span>
-                                        <span>Quantidade de água no Recipiente: {waterNeededInContainer.toFixed(0)} ml</span>
-                                      </>
-                                    )}
-                                  </>
-                                )}
-                                {product.type === 'ready-to-use' && (
-                                  <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
-                                )}
-                              </div>
-                              <div className="mt-2 space-y-1">
-                                {product.type === 'diluted' && product.container_size > 0 && (
-                                  <p className="text-sm text-primary-strong font-medium">
-                                    Custo/Recipiente diluído: R$ {costPerContainer.toFixed(2)}
-                                  </p>
-                                )}
-                                <p className="text-sm text-primary-strong font-bold">
-                                  Custo/aplicação: R$ {costPerApplication.toFixed(2)}{" "}
-                                  <span className="text-xs text-muted-foreground">(Ref. a quantidade: {product.usage_per_vehicle.toFixed(0)}ml)</span>
-                                </p>
-                              </div>
-                            </div>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title={`Remover ${product.name} de ${service.name}`}
+              const otherCosts = service.other_costs;
+              const totalServiceCost = laborCost + productsCost + otherCosts;
+              const chargedValue = service.price;
+              const netProfit = chargedValue - totalServiceCost;
+              const profitMarginPercentage = chargedValue > 0 ? (netProfit / chargedValue) * 100 : 0;
+
+              return (
+                <div key={service.id} className="p-4 rounded-lg border bg-background/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2">
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                      {service.name}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAddProductToService(service.id)}
+                      className="text-primary hover:bg-primary/10"
+                      title={`Adicionar produtos a ${service.name}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {showDetails && service.products && service.products.length > 0 ? (
+                    <ul className="list-none space-y-3 ml-4">
+                      {service.products.map(product => {
+                        const productForCalc: ProductForCalculation = {
+                          gallonPrice: product.price,
+                          gallonVolume: product.size * 1000, // Convert liters to ml
+                          dilutionRatio: product.dilution_ratio,
+                          usagePerVehicle: product.usage_per_vehicle,
+                          type: product.type,
+                          containerSize: product.container_size, // Passar container_size
+                        };
+                        const costPerApplication = calculateProductCost(productForCalc);
+                        const costPerContainer = calculateProductCostPerContainer(productForCalc);
+                        
+                        // Cálculos baseados no container_size
+                        const concentratedProductInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
+                          ? (product.container_size / product.dilution_ratio)
+                          : 0;
+                        const waterNeededInContainer = product.type === 'diluted' && product.dilution_ratio > 0 && product.container_size > 0
+                          ? (product.container_size - concentratedProductInContainer)
+                          : 0;
+
+                        return (
+                          <li key={product.id} className="flex flex-col p-3 rounded-md bg-muted/20 border border-border/50 relative group">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h5 
+                                  className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                                  onClick={() => onAddProductToService(service.id, product.id)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="bg-card">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. Isso desvinculará permanentemente o produto "{product.name}" do serviço "{service.name}".
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => deleteProductLinkMutation.mutate({ serviceId: service.id, productId: product.id })} 
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  {product.name}
+                                  <span className={`ml-2 text-xs px-2 py-0.5 rounded bg-primary/20 ${product.type === 'ready-to-use' ? 'text-blue-800' : 'text-primary-strong'}`}>
+                                    {product.type === 'ready-to-use' ? 'Pronto Uso' : 'Diluído'}
+                                  </span>
+                                </h5>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                                  <span>Preço: R$ {product.price.toFixed(2)}</span>
+                                  <span>Volume Concentrado: {(product.size * 1000).toFixed(0)} ml</span>
+                                  {product.type === 'diluted' && (
+                                    <>
+                                      <span>Diluição: {formatDilutionRatio(product.dilution_ratio)}</span>
+                                      {product.container_size > 0 && (
+                                        <>
+                                          <span>Tamanho do Recipiente: {product.container_size.toFixed(0)} ml</span>
+                                          <span>Quantidade do produto no Recipiente: {concentratedProductInContainer.toFixed(0)} ml</span>
+                                          <span>Quantidade de água no Recipiente: {waterNeededInContainer.toFixed(0)} ml</span>
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                  {product.type === 'ready-to-use' && (
+                                    <span>Uso: {product.usage_per_vehicle.toFixed(0)} ml</span>
+                                  )}
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                  {product.type === 'diluted' && product.container_size > 0 && (
+                                    <p className="text-sm text-primary-strong font-medium">
+                                      Custo/Recipiente diluído: R$ {costPerContainer.toFixed(2)}
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-primary-strong font-bold">
+                                    Custo/aplicação: R$ {costPerApplication.toFixed(2)}{" "}
+                                    <span className="text-xs text-muted-foreground">(Ref. a quantidade: {product.usage_per_vehicle.toFixed(0)}ml)</span>
+                                  </p>
+                                </div>
+                              </div>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title={`Remover ${product.name} de ${service.name}`}
                                   >
-                                    Desvincular
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic ml-4">Nenhum produto vinculado.</p>
-                )}
-              </div>
-            ))}
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-card">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. Isso desvinculará permanentemente o produto "{product.name}" do serviço "{service.name}".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteProductLinkMutation.mutate({ serviceId: service.id, productId: product.id })} 
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Desvincular
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    showDetails && <p className="text-sm text-muted-foreground italic ml-4">Nenhum produto vinculado.</p>
+                  )}
+
+                  {showDetails && (
+                    <div className="p-3 rounded-md bg-gradient-to-r from-mediumslateblue/10 to-mediumslateblue/5 border border-mediumslateblue/30 mt-4">
+                      <h5 className="font-semibold text-mediumslateblue mb-2">Demonstrativo de Lucro</h5>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        <span className="text-muted-foreground">Custo Mão de Obra:</span>
+                        <span className="text-foreground text-right">R$ {laborCost.toFixed(2)}</span>
+
+                        <span className="text-muted-foreground">Custo Produtos:</span>
+                        <span className="text-foreground text-right">R$ {productsCost.toFixed(2)}</span>
+
+                        <span className="text-muted-foreground">Outros Custos:</span>
+                        <span className="text-foreground text-right">R$ {otherCosts.toFixed(2)}</span>
+
+                        <div className="col-span-2 border-t border-border/50 my-1"></div>
+
+                        <span className="font-bold text-foreground">Custo Total:</span>
+                        <span className="font-bold text-foreground text-right">R$ {totalServiceCost.toFixed(2)}</span>
+
+                        <span className="font-bold text-foreground">Valor Cobrado:</span>
+                        <span className="font-bold text-primary text-right text-lg">R$ {chargedValue.toFixed(2)}</span>
+
+                        <div className="col-span-2 border-t border-border/50 my-1"></div>
+
+                        <span className="font-bold text-foreground flex items-center gap-1">
+                          <DollarSign className="h-4 w-4 text-success" />
+                          Lucro Líquido:
+                        </span>
+                        <span className="font-bold text-success text-right text-lg">R$ {netProfit.toFixed(2)}</span>
+
+                        <span className="font-bold text-foreground flex items-center gap-1">
+                          <Percent className="h-4 w-4 text-success" />
+                          Margem de Lucro:
+                        </span>
+                        <span className="font-bold text-success text-right text-lg">{profitMarginPercentage.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center italic py-4">
@@ -202,8 +256,6 @@ export const ServiceProductManager = ({ services, onAddProductToService }: Servi
           </p>
         )}
       </CardContent>
-
-      {/* REMOVIDO: ProductFormDialog não é mais usado aqui */}
     </Card>
   );
 };

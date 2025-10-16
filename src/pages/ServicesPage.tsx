@@ -456,6 +456,7 @@ const ServicesPage = () => {
           <ServiceProductManager
             services={services || []}
             onAddProductToService={handleAddProductToService}
+            showDetails={showDetails}
           />
         </div>
       )}
