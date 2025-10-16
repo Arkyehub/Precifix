@@ -41,7 +41,7 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
           rate: existing?.rate || 0.00,
           created_at: existing?.created_at || new Date().toISOString(),
           // Inicializa inputValue: se a taxa for 0 ou undefined, começa com string vazia, caso contrário, usa sua representação em string
-          inputValue: (existing?.rate === 0 || existing?.rate === undefined) ? '' : (existing.rate).toString(),
+          inputValue: (existing?.rate === 0 || existing?.rate === undefined) ? '' : (existing.rate).toString().replace('.', ','), // Substitui ponto por vírgula para exibição
         };
       });
       setRates(fullRates);
@@ -51,13 +51,14 @@ export const CreditCardInstallmentRates = ({ initialInstallmentRates, onRatesCha
   const handleRateChange = (installmentNum: number, value: string) => {
     const newRates = rates.map(item => {
       if (item.installments === installmentNum) {
-        // O `rate` será parseado para um número, `inputValue` mantém a string bruta
-        const parsedValue = parseFloat(value);
+        // Substitui vírgula por ponto para o parseFloat
+        const parsedValueString = value.replace(',', '.');
+        const parsedValue = parseFloat(parsedValueString);
         
         return {
           ...item,
           rate: isNaN(parsedValue) ? 0 : parsedValue, // Define a taxa como 0 se a entrada não for um número válido
-          inputValue: value, // Mantém a string bruta para o campo de entrada
+          inputValue: value, // Mantém a string bruta para o campo de entrada (com vírgula se digitada)
         };
       }
       return item;
