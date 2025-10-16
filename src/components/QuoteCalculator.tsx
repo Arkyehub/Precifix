@@ -231,7 +231,7 @@ export const QuoteCalculator = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="select-services">Adicionar Serviços *</Label> {/* Nome alterado aqui */}
+            <Label htmlFor="select-services">Adicionar Serviços *</Label>
             <MultiSelect
               options={serviceOptions}
               selected={selectedServiceIds}
@@ -270,33 +270,17 @@ export const QuoteCalculator = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Custo da Mão de Obra/Hora removido daqui */}
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="other-costs-global" className="text-sm">Outros Custos Globais (R$)</Label>
-              <Input
-                id="other-costs-global"
-                type="number"
-                step="0.01"
-                value={otherCostsGlobal.toFixed(2) || ""}
-                onChange={(e) => setOtherCostsGlobal(parseFloat(e.target.value) || 0)}
-                className="bg-background"
-              />
-              <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
-              <Input
-                id="profit-margin"
-                type="number"
-                step="0.1"
-                value={profitMargin.toFixed(2) || ""}
-                onChange={(e) => setProfitMargin(parseFloat(e.target.value) || 0)}
-                className="bg-background text-lg font-semibold"
-              />
-            </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="other-costs-global" className="text-sm">Outros Custos Globais (R$)</Label>
+            <Input
+              id="other-costs-global"
+              type="number"
+              step="0.01"
+              value={otherCostsGlobal.toFixed(2) || ""}
+              onChange={(e) => setOtherCostsGlobal(parseFloat(e.target.value) || 0)}
+              className="bg-background"
+            />
+            <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
           </div>
 
           <div className="pt-4 border-t border-border/50 space-y-2">
@@ -326,10 +310,30 @@ export const QuoteCalculator = () => {
                 <span className="text-2xl font-bold text-primary">R$ {totalCost.toFixed(2)}</span>
               </div>
             </div>
-            <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30 mt-2">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground">Preço Sugerido ao Cliente:</span>
-                <span className="text-3xl font-bold text-accent">R$ {finalPrice.toFixed(2)}</span>
+            
+            {/* Nova estrutura para Margem de Lucro e Preço Sugerido */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-foreground">Preço Sugerido ao Cliente:</span>
+                  <span className="text-3xl font-bold text-accent">R$ {finalPrice.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50">
+                <div className="space-y-2">
+                  <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
+                  <Input
+                    id="profit-margin"
+                    type="number"
+                    step="0.1"
+                    value={profitMargin.toFixed(2) || ""}
+                    onChange={(e) => setProfitMargin(parseFloat(e.target.value) || 0)}
+                    className="bg-background text-lg font-semibold"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ajuste a margem em tempo real e veja o impacto no preço final
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -338,7 +342,7 @@ export const QuoteCalculator = () => {
 
       {quotedServices.length > 0 && (
         <QuoteGenerator
-          selectedServices={quotedServices.map(s => s.name)} // Passando apenas os nomes para o gerador de PDF
+          selectedServices={quotedServices.map(s => s.name)}
           totalCost={totalCost}
           finalPrice={finalPrice}
           executionTime={totalExecutionTime}
