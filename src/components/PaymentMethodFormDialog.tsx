@@ -144,7 +144,8 @@ export const PaymentMethodFormDialog = ({ isOpen, onClose, paymentMethod }: Paym
       });
       return;
     }
-    if (isNaN(parseFloat(baseRate)) || parseFloat(baseRate) < 0) {
+    // Only validate baseRate if it's not 'cash'
+    if (type !== 'cash' && (isNaN(parseFloat(baseRate)) || parseFloat(baseRate) < 0)) {
       toast({
         title: "Taxa inválida",
         description: "A taxa deve ser um número positivo ou zero.",
@@ -170,7 +171,7 @@ export const PaymentMethodFormDialog = ({ isOpen, onClose, paymentMethod }: Paym
       id: paymentMethod?.id,
       name,
       type,
-      rate: parseFloat(baseRate),
+      rate: type === 'cash' ? 0 : parseFloat(baseRate), // Set rate to 0 for cash
       user_id: user!.id,
       installmentsToSave: type === 'credit_card' ? installmentRates : undefined,
     });
@@ -205,7 +206,7 @@ export const PaymentMethodFormDialog = ({ isOpen, onClose, paymentMethod }: Paym
             </Select>
           </div>
 
-          {type !== 'credit_card' && (
+          {type !== 'credit_card' && type !== 'cash' && ( // Condição atualizada aqui
             <div className="space-y-2">
               <Label htmlFor="base-rate">Taxa (%) *</Label>
               <Input id="base-rate" type="number" step="0.01" value={baseRate} onChange={(e) => setBaseRate(e.target.value)} className="bg-background" />
