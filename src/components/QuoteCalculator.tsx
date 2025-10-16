@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Car, Package, DollarSign, FileText, Percent } from "lucide-react";
+import { Car, Package, DollarSign, FileText, Percent, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LoadHourlyCostButton } from './LoadHourlyCostButton';
 import { QuoteGenerator } from './QuoteGenerator';
 import { calculateProductCost, formatDilutionRatio, ProductForCalculation, formatMinutesToHHMM, parseHHMMToMinutes } from "@/lib/cost-calculations";
+import { QuoteServiceFormDialog, QuotedService } from './QuoteServiceFormDialog'; // Importar o novo diálogo e interface
 
 interface Service {
   id: string;
@@ -20,6 +21,7 @@ interface Service {
   price: number;
   labor_cost_per_hour: number;
   execution_time_minutes: number;
+  other_costs: number;
   user_id: string;
   products?: { 
     id: string; 
@@ -29,17 +31,17 @@ interface Service {
     type: 'diluted' | 'ready-to-use'; 
     dilution_ratio: number; 
     usage_per_vehicle: number;
-    container_size: number; // Adicionado container_size
+    container_size: number;
   }[];
 }
 
-interface CatalogProduct {
+interface OperationalCost {
   id: string;
-  name: string;
-  size: number; // em litros
-  price: number; // em R$
-  type: 'diluted' | 'ready-to-use';
-  dilution_ratio: number;
+  description: string;
+  value: number;
+  type: 'fixed' | 'variable';
+  user_id: string;
+  created_at: string;
 }
 
 export const QuoteCalculator = () => {
@@ -47,9 +49,12 @@ export const QuoteCalculator = () => {
   const { toast } = useToast();
 
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [laborCostPerHour, setLaborCostPerHour] = useState(0);
-  const [otherCosts, setOtherCosts] = useState(0);
+  const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]); // Estado para serviços com overrides
+  const [otherCostsGlobal, setOtherCostsGlobal] = useState(0); // Outros custos globais, se houver
   const [profitMargin, setProfitMargin] = useState(40);
+
+  const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
+  const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
 
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -65,7 +70,7 @@ export const QuoteCalculator = () => {
       const servicesWithProducts = await Promise.all(servicesData.map(async (service) => {
         const { data: linksData, error: linksError } = await supabase
           .from('service_product_links')
-          .select('product_id, usage_per_vehicle, dilution_ratio, container_size') // Buscar usage_per_vehicle, dilution_ratio e container_size
+          .select('product_id, usage_per_vehicle, dilution_ratio, container_size')
           .eq('service_id', service.id);
         if (linksError) {
           console.error(`Error fetching product links for service ${service.id}:`, linksError);
@@ -83,14 +88,13 @@ export const QuoteCalculator = () => {
             console.error(`Error fetching products for service ${service.id}:`, productsError);
             return { ...service, products: [] };
           }
-          // Combinar dados do produto com usage_per_vehicle, dilution_ratio e container_size do link
           const productsWithUsageAndDilution = productsData.map(product => {
             const link = linksData.find(link => link.product_id === product.id);
             return { 
               ...product, 
               usage_per_vehicle: link?.usage_per_vehicle || 0,
-              dilution_ratio: link?.dilution_ratio || 0, // Usar a diluição do link
-              container_size: link?.container_size || 0, // Usar o container_size do link
+              dilution_ratio: link?.dilution_ratio || 0,
+              container_size: link?.container_size || 0,
             };
           });
           return { ...service, products: productsWithUsageAndDilution };
@@ -102,40 +106,110 @@ export const QuoteCalculator = () => {
     enabled: !!user,
   });
 
-  const selectedServices = allServices?.filter(service => selectedServiceIds.includes(service.id)) || [];
+  // Fetch products monthly cost item to determine calculation method
+  const { data: productsMonthlyCostItem, isLoading: isLoadingMonthlyCost } = useQuery<OperationalCost | null>({
+    queryKey: ['productsMonthlyCostItem', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('operational_costs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('description', 'Produtos Gastos no Mês')
+        .single();
+      if (error && (error as any).code !== 'PGRST116') {
+        console.error("Error fetching products monthly cost item:", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
+
+  // Efeito para sincronizar selectedServiceIds com quotedServices
+  useEffect(() => {
+    if (!allServices) return;
+
+    const newQuotedServices: QuotedService[] = [];
+    const currentQuotedServiceIds = new Set(quotedServices.map(s => s.id));
+
+    selectedServiceIds.forEach(id => {
+      const existingQuotedService = quotedServices.find(qs => qs.id === id);
+      if (existingQuotedService) {
+        newQuotedServices.push(existingQuotedService);
+      } else {
+        const serviceFromAll = allServices.find(s => s.id === id);
+        if (serviceFromAll) {
+          newQuotedServices.push({ ...serviceFromAll }); // Adiciona uma cópia para permitir overrides
+        }
+      }
+    });
+
+    setQuotedServices(newQuotedServices);
+  }, [selectedServiceIds, allServices]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Função para abrir o diálogo de edição de serviço
+  const handleEditServiceForQuote = (service: QuotedService) => {
+    setServiceToEditInDialog(service);
+    setIsServiceFormDialogOpen(true);
+  };
+
+  // Função para salvar as alterações de um serviço no orçamento
+  const handleSaveQuotedService = (updatedService: QuotedService) => {
+    setQuotedServices(prev => 
+      prev.map(s => (s.id === updatedService.id ? updatedService : s))
+    );
+    toast({
+      title: "Serviço atualizado para o orçamento!",
+      description: `${updatedService.name} foi configurado para este orçamento.`,
+    });
+  };
 
   // Calculate total execution time
-  const totalExecutionTime = selectedServices.reduce((sum, service) => sum + service.execution_time_minutes, 0);
+  const totalExecutionTime = quotedServices.reduce((sum, service) => 
+    sum + (service.quote_execution_time_minutes ?? service.execution_time_minutes), 0);
 
   // Calculate total products cost
-  const totalProductsCost = selectedServices.reduce((sum, service) => {
+  const totalProductsCost = quotedServices.reduce((sum, service) => {
     let serviceProductCost = 0;
-    service.products?.forEach(product => {
-      const productForCalc: ProductForCalculation = {
-        gallonPrice: product.price,
-        gallonVolume: product.size * 1000, // Convert liters to ml
-        dilutionRatio: product.dilution_ratio, // Usar a diluição do link
-        usagePerVehicle: product.usage_per_vehicle, // Usar a quantidade definida
-        type: product.type,
-      };
-      serviceProductCost += calculateProductCost(productForCalc);
-    });
+    if (productCostCalculationMethod === 'per-service') {
+      const productsToUse = service.quote_products ?? service.products;
+      productsToUse?.forEach(product => {
+        const productForCalc: ProductForCalculation = {
+          gallonPrice: product.price,
+          gallonVolume: product.size * 1000, // Convert liters to ml
+          dilutionRatio: product.dilution_ratio,
+          usagePerVehicle: product.usage_per_vehicle,
+          type: product.type,
+        };
+        serviceProductCost += calculateProductCost(productForCalc);
+      });
+    }
     return sum + serviceProductCost;
   }, 0);
 
+  // Calculate total labor cost across all selected services
+  const totalLaborCost = quotedServices.reduce((sum, service) => {
+    const laborCostPerHour = service.quote_labor_cost_per_hour ?? service.labor_cost_per_hour;
+    const executionTimeMinutes = service.quote_execution_time_minutes ?? service.execution_time_minutes;
+    return sum + (executionTimeMinutes / 60) * laborCostPerHour;
+  }, 0);
 
-  // Calculate labor cost
-  const laborCost = (totalExecutionTime / 60) * laborCostPerHour;
+  // Calculate total other costs across all selected services
+  const totalOtherCosts = quotedServices.reduce((sum, service) => 
+    sum + (service.quote_other_costs ?? service.other_costs), 0);
 
   // Calculate total cost
-  const totalCost = totalProductsCost + laborCost + otherCosts;
+  const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
 
   // Calculate final price
   const finalPrice = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
 
-  if (isLoadingServices) {
+  if (isLoadingServices || isLoadingMonthlyCost) {
     return <p className="text-center py-8">Carregando serviços...</p>;
   }
 
@@ -157,44 +231,59 @@ export const QuoteCalculator = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="select-services">Serviços a Orçar *</Label>
+            <Label htmlFor="select-services">Adicionar Serviços *</Label> {/* Nome alterado aqui */}
             <MultiSelect
               options={serviceOptions}
               selected={selectedServiceIds}
               onSelectChange={setSelectedServiceIds}
               placeholder="Selecione os serviços para o orçamento"
             />
-            {selectedServices.length === 0 && (
+            {selectedServiceIds.length === 0 && (
               <p className="text-sm text-destructive mt-2">Por favor, selecione pelo menos um serviço.</p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="labor-cost-per-hour" className="text-sm">Custo da Mão de Obra/Hora (R$)</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="labor-cost-per-hour"
-                  type="number"
-                  step="0.01"
-                  value={laborCostPerHour.toFixed(2) || ""}
-                  onChange={(e) => setLaborCostPerHour(parseFloat(e.target.value) || 0)}
-                  className="flex-1 bg-background"
-                />
-                <LoadHourlyCostButton onLoad={(cost) => setLaborCostPerHour(parseFloat(cost.toFixed(2)))} />
+          {quotedServices.length > 0 && (
+            <div className="space-y-4 pt-4 border-t border-border/50">
+              <h3 className="text-sm font-medium text-foreground">Serviços Selecionados para Orçamento</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {quotedServices.map(service => (
+                  <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/50">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{service.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Valor: R$ {(service.quote_price ?? service.price).toFixed(2)} | Tempo: {formatMinutesToHHMM(service.quote_execution_time_minutes ?? service.execution_time_minutes)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditServiceForQuote(service)}
+                      className="text-primary hover:bg-primary/10"
+                      title={`Editar ${service.name} para este orçamento`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="other-costs" className="text-sm">Outros Custos Variáveis (R$)</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Custo da Mão de Obra/Hora removido daqui */}
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="other-costs-global" className="text-sm">Outros Custos Globais (R$)</Label>
               <Input
-                id="other-costs"
+                id="other-costs-global"
                 type="number"
                 step="0.01"
-                value={otherCosts.toFixed(2) || ""}
-                onChange={(e) => setOtherCosts(parseFloat(e.target.value) || 0)}
+                value={otherCostsGlobal.toFixed(2) || ""}
+                onChange={(e) => setOtherCostsGlobal(parseFloat(e.target.value) || 0)}
                 className="bg-background"
               />
+              <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -221,11 +310,15 @@ export const QuoteCalculator = () => {
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Custo de Mão de Obra:</span>
-              <span className="font-medium text-foreground">R$ {laborCost.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {totalLaborCost.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Outros Custos:</span>
-              <span className="font-medium text-foreground">R$ {otherCosts.toFixed(2)}</span>
+              <span className="text-muted-foreground">Outros Custos por Serviço:</span>
+              <span className="font-medium text-foreground">R$ {totalOtherCosts.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Outros Custos Globais:</span>
+              <span className="font-medium text-foreground">R$ {otherCostsGlobal.toFixed(2)}</span>
             </div>
             <div className="p-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg border border-primary/30 mt-4">
               <div className="flex justify-between items-center">
@@ -243,12 +336,22 @@ export const QuoteCalculator = () => {
         </CardContent>
       </Card>
 
-      {selectedServices.length > 0 && (
+      {quotedServices.length > 0 && (
         <QuoteGenerator
-          selectedServices={selectedServices.map(s => s.name)}
+          selectedServices={quotedServices.map(s => s.name)} // Passando apenas os nomes para o gerador de PDF
           totalCost={totalCost}
           finalPrice={finalPrice}
           executionTime={totalExecutionTime}
+        />
+      )}
+
+      {serviceToEditInDialog && (
+        <QuoteServiceFormDialog
+          isOpen={isServiceFormDialogOpen}
+          onClose={() => setIsServiceFormDialogOpen(false)}
+          service={serviceToEditInDialog}
+          onSave={handleSaveQuotedService}
+          productCostCalculationMethod={productCostCalculationMethod}
         />
       )}
     </div>
