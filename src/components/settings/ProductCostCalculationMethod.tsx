@@ -182,12 +182,25 @@ export const ProductCostCalculationMethod = () => {
       return;
     }
 
+    if (isLoadingLinkedProducts || isLoadingMonthlyCost) {
+      toast({
+        title: "Carregando dados",
+        description: "Aguarde enquanto verificamos os vínculos de produtos e custos mensais.",
+        // variant: "info", // Removido a variante "info"
+      });
+      return;
+    }
+
     if (value === 'monthly-average') {
       // Se houver produtos vinculados, abre o diálogo de confirmação
       if (hasLinkedProducts) {
         setIsConfirmSwitchToMonthlyDialogOpen(true);
       } else {
-        // Se não houver produtos vinculados, procede diretamente para gerenciar custos
+        // Se não houver produtos vinculados, informa o usuário e procede
+        toast({
+          title: "Método de cálculo alterado!",
+          description: "Você está usando o cálculo simplificado. Agora, defina o custo mensal de produtos.",
+        });
         if (productsMonthlyCostItem) {
           navigate('/manage-costs', {
             state: {
@@ -250,7 +263,11 @@ export const ProductCostCalculationMethod = () => {
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
-            <RadioGroupItem value="per-service" id="per-service" />
+            <RadioGroupItem 
+              value="per-service" 
+              id="per-service" 
+              disabled={isLoadingMonthlyCost || isLoadingLinkedProducts} 
+            />
             <Label htmlFor="per-service" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Detalhado</strong> (Para cada Serviço)</h4>
               <p className="text-sm text-muted-foreground mt-1">
@@ -260,7 +277,11 @@ export const ProductCostCalculationMethod = () => {
           </div>
 
           <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
-            <RadioGroupItem value="monthly-average" id="monthly-average" />
+            <RadioGroupItem 
+              value="monthly-average" 
+              id="monthly-average" 
+              disabled={isLoadingMonthlyCost || isLoadingLinkedProducts} 
+            />
             <Label htmlFor="monthly-average" className="flex-1 cursor-pointer">
               <h4 className="font-medium text-foreground"><strong>Cálculo Simplificado</strong> (Média Mensal)</h4>
               <p className="text-sm text-muted-foreground mt-1">
