@@ -94,8 +94,8 @@ export const QuoteCalculationSummary = ({
       {selectedPaymentMethodId && paymentFee > 0 && (
         <div className="p-4 bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/30 mt-4">
           <div className="flex justify-between items-center">
-            <span className="font-medium text-foreground">Taxa da Forma de Pagamento:</span>
-            <span className="text-xl font-bold text-blue-500">R$ {paymentFee.toFixed(2)}</span>
+            <span className="font-medium text-foreground">Taxa da Forma de Pagamento (dedução):</span>
+            <span className="text-xl font-bold text-blue-500">- R$ {paymentFee.toFixed(2)}</span>
           </div>
         </div>
       )}

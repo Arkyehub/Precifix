@@ -289,10 +289,12 @@ export const QuoteCalculator = () => {
     setPaymentFee(calculatedFee);
   }, [valueAfterDiscount, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
-  const finalPriceWithFee = valueAfterDiscount + paymentFee;
+  // Preço Final com Taxa (Valor a Receber) - AGORA SUBTRAI A TAXA
+  const finalPriceWithFee = valueAfterDiscount - paymentFee;
 
-  // Calcular a Margem de Lucro Atual (agora chamada de "Real")
-  const currentProfitMarginPercentage = finalPriceWithFee > 0 ? ((finalPriceWithFee - totalCost) / finalPriceWithFee) * 100 : 0;
+  // Calcular a Margem de Lucro Real (baseada no Valor a Receber final e no Custo Total)
+  const netProfit = finalPriceWithFee - totalCost;
+  const currentProfitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
 
   // Calcular o Preço Sugerido com base na Margem de Lucro Desejada
   const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
