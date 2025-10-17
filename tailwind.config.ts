@@ -74,6 +74,10 @@ export default {
           DEFAULT: "hsl(248 53% 64%)", // #7B68EE
           foreground: "hsl(248 53% 10%)", 
         },
+        purple: { // New color for real profit margin
+          DEFAULT: "hsl(270 70% 60%)", // A nice purple
+          foreground: "hsl(270 70% 10%)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

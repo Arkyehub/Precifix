@@ -291,10 +291,10 @@ export const QuoteCalculator = () => {
 
   const finalPriceWithFee = valueAfterDiscount + paymentFee;
 
-  // Calcular a Margem de Lucro Atual (após desconto, antes da taxa de pagamento)
-  const currentProfitMarginPercentage = valueAfterDiscount > 0 ? ((valueAfterDiscount - totalCost) / valueAfterDiscount) * 100 : 0;
+  // Calcular a Margem de Lucro Atual (agora chamada de "Real")
+  const currentProfitMarginPercentage = finalPriceWithFee > 0 ? ((finalPriceWithFee - totalCost) / finalPriceWithFee) * 100 : 0;
 
-  // Calcular o Preço Sugerido com base na Margem de Lucro Desejada (após desconto, antes da taxa de pagamento)
+  // Calcular o Preço Sugerido com base na Margem de Lucro Desejada
   const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
 
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
@@ -377,7 +377,7 @@ export const QuoteCalculator = () => {
             totalOtherCosts={totalOtherCosts}
             otherCostsGlobal={otherCostsGlobal}
             totalCost={totalCost}
-            totalServiceValue={totalServiceValue} // Renamed prop
+            totalServiceValue={totalServiceValue}
             currentProfitMarginPercentage={currentProfitMarginPercentage}
             profitMargin={profitMargin}
             displayProfitMargin={displayProfitMargin}
@@ -387,7 +387,7 @@ export const QuoteCalculator = () => {
             selectedPaymentMethodId={selectedPaymentMethodId}
             paymentFee={paymentFee}
             finalPriceWithFee={finalPriceWithFee}
-            valueAfterDiscount={valueAfterDiscount} // Pass the new prop
+            valueAfterDiscount={valueAfterDiscount}
           />
         </CardContent>
       </Card>

@@ -11,7 +11,7 @@ interface QuoteCalculationSummaryProps {
   totalOtherCosts: number;
   otherCostsGlobal: number;
   totalCost: number;
-  totalServiceValue: number; // Renamed from totalChargedValue
+  totalServiceValue: number;
   currentProfitMarginPercentage: number;
   profitMargin: number;
   displayProfitMargin: string;
@@ -21,7 +21,7 @@ interface QuoteCalculationSummaryProps {
   selectedPaymentMethodId: string | null;
   paymentFee: number;
   finalPriceWithFee: number;
-  valueAfterDiscount: number; // Added to pass the value after discount
+  valueAfterDiscount: number;
 }
 
 export const QuoteCalculationSummary = ({
@@ -31,7 +31,7 @@ export const QuoteCalculationSummary = ({
   totalOtherCosts,
   otherCostsGlobal,
   totalCost,
-  totalServiceValue, // Renamed
+  totalServiceValue,
   currentProfitMarginPercentage,
   profitMargin,
   displayProfitMargin,
@@ -41,7 +41,7 @@ export const QuoteCalculationSummary = ({
   selectedPaymentMethodId,
   paymentFee,
   finalPriceWithFee,
-  valueAfterDiscount, // Added
+  valueAfterDiscount,
 }: QuoteCalculationSummaryProps) => {
 
   const handleProfitMarginBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -73,48 +73,20 @@ export const QuoteCalculationSummary = ({
         <span className="text-muted-foreground">Outros Custos Globais:</span>
         <span className="font-medium text-foreground">R$ {otherCostsGlobal.toFixed(2)}</span>
       </div>
+
+      {/* Custo Total da Operação */}
       <div className="p-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg border border-primary/30 mt-4">
         <div className="flex justify-between items-center">
           <span className="font-medium text-foreground">Custo Total da Operação:</span>
           <span className="text-2xl font-bold text-primary">R$ {totalCost.toFixed(2)}</span>
         </div>
       </div>
-      
-      {/* Nova estrutura para Comparativo de Margem de Lucro e Preço */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-        {/* Coluna de Valores Atuais */}
-        <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-foreground">Valor do Serviço:</span> {/* Changed label */}
-            <span className="text-3xl font-bold text-accent">R$ {totalServiceValue.toFixed(2)}</span> {/* Uses totalServiceValue */}
-          </div>
-          <div className="flex justify-between items-center mt-2">
-            <span className="font-medium text-foreground">Margem de Lucro Atual:</span>
-            <span className="text-xl font-bold text-accent">{currentProfitMarginPercentage.toFixed(1)}%</span>
-          </div>
-        </div>
 
-        {/* Coluna de Margem Desejada e Preço Sugerido */}
-        <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50">
-          <div className="space-y-2">
-            <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
-            <Input
-              id="profit-margin"
-              type="text"
-              step="0.1"
-              value={displayProfitMargin}
-              onChange={(e) => onDisplayProfitMarginChange(e.target.value)}
-              onBlur={handleProfitMarginBlur}
-              className="bg-background text-lg font-semibold"
-            />
-            <p className="text-xs text-muted-foreground">
-              Ajuste a margem para ver um preço sugerido.
-            </p>
-          </div>
-          <div className="flex justify-between items-center mt-4">
-            <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
-            <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
-          </div>
+      {/* Valor do Serviço (antes do desconto) */}
+      <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30 mt-4">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-foreground">Valor do Serviço (antes do desconto):</span>
+          <span className="text-3xl font-bold text-accent">R$ {totalServiceValue.toFixed(2)}</span>
         </div>
       </div>
 
@@ -128,12 +100,46 @@ export const QuoteCalculationSummary = ({
         </div>
       )}
 
-      {/* Preço Final com Taxa */}
+      {/* Preço Final com Taxa (Valor a Receber) */}
       <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4">
         <div className="flex justify-between items-center">
-          <span className="font-medium text-foreground">Valor a Receber (com desconto e taxa):</span> {/* Changed label */}
+          <span className="font-medium text-foreground">Valor a Receber (com desconto e taxa):</span>
           <span className="text-3xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
         </div>
+      </div>
+
+      {/* Margem de Lucro Desejada e Preço Sugerido */}
+      <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50 mt-4">
+        <div className="space-y-2">
+          <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
+          <Input
+            id="profit-margin"
+            type="text"
+            step="0.1"
+            value={displayProfitMargin}
+            onChange={(e) => onDisplayProfitMarginChange(e.target.value)}
+            onBlur={handleProfitMarginBlur}
+            className="bg-background text-lg font-semibold"
+          />
+          <p className="text-xs text-muted-foreground">
+            Ajuste a margem para ver um preço sugerido.
+          </p>
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
+          <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Nova seção para Margem de Lucro Real (baseada no Valor a Receber) */}
+      <div className="p-4 bg-gradient-to-r from-purple-500/10 to-purple-500/5 rounded-lg border border-purple-500/30 mt-4">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-foreground">Margem de Lucro Real:</span>
+          <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Calculada sobre o "Valor a Receber" após descontos e taxas.
+        </p>
       </div>
     </div>
   );
