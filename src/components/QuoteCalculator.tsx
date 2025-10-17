@@ -290,10 +290,12 @@ export const QuoteCalculator = () => {
   }, [valueAfterDiscount, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
   // Preço Final com Taxa (Valor a Receber) - AGORA SUBTRAI A TAXA
-  const finalPriceWithFee = valueAfterDiscount - paymentFee;
+  const finalPriceWithFee = valueAfterDiscount - paymentFee; // Este é o Valor a Receber (receita)
 
-  // Calcular a Margem de Lucro Real (baseada no Valor a Receber final e no Custo Total)
+  // Calcular o Lucro Líquido
   const netProfit = finalPriceWithFee - totalCost;
+
+  // Calcular a Margem de Lucro Real (baseada no Lucro Líquido e no Valor a Receber final)
   const currentProfitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
 
   // Calcular o Preço Sugerido com base na Margem de Lucro Desejada
@@ -388,8 +390,9 @@ export const QuoteCalculator = () => {
             suggestedPriceBasedOnDesiredMargin={suggestedPriceBasedOnDesiredMargin}
             selectedPaymentMethodId={selectedPaymentMethodId}
             paymentFee={paymentFee}
-            finalPriceWithFee={finalPriceWithFee}
+            finalPriceWithFee={finalPriceWithFee} // Passando a receita final
             valueAfterDiscount={valueAfterDiscount}
+            netProfit={netProfit} // Passando o lucro líquido
           />
         </CardContent>
       </Card>
@@ -398,7 +401,7 @@ export const QuoteCalculator = () => {
         <QuoteGenerator
           selectedServices={quotedServices.map(s => s.name)}
           totalCost={totalCost}
-          finalPrice={finalPriceWithFee}
+          finalPrice={finalPriceWithFee} // O gerador de PDF usa o valor da receita final
           executionTime={totalExecutionTime}
         />
       )}

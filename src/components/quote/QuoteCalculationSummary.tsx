@@ -20,8 +20,9 @@ interface QuoteCalculationSummaryProps {
   suggestedPriceBasedOnDesiredMargin: number;
   selectedPaymentMethodId: string | null;
   paymentFee: number;
-  finalPriceWithFee: number;
+  finalPriceWithFee: number; // Valor a Receber (receita)
   valueAfterDiscount: number;
+  netProfit: number; // Lucro Líquido
 }
 
 export const QuoteCalculationSummary = ({
@@ -42,6 +43,7 @@ export const QuoteCalculationSummary = ({
   paymentFee,
   finalPriceWithFee,
   valueAfterDiscount,
+  netProfit,
 }: QuoteCalculationSummaryProps) => {
 
   const handleProfitMarginBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -100,18 +102,24 @@ export const QuoteCalculationSummary = ({
         </div>
       )}
 
-      {/* Preço Final com Taxa (Valor a Receber) & Margem de Lucro Real */}
+      {/* Novo item para Valor a Receber (final) */}
+      <div className="flex justify-between items-center text-sm pt-4 border-t border-border/50">
+        <span className="font-medium text-foreground">Valor a Receber (final):</span>
+        <span className="text-xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
+      </div>
+
+      {/* Lucro Líquido & Margem de Lucro Real */}
       <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4 space-y-3">
         <div className="flex justify-between items-center">
-          <span className="font-medium text-foreground">Valor a Receber (com desconto e taxa):</span>
-          <span className="text-3xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
+          <span className="font-medium text-foreground">Lucro Líquido:</span>
+          <span className="text-3xl font-bold text-green-500">R$ {netProfit.toFixed(2)}</span>
         </div>
         <div className="flex justify-between items-center pt-2 border-t border-green-500/30">
           <span className="font-medium text-foreground">Margem de Lucro Real:</span>
           <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Calculada sobre o "Valor a Receber" após descontos e taxas.
+          Calculada sobre o "Valor a Receber (final)" após descontos e taxas.
         </p>
       </div>
 
