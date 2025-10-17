@@ -100,12 +100,19 @@ export const QuoteCalculationSummary = ({
         </div>
       )}
 
-      {/* Preço Final com Taxa (Valor a Receber) */}
-      <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4">
+      {/* Preço Final com Taxa (Valor a Receber) & Margem de Lucro Real */}
+      <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="font-medium text-foreground">Valor a Receber (com desconto e taxa):</span>
           <span className="text-3xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
         </div>
+        <div className="flex justify-between items-center pt-2 border-t border-green-500/30">
+          <span className="font-medium text-foreground">Margem de Lucro Real:</span>
+          <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Calculada sobre o "Valor a Receber" após descontos e taxas.
+        </p>
       </div>
 
       {/* Margem de Lucro Desejada e Preço Sugerido */}
@@ -129,17 +136,6 @@ export const QuoteCalculationSummary = ({
           <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
           <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
         </div>
-      </div>
-
-      {/* Nova seção para Margem de Lucro Real (baseada no Valor a Receber) */}
-      <div className="p-4 bg-gradient-to-r from-purple-500/10 to-purple-500/5 rounded-lg border border-purple-500/30 mt-4">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-foreground">Margem de Lucro Real:</span>
-          <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Calculada sobre o "Valor a Receber" após descontos e taxas.
-        </p>
       </div>
     </div>
   );
