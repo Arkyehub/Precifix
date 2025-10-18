@@ -15,7 +15,7 @@ export const VariableCostsTable = ({ costs, onEdit, onDelete }: VariableCostsTab
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-foreground">Custos Variáveis</h3>
-      <div className="rounded-md border bg-background/50">
+      <div className="rounded-md border bg-background"> {/* Alterado bg-background/50 para bg-background */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -35,12 +35,12 @@ export const VariableCostsTable = ({ costs, onEdit, onDelete }: VariableCostsTab
                     R$ {cost.value.toFixed(2)}
                   </TableCell>
                   <TableCell className="flex justify-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(cost)} className="text-muted-foreground hover:text-primary hover:bg-background">
+                    <Button variant="ghost" size="icon" onClick={() => onEdit(cost)} className="text-muted-foreground hover:text-primary hover:bg-white"> {/* Alterado hover:bg-background para hover:bg-white */}
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-background">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-white"> {/* Alterado hover:bg-background para hover:bg-white */}
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
