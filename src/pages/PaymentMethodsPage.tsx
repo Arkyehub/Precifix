@@ -271,7 +271,7 @@ const PaymentMethodsPage = () => {
           {paymentMethods && paymentMethods.length > 0 ? (
             <div className="space-y-4">
               {paymentMethods.map((method) => (
-                <div key={method.id} className="p-4 rounded-lg border bg-background/50">
+                <div key={method.id} className="p-4 rounded-lg border bg-background"> {/* Alterado bg-background/50 para bg-background */}
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-semibold text-foreground flex items-center gap-2">
                       {method.name}
