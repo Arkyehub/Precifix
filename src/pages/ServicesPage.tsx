@@ -273,7 +273,7 @@ const ServicesPage = () => {
                 {services.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-center justify-between p-2 rounded-lg"
+                    className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50 border-l-4 border-primary"
                   >
                     <div className="flex-1 flex items-center gap-2">
                       <span className="font-medium text-foreground">{service.name}</span>
