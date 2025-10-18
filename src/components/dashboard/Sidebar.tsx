@@ -10,7 +10,7 @@ import {
   User as UserIcon,
   Settings,
   X, // Para o botão de fechar em mobile
-  Sparkles, // Re-adicionado Sparkles
+  Gauge, // Importado o ícone Gauge (velocímetro)
 } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
@@ -49,7 +49,7 @@ export const Sidebar = () => {
         <div className="flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3" onClick={closeSidebar}>
             <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
-              <Sparkles className="h-6 w-6 text-primary-foreground" />
+              <Gauge className="h-6 w-6 text-primary-foreground" /> {/* Ícone Gauge (velocímetro) */}
             </div>
             <h2 className="text-xl font-bold text-sidebar-foreground">PrecifiCar</h2>
           </Link>
