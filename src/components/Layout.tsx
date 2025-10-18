@@ -8,14 +8,14 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="grid grid-rows-[auto_1fr] h-screen overflow-hidden"> {/* Main grid for header and content area */}
-      <Header />
-      <div className="grid grid-cols-[auto_1fr] h-full"> {/* Alterado de flex-1 para h-full para garantir que ocupe a altura total da linha 1fr */}
+    <div className="flex flex-col h-screen overflow-hidden"> {/* Outer container: flex column, takes full screen height, prevents browser scrollbar */}
+      <Header /> {/* Fixed height header */}
+      <div className="flex flex-row flex-1"> {/* Content area: flex row, takes remaining vertical height */}
         {/* Desktop Sidebar */}
-        <aside className="hidden w-[250px] shrink-0 border-r border-border/50 bg-sidebar lg:block h-full overflow-y-auto">
+        <aside className="hidden w-[250px] shrink-0 border-r border-border/50 bg-sidebar lg:block overflow-y-auto"> {/* Sidebar: fixed width, scrolls if content overflows */}
           <Sidebar />
         </aside>
-        <main className="flex-1 h-full overflow-y-auto"> {/* Main content area with scroll, h-full é crucial */}
+        <main className="flex-1 overflow-y-auto"> {/* Main content: takes remaining width, scrolls if content overflows */}
           {children}
         </main>
       </div>
