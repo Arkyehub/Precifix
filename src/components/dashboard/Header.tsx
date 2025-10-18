@@ -59,8 +59,8 @@ export const Header = () => {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full"> {/* Aumentado para h-10 w-10 */}
+                <Avatar className="h-10 w-10"> {/* Aumentado para h-10 w-10 */}
                   <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={user?.email || "User"} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {getUserInitials(user)}
