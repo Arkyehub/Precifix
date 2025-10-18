@@ -38,7 +38,7 @@ export const Header = () => {
   const userName = user?.user_metadata?.first_name || 'Usuário';
 
   return (
-    <header className="z-40 py-4 bg-card shadow-md border-b border-border/50">
+    <header className="z-40 py-4 bg-sidebar shadow-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-full px-6">
         {/* Left: Hamburger Menu for mobile */}
         <Button
