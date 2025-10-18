@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 96%; /* Alterado para um cinza muito claro */
     --foreground: 0 0% 5%;
     --card: var(--sidebar-background); /* Make card background same as sidebar background */
     --card-foreground: 0 0% 5%;
@@ -38,7 +38,7 @@ All colors MUST be HSL.
     --shadow-elegant: 0 10px 30px -10px hsl(45 100% 51% / 0.2);
     --shadow-glow: 0 0 40px hsl(45 100% 51% / 0.15);
     
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 94%; /* Alterado para um cinza um pouco mais escuro */
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
@@ -47,11 +47,11 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 45 100% 51%;
 
-    --radius: 0.75rem; /* Ajustado para 0.75rem para quinas mais arredondadas */
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 0 0% 7%;
+    --background: 0 0% 5%; /* Alterado para um cinza ainda mais escuro */
     --foreground: 0 0% 98%;
     --card: var(--sidebar-background); /* Make card background same as sidebar background */
     --card-foreground: 0 0% 98%;
@@ -80,7 +80,7 @@ All colors MUST be HSL.
     --shadow-card: 0 4px 20px hsl(45 100% 51% / 0.15);
     --shadow-elegant: 0 10px 30px -10px hsl(45 100% 51% / 0.3);
     --shadow-glow: 0 0 40px hsl(45 100% 51% / 0.25);
-    --sidebar-background: 240 5.9% 10%;
+    --sidebar-background: 240 5.9% 8%; /* Alterado para um cinza ligeiramente mais escuro */
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 45 100% 51%;
     --sidebar-primary-foreground: 0 0% 0%;
@@ -89,7 +89,7 @@ All colors MUST be HSL.
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 45 100% 51%;
 
-    --radius: 0.75rem; /* Ajustado para 0.75rem para quinas mais arredondadas */
+    --radius: 0.75rem;
   }
 
 }
