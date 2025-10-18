@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { Gauge } from "lucide-react"; // Alterado de FileText para Gauge
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -310,111 +310,90 @@ export const QuoteCalculator = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)] mb-6">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
-              <FileText className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <CardTitle className="text-foreground">Gerar Orçamento Detalhado</CardTitle>
-              <CardDescription>
-                Selecione os serviços, ajuste os custos e gere um orçamento profissional.
-              </CardDescription>
-            </div>
+    <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)] mb-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+            <Gauge className="h-5 w-5 text-primary-foreground" />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <QuoteServiceSelection
-            serviceOptions={serviceOptions}
-            selectedServiceIds={selectedServiceIds}
-            onSelectChange={setSelectedServiceIds}
-          />
+          <div>
+            <CardTitle className="text-foreground">PrecifiCar</CardTitle>
+            <CardDescription>
+              Calcule, ajuste e gere orçamentos profissionais para seus clientes.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <QuoteServiceSelection
+          serviceOptions={serviceOptions}
+          selectedServiceIds={selectedServiceIds}
+          onSelectChange={setSelectedServiceIds}
+        />
 
-          <QuoteSelectedServicesList
-            quotedServices={quotedServices}
-            onEditServiceForQuote={handleEditServiceForQuote}
-          />
+        <QuoteSelectedServicesList
+          quotedServices={quotedServices}
+          onEditServiceForQuote={handleEditServiceForQuote}
+        />
 
-          <QuoteGlobalCostsInput
-            otherCostsGlobal={otherCostsGlobal}
-            onOtherCostsGlobalChange={setOtherCostsGlobal}
-          />
+        <QuoteGlobalCostsInput
+          otherCostsGlobal={otherCostsGlobal}
+          onOtherCostsGlobalChange={setOtherCostsGlobal}
+        />
 
-          <QuoteDiscountSection
-            discountValueInput={discountValueInput}
-            onDiscountValueInputChange={setDiscountValueInput}
-            onDiscountValueInputBlur={(value) => {
-              const rawValue = value.replace(',', '.');
-              const parsedValue = parseFloat(rawValue) || 0;
-              setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
-            }}
-            discountType={discountType}
-            onDiscountTypeChange={setDiscountType}
-            calculatedDiscount={calculatedDiscount}
-          />
+        <QuoteDiscountSection
+          discountValueInput={discountValueInput}
+          onDiscountValueInputChange={setDiscountValueInput}
+          onDiscountValueInputBlur={(value) => {
+            const rawValue = value.replace(',', '.');
+            const parsedValue = parseFloat(rawValue) || 0;
+            setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
+          }}
+          discountType={discountType}
+          onDiscountTypeChange={setDiscountType}
+          calculatedDiscount={calculatedDiscount}
+        />
 
-          <QuotePaymentMethodSection
-            paymentMethods={paymentMethods}
-            isLoadingPaymentMethods={isLoadingPaymentMethods}
-            selectedPaymentMethodId={selectedPaymentMethodId}
-            onPaymentMethodSelectChange={(value) => {
-              setSelectedPaymentMethodId(value);
-              const method = paymentMethods?.find(pm => pm.id === value);
-              if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
-                setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
-              } else {
-                setSelectedInstallments(null);
-              }
-            }}
-            selectedInstallments={selectedInstallments}
-            onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
-            currentPaymentMethod={currentPaymentMethod}
-          />
+        <QuotePaymentMethodSection
+          paymentMethods={paymentMethods}
+          isLoadingPaymentMethods={isLoadingPaymentMethods}
+          selectedPaymentMethodId={selectedPaymentMethodId}
+          onPaymentMethodSelectChange={(value) => {
+            setSelectedPaymentMethodId(value);
+            const method = paymentMethods?.find(pm => pm.id === value);
+            if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
+              const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
+              setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
+            } else {
+              setSelectedInstallments(null);
+            }
+          }}
+          selectedInstallments={selectedInstallments}
+          onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
+          currentPaymentMethod={currentPaymentMethod}
+        />
 
-          <QuoteCalculationSummary
-            totalExecutionTime={totalExecutionTime}
-            totalProductsCost={totalProductsCost}
-            totalLaborCost={totalLaborCost}
-            totalOtherCosts={totalOtherCosts}
-            otherCostsGlobal={otherCostsGlobal}
-            totalCost={totalCost}
-            totalServiceValue={totalServiceValue}
-            currentProfitMarginPercentage={currentProfitMarginPercentage}
-            profitMargin={profitMargin}
-            displayProfitMargin={displayProfitMargin}
-            onProfitMarginChange={setProfitMargin}
-            onDisplayProfitMarginChange={setDisplayProfitMargin}
-            suggestedPriceBasedOnDesiredMargin={suggestedPriceBasedOnDesiredMargin}
-            selectedPaymentMethodId={selectedPaymentMethodId}
-            paymentFee={paymentFee}
-            finalPriceWithFee={finalPriceWithFee} // Passando a receita final
-            valueAfterDiscount={valueAfterDiscount}
-            netProfit={netProfit} // Passando o lucro líquido
-          />
-        </CardContent>
-      </Card>
-
-      {quotedServices.length > 0 && (
-        <QuoteGenerator
-          selectedServices={quotedServices} // Corrigido para passar o array de objetos QuotedService
+        <QuoteCalculationSummary
+          totalExecutionTime={totalExecutionTime}
+          totalProductsCost={totalProductsCost}
+          totalLaborCost={totalLaborCost}
+          totalOtherCosts={totalOtherCosts}
+          otherCostsGlobal={otherCostsGlobal}
           totalCost={totalCost}
-          finalPrice={finalPriceWithFee} // O gerador de PDF usa o valor da receita final
-          executionTime={totalExecutionTime}
+          totalServiceValue={totalServiceValue}
+          currentProfitMarginPercentage={currentProfitMarginPercentage}
+          profitMargin={profitMargin}
+          displayProfitMargin={displayProfitMargin}
+          onProfitMarginChange={setProfitMargin}
+          onDisplayProfitMarginChange={setDisplayProfitMargin}
+          suggestedPriceBasedOnDesiredMargin={suggestedPriceBasedOnDesiredMargin}
+          selectedPaymentMethodId={selectedPaymentMethodId}
+          paymentFee={paymentFee}
+          finalPriceWithFee={finalPriceWithFee} // Passando a receita final
+          valueAfterDiscount={valueAfterDiscount}
+          netProfit={netProfit} // Passando o lucro líquido
         />
-      )}
-
-      {serviceToEditInDialog && (
-        <QuoteServiceFormDialog
-          isOpen={isServiceFormDialogOpen}
-          onClose={() => setIsServiceFormDialogOpen(false)}
-          service={serviceToEditInDialog}
-          onSave={handleSaveQuotedService}
-          productCostCalculationMethod={productCostCalculationMethod}
-        />
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
