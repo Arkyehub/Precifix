@@ -14,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useSidebar } from './SidebarContext';
-import { GlobalSearch } from './GlobalSearch'; // Importar o novo componente GlobalSearch
 import { userDropdownLinks } from '@/lib/navigation'; // Importar os links do dropdown do usuário
 
 export const Header = () => {
@@ -52,9 +51,6 @@ export const Header = () => {
         >
           <Menu className="h-6 w-6" />
         </Button>
-
-        {/* Search Bar */}
-        <GlobalSearch /> {/* Usar o novo componente GlobalSearch */}
 
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4 ml-auto">
