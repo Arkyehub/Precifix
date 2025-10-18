@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, CreditCard, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, CreditCard, Pencil, Trash2, Loader2, Banknote, QrCode } from "lucide-react"; // Importado Banknote e QrCode
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -208,6 +208,20 @@ const PaymentMethodsPage = () => {
     resetPaymentMethodsMutation.mutate();
   };
 
+  const getPaymentMethodIcon = (type: PaymentMethod['type']) => {
+    switch (type) {
+      case 'cash':
+        return <Banknote className="h-4 w-4 text-muted-foreground" />;
+      case 'pix':
+        return <QrCode className="h-4 w-4 text-muted-foreground" />;
+      case 'debit_card':
+      case 'credit_card':
+        return <CreditCard className="h-4 w-4 text-muted-foreground" />;
+      default:
+        return null;
+    }
+  };
+
   if (isLoading || addDefaultPaymentMethodsMutation.isPending || resetPaymentMethodsMutation.isPending) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -222,7 +236,7 @@ const PaymentMethodsPage = () => {
     <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
-          <div className="flex items-center justify-between"> {/* Adicionado justify-between aqui */}
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
                 <CreditCard className="h-5 w-5 text-primary-foreground" />
@@ -271,9 +285,10 @@ const PaymentMethodsPage = () => {
           {paymentMethods && paymentMethods.length > 0 ? (
             <div className="space-y-4">
               {paymentMethods.map((method) => (
-                <div key={method.id} className="p-4 rounded-lg border bg-background"> {/* Alterado bg-background/50 para bg-background */}
+                <div key={method.id} className="p-4 rounded-lg border bg-background">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-semibold text-foreground flex items-center gap-2">
+                      {getPaymentMethodIcon(method.type)} {/* Ícone adicionado aqui */}
                       {method.name}
                     </h4>
                     <div className="flex gap-1">
