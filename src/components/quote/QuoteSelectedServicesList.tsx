@@ -20,9 +20,9 @@ export const QuoteSelectedServicesList = ({
   return (
     <div className="space-y-4 pt-4 border-t border-border/50">
       <h3 className="text-sm font-medium text-foreground">Serviços Selecionados para Orçamento</h3>
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-2"> {/* Espaçamento reduzido para gap-2 */}
         {quotedServices.map(service => (
-          <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/50">
+          <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50"> {/* Fundo branco */}
             <div className="flex-1">
               <p className="font-medium text-foreground">{service.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -33,7 +33,7 @@ export const QuoteSelectedServicesList = ({
               variant="ghost"
               size="icon"
               onClick={() => onEditServiceForQuote(service)}
-              className="text-primary hover:bg-primary/10"
+              className="text-foreground hover:text-primary hover:bg-primary/10" {/* Estilo do botão de lápis */}
               title={`Editar ${service.name} para este orçamento`}
             >
               <Pencil className="h-4 w-4" />
