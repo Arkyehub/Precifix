@@ -71,10 +71,10 @@ export const Sidebar = () => {
                 key={link.to}
                 to={link.to}
                 onClick={closeSidebar}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground font-bold shadow-sm border-l-4 border-primary pl-[calc(0.75rem-4px)]' // Adiciona borda amarela e ajusta padding
+                    : 'text-sidebar-foreground font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:font-bold' // Adiciona negrito no hover
                 }`}
               >
                 <link.icon className="h-4 w-4" />
