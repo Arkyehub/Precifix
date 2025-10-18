@@ -12,9 +12,9 @@ import ManageCostsPage from "./pages/ManageCostsPage";
 import QuoteGenerationPage from "./pages/QuoteGenerationPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
-import PaymentMethodsPage from "./pages/PaymentMethodsPage"; // Importar a nova página
+import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import { SessionContextProvider } from "./components/SessionContextProvider";
-import { Layout } from "./components/Layout";
+import { DashboardLayout } from "./components/dashboard/DashboardLayout"; // Importar o novo DashboardLayout
 
 const queryClient = new QueryClient();
 
@@ -30,65 +30,65 @@ const App = () => (
             <Route 
               path="/" 
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <Index />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/manage-costs"
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <ManageCostsPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/products"
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <ProductCatalogPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/services" 
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <ServicesPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
-              path="/payment-methods" // Nova rota
+              path="/payment-methods" 
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <PaymentMethodsPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/generate-quote" 
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <QuoteGenerationPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/profile"
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <ProfilePage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             <Route 
               path="/settings"
               element={
-                <Layout>
+                <DashboardLayout> {/* Usar DashboardLayout */}
                   <SettingsPage />
-                </Layout>
+                </DashboardLayout>
               } 
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
