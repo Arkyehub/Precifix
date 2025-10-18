@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings, User as UserIcon, CreditCard, Search } from 'lucide-react'; // Import Search icon
+import { Menu, LogOut, Settings, User as UserIcon, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Import Input
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useSidebar } from './SidebarContext';
+import { GlobalSearch } from './GlobalSearch'; // Importar o novo componente GlobalSearch
+import { userDropdownLinks } from '@/lib/navigation'; // Importar os links do dropdown do usuário
 
 export const Header = () => {
   const { user } = useSession();
@@ -53,17 +54,10 @@ export const Header = () => {
         </Button>
 
         {/* Search Bar */}
-        <div className="relative flex-1 max-w-md mx-4 hidden lg:block"> {/* Added max-w-md and mx-4 for spacing, hidden on small screens */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Buscar..."
-            className="pl-9 bg-background border-input focus-visible:ring-primary" // Adjusted padding-left for icon
-          />
-        </div>
+        <GlobalSearch /> {/* Usar o novo componente GlobalSearch */}
 
         {/* Right: User Avatar and Dropdown */}
-        <div className="flex items-center gap-4 ml-auto"> {/* Changed flex-1 lg:flex-none to ml-auto to push content to right */}
+        <div className="flex items-center gap-4 ml-auto">
           <div className="flex flex-col items-end mr-2">
             <p className="text-base font-bold text-foreground">Olá, {userName}</p>
           </div>
@@ -85,17 +79,15 @@ export const Header = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
-                <UserIcon className="mr-2 h-4 w-4" />
-                <span>Meu Perfil</span>
-              </DropdownMenuItem>
+              {userDropdownLinks.map((link) => (
+                <DropdownMenuItem key={link.to} onClick={() => navigate(link.to)}>
+                  <link.icon className="mr-2 h-4 w-4" />
+                  <span>{link.label}</span>
+                </DropdownMenuItem>
+              ))}
               <DropdownMenuItem onClick={() => console.log('Meu Plano')}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 <span>Meu Plano</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Configurações</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">

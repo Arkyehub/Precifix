@@ -1,27 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Calculator,
-  DollarSign,
-  Package,
-  Car,
-  CreditCard,
-  FileText,
   X, // Para o botão de fechar em mobile
   Gauge, // Importado o ícone Gauge (velocímetro)
 } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
-
-const navigationLinks = [
-  { to: '/', icon: Calculator, label: 'Calculadora' },
-  { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
-  { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
-  { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
-  { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
-  { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
-  // Removidos 'Meu Perfil' e 'Configurações' para evitar redundância
-];
+import { navigationLinks } from '@/lib/navigation'; // Importar os links de navegação
 
 export const Sidebar = () => {
   const { isSidebarOpen, closeSidebar } = useSidebar();
