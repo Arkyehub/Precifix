@@ -39,13 +39,13 @@ function Login() {
                     inputBorderHover: 'hsl(var(--primary))',
                     inputBorderFocus: 'hsl(var(--primary))',
                     inputText: 'hsl(var(--foreground))',
-                    defaultButtonBackground: 'hsl(var(--secondary))',
-                    defaultButtonBackgroundHover: 'hsl(var(--secondary-foreground))',
-                    defaultButtonBorder: 'hsl(var(--secondary))',
-                    defaultButtonText: 'hsl(var(--secondary-foreground))',
+                    defaultButtonBackground: 'hsl(var(--primary))', // Fundo do botão primário
+                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Fundo do botão primário ao passar o mouse
+                    defaultButtonBorder: 'hsl(var(--primary))', // Borda do botão primário
+                    defaultButtonText: 'hsl(var(--primary-foreground))', // Texto do botão primário (preto)
                     dividerBackground: 'hsl(var(--border))',
-                    anchorTextColor: 'hsl(var(--primary))',
-                    anchorTextHoverColor: 'hsl(var(--primary-glow))',
+                    anchorTextColor: 'hsl(var(--foreground))', // Texto dos links (preto)
+                    anchorTextHoverColor: 'hsl(var(--foreground))', // Texto dos links ao passar o mouse (preto)
                   },
                 },
               },
