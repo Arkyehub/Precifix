@@ -10,8 +10,7 @@ import {
   User as UserIcon,
   Settings,
   X, // Para o botão de fechar em mobile
-  Sparkles,
-} from 'lucide-react';
+} from 'lucide-react'; // Removido Sparkles
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
 
@@ -46,12 +45,9 @@ export const Sidebar = () => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
       >
-        <div className="flex items-center justify-between px-6 py-4"> {/* Removida a borda inferior aqui */}
+        <div className="flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3" onClick={closeSidebar}>
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
-              <Sparkles className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <h2 className="text-xl font-bold text-sidebar-foreground">PrecifiCar</h2>
+            <img src="/logo-precificar.png" alt="PrecifiCar Logo" className="h-8 object-contain" />
           </Link>
           <Button
             variant="ghost"
