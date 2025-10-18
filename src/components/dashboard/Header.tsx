@@ -51,10 +51,9 @@ export const Header = () => {
           <Menu className="h-6 w-6" />
         </Button>
 
-        {/* Center: App Title (hidden on mobile when sidebar is open) */}
-        <Link to="/" className="flex items-center flex-1 lg:flex-none">
-          <h1 className="text-2xl font-bold text-foreground">PrecifiCar</h1>
-        </Link>
+        {/* O título 'PrecifiCar' foi removido daqui para evitar redundância com a barra lateral. */}
+        {/* O espaço que ele ocupava será ajustado automaticamente pelo layout flex. */}
+        <div className="flex-1 lg:flex-none"></div> {/* Div vazia para manter o layout flexível */}
 
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4">

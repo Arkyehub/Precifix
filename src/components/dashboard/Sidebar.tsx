@@ -46,7 +46,7 @@ export const Sidebar = () => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-between px-6 py-4"> {/* Removida a borda inferior aqui */}
           <Link to="/" className="flex items-center gap-3" onClick={closeSidebar}>
             <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
               <Sparkles className="h-6 w-6 text-primary-foreground" />
