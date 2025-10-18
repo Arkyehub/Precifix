@@ -34,7 +34,7 @@ export const Header = () => {
   const userName = user?.user_metadata?.first_name || 'Usuário';
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
+    <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background"> {/* Changed background to solid bg-background */}
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Left: Hamburger Menu */}
         <Sheet>
@@ -57,8 +57,7 @@ export const Header = () => {
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end mr-2">
-            <p className="text-base font-bold text-foreground">Olá, {userName}</p> {/* Aumentado para text-base e font-bold */}
-            {/* Link "Seu Perfil >" removido daqui */}
+            <p className="text-base font-bold text-foreground">Olá, {userName}</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -74,7 +73,7 @@ export const Header = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-base font-bold leading-none">{user?.email}</p> {/* E-mail maior e em negrito */}
+                  <p className="text-base font-bold leading-none">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
