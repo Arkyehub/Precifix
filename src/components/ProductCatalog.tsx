@@ -106,7 +106,7 @@ export const ProductCatalog = () => {
               {catalogProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-border/50"
+                  className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50 border-l-4 border-primary"
                 >
                   <div className="flex-1">
                     <p className="font-medium text-foreground">{product.name}</p>
