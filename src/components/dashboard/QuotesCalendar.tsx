@@ -52,10 +52,12 @@ export const QuotesCalendar = () => {
 
   const modifiers = {
     hasQuotes: (date: Date) => quotesByDate.has(format(date, 'yyyy-MM-dd')),
+    today: new Date(), // Definir 'today' como um modificador
   };
 
   const modifiersClassNames = {
     hasQuotes: 'bg-primary text-primary-foreground rounded-full',
+    today: 'bg-background border border-primary text-foreground', // Estilo para a data de hoje: fundo branco, contorno amarelo
   };
 
   const selectedDayQuotes = selectedDate 
@@ -118,6 +120,10 @@ export const QuotesCalendar = () => {
             modifiersClassNames={modifiersClassNames}
             className="rounded-md border bg-background shadow-md"
             locale={ptBR}
+            classNames={{
+              // O hover geral já está definido em src/components/ui/calendar.tsx
+              // O day_selected também usará o hover geral
+            }}
           />
         </div>
         <div className="flex-1">
