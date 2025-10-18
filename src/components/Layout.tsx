@@ -8,7 +8,7 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="grid grid-rows-[auto_1fr] min-h-screen"> {/* Main grid for header and content area */}
+    <div className="grid grid-rows-[auto_1fr] h-screen overflow-hidden"> {/* Main grid for header and content area */}
       <Header />
       <div className="grid grid-cols-[auto_1fr] flex-1"> {/* Grid for sidebar and main content */}
         {/* Desktop Sidebar */}
