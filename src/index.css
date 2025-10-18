@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 96%; /* Alterado para um cinza muito claro */
+    --background: 0 0% 100%; /* Alterado para branco puro */
     --foreground: 0 0% 5%;
     --card: var(--sidebar-background); /* Make card background same as sidebar background */
     --card-foreground: 0 0% 5%;
