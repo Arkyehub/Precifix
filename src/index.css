@@ -47,7 +47,7 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 45 100% 51%;
 
-    --radius: 1rem; /* Aumentado para 1rem para quinas mais arredondadas */
+    --radius: 0.75rem; /* Ajustado para 0.75rem para quinas mais arredondadas */
   }
 
   .dark {
@@ -89,7 +89,7 @@ All colors MUST be HSL.
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 45 100% 51%;
 
-    --radius: 1rem; /* Aumentado para 1rem para quinas mais arredondadas */
+    --radius: 0.75rem; /* Ajustado para 0.75rem para quinas mais arredondadas */
   }
 
 }
