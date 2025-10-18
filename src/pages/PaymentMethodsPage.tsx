@@ -239,7 +239,7 @@ const PaymentMethodsPage = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-muted-foreground hover:text-destructive hover:bg-transparent"
+                  className="text-muted-foreground hover:bg-background hover:text-destructive"
                   title="Resetar para formas de pagamento padrão"
                   disabled={resetPaymentMethodsMutation.isPending}
                 >
@@ -281,7 +281,7 @@ const PaymentMethodsPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditPaymentMethod(method)}
-                        className="text-muted-foreground hover:text-primary hover:bg-transparent"
+                        className="text-muted-foreground hover:bg-background hover:text-primary"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -290,7 +290,7 @@ const PaymentMethodsPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-muted-foreground hover:text-destructive hover:bg-transparent"
+                            className="text-muted-foreground hover:bg-background hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

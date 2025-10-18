@@ -31,12 +31,12 @@ export const FixedCostsTable = ({ costs, onEdit, onDelete }: FixedCostsTableProp
                   <TableCell className="font-medium">{cost.description}</TableCell>
                   <TableCell className="text-right">R$ {cost.value.toFixed(2)}</TableCell>
                   <TableCell className="flex justify-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(cost)} className="text-primary hover:bg-primary/10">
+                    <Button variant="ghost" size="icon" onClick={() => onEdit(cost)} className="text-primary hover:bg-background">
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-background">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>

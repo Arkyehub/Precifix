@@ -123,7 +123,7 @@ export const ProductCatalog = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEditProduct(product)}
-                      className="text-primary hover:bg-primary/10"
+                      className="text-primary hover:bg-background"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -132,7 +132,7 @@ export const ProductCatalog = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:bg-destructive/10"
+                          className="text-destructive hover:bg-background"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

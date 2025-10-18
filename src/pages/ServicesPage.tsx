@@ -284,7 +284,7 @@ const ServicesPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditService(service)}
-                        className="text-muted-foreground hover:text-primary hover:bg-transparent" // Adicionado hover:bg-transparent
+                        className="text-muted-foreground hover:bg-background hover:text-primary"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -293,7 +293,7 @@ const ServicesPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-muted-foreground hover:text-destructive hover:bg-transparent" // Adicionado hover:bg-transparent
+                            className="text-muted-foreground hover:bg-background hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
