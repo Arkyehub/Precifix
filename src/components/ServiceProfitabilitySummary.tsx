@@ -72,8 +72,8 @@ export const ServiceProfitabilitySummary = ({ services, productCostCalculationMe
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">
-                    <div className="p-3 rounded-md bg-gradient-to-r from-mediumslateblue/10 to-mediumslateblue/5 border border-mediumslateblue/30">
-                      <h5 className="font-semibold text-mediumslateblue mb-2">Detalhes do Lucro</h5>
+                    <div className="p-3 rounded-md bg-gradient-to-r from-info/10 to-info/5 border border-info/30"> {/* Alterado aqui */}
+                      <h5 className="font-semibold text-info mb-2">Detalhes do Lucro</h5> {/* Alterado aqui */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                         <span className="text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" /> Custo Mão de Obra/Hora:</span>
                         <span className="text-foreground text-right">R$ {service.labor_cost_per_hour.toFixed(2)}</span>
