@@ -29,7 +29,7 @@ export const OperationalHoursForm = ({
         <Clock className="h-5 w-5 text-primary" />
         <h3 className="text-xl font-semibold text-foreground">Horas Trabalhadas</h3>
       </div>
-      <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+      <div className="p-4 bg-background rounded-lg border border-border/50 shadow-md"> {/* Alterado aqui */}
         <p className="text-sm font-medium text-foreground">
           Defina seus dias e horários de funcionamento.
         </p>
