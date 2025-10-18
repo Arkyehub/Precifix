@@ -42,10 +42,8 @@ function Login() {
                     defaultButtonBackground: 'hsl(var(--primary))', // Fundo do botão primário
                     defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Fundo do botão primário ao passar o mouse
                     defaultButtonBorder: 'hsl(var(--primary))', // Borda do botão primário
-                    defaultButtonText: 'hsl(var(--foreground))', // Texto do botão primário (usando --foreground)
+                    // defaultButtonText e anchorTextColor serão sobrescritos pelo CSS abaixo
                     dividerBackground: 'hsl(var(--border))',
-                    anchorTextColor: 'hsl(var(--foreground))', // Texto dos links (usando --foreground)
-                    anchorTextHoverColor: 'hsl(var(--foreground))', // Texto dos links ao passar o mouse (usando --foreground)
                   },
                 },
               },
@@ -61,7 +59,6 @@ function Login() {
                   button_label: 'Entrar',
                   social_provider_text: 'Ou continue com',
                   link_text: 'Já tem uma conta? Entrar',
-                  // A mensagem 'invalid_email_or_password' foi removida daqui
                 },
                 sign_up: {
                   email_label: 'Seu e-mail',
@@ -89,9 +86,17 @@ function Login() {
                   link_text: 'Enviar link mágico',
                 },
               },
-              // O bloco 'messages' foi removido completamente
             }}
           />
+          {/* Bloco de estilo para forçar a cor do texto */}
+          <style>{`
+            .supabase-auth-ui_ui-button {
+              color: black !important;
+            }
+            .supabase-auth-ui_ui-anchor {
+              color: black !important;
+            }
+          `}</style>
         </CardContent>
       </Card>
     </div>
