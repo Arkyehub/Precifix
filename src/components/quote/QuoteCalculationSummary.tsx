@@ -77,7 +77,7 @@ export const QuoteCalculationSummary = ({
       </div>
 
       {/* Custo Total da Operação */}
-      <div className="p-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg border border-primary/30 mt-4">
+      <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-primary shadow-md mt-4">
         <div className="flex justify-between items-center">
           <span className="font-medium text-foreground">Custo Total da Operação:</span>
           <span className="text-2xl font-bold text-primary">R$ {totalCost.toFixed(2)}</span>
@@ -85,7 +85,7 @@ export const QuoteCalculationSummary = ({
       </div>
 
       {/* Valor do Serviço (antes do desconto) */}
-      <div className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg border border-accent/30 mt-4">
+      <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-accent shadow-md mt-4">
         <div className="flex justify-between items-center">
           <span className="font-medium text-foreground">Valor do Serviço (antes do desconto):</span>
           <span className="text-3xl font-bold text-accent">R$ {totalServiceValue.toFixed(2)}</span>
@@ -94,10 +94,10 @@ export const QuoteCalculationSummary = ({
 
       {/* Demonstrativo da Taxa da Forma de Pagamento */}
       {selectedPaymentMethodId && paymentFee > 0 && (
-        <div className="p-4 bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/30 mt-4">
+        <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-info shadow-md mt-4">
           <div className="flex justify-between items-center">
             <span className="font-medium text-foreground">Taxa da Forma de Pagamento (dedução):</span>
-            <span className="text-xl font-bold text-blue-500">- R$ {paymentFee.toFixed(2)}</span>
+            <span className="text-xl font-bold text-info">- R$ {paymentFee.toFixed(2)}</span>
           </div>
         </div>
       )}
@@ -105,16 +105,16 @@ export const QuoteCalculationSummary = ({
       {/* Novo item para Valor a Receber (final) */}
       <div className="flex justify-between items-center text-sm pt-4 border-t border-border/50">
         <span className="font-medium text-foreground">Valor a Receber (final):</span>
-        <span className="text-xl font-bold text-green-500">R$ {finalPriceWithFee.toFixed(2)}</span>
+        <span className="text-xl font-bold text-success">R$ {finalPriceWithFee.toFixed(2)}</span>
       </div>
 
       {/* Lucro Líquido & Margem de Lucro Real */}
-      <div className="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 rounded-lg border border-green-500/30 mt-4 space-y-3">
+      <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-success shadow-md mt-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="font-medium text-foreground">Lucro Líquido:</span>
-          <span className="text-3xl font-bold text-green-500">R$ {netProfit.toFixed(2)}</span>
+          <span className="text-3xl font-bold text-success">R$ {netProfit.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between items-center pt-2 border-t border-green-500/30">
+        <div className="flex justify-between items-center pt-2 border-t border-success/30">
           <span className="font-medium text-foreground">Margem de Lucro Real:</span>
           <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
         </div>
@@ -124,7 +124,7 @@ export const QuoteCalculationSummary = ({
       </div>
 
       {/* Margem de Lucro Desejada e Preço Sugerido */}
-      <div className="p-4 bg-gradient-to-br from-card to-card/80 rounded-lg border border-border/50 mt-4">
+      <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-primary mt-4">
         <div className="space-y-2">
           <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
           <Input
