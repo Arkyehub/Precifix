@@ -42,10 +42,10 @@ function Login() {
                     defaultButtonBackground: 'hsl(var(--primary))', // Fundo do botão primário
                     defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Fundo do botão primário ao passar o mouse
                     defaultButtonBorder: 'hsl(var(--primary))', // Borda do botão primário
-                    defaultButtonText: 'hsl(var(--primary-foreground))', // Texto do botão primário (preto)
+                    defaultButtonText: 'black', // Texto do botão primário (preto)
                     dividerBackground: 'hsl(var(--border))',
-                    anchorTextColor: 'hsl(var(--foreground))', // Texto dos links (preto)
-                    anchorTextHoverColor: 'hsl(var(--foreground))', // Texto dos links ao passar o mouse (preto)
+                    anchorTextColor: 'black', // Texto dos links (preto)
+                    anchorTextHoverColor: 'black', // Texto dos links ao passar o mouse (preto)
                   },
                 },
               },
