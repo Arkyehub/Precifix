@@ -99,14 +99,14 @@ export const QuoteProductFormDialog = ({ isOpen, onClose, product, onSave, origi
             <>
               <div className="space-y-2">
                 <Label htmlFor="dilution-ratio">Proporção de Diluição (1:X) *</Label>
-                <div className="flex gap-2">
+                <div className="flex"> {/* Adicionado flex container */}
                   <Input
                     id="dilution-ratio"
                     type="text"
                     placeholder="Ex: 1:100 ou 100"
                     value={editableDilutionRatioInput}
                     onChange={(e) => setEditableDilutionRatioInput(e.target.value)}
-                    className="flex-1 bg-background"
+                    className="flex-1 bg-background rounded-r-none border-r-0" /* Estilo para input anexado */
                   />
                   <Button
                     type="button"

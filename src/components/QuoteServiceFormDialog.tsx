@@ -188,14 +188,14 @@ export const QuoteServiceFormDialog = ({ isOpen, onClose, service, onSave, produ
           </div>
           <div className="space-y-2">
             <Label htmlFor="quote-labor-cost-per-hour">Custo da Mão de Obra/Hora (R$) *</Label>
-            <div className="flex gap-2">
+            <div className="flex"> {/* Adicionado flex container */}
               <Input 
                 id="quote-labor-cost-per-hour" 
                 type="number" 
                 step="0.01" 
                 value={quoteLaborCostPerHour} 
                 onChange={(e) => setQuoteLaborCostPerHour(e.target.value)} 
-                className="flex-1 bg-background" 
+                className="flex-1 bg-background rounded-r-none border-r-0" /* Estilo para input anexado */
               />
               <LoadHourlyCostButton onLoad={(cost) => setQuoteLaborCostPerHour(cost.toFixed(2))} />
             </div>

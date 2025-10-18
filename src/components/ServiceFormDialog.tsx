@@ -224,14 +224,14 @@ export const ServiceFormDialog = ({ isOpen, onClose, service }: ServiceFormDialo
           </div>
           <div className="space-y-2">
             <Label htmlFor="labor-cost-per-hour">Custo da Hora de Trabalho (R$) *</Label>
-            <div className="flex gap-2">
+            <div className="flex"> {/* Adicionado flex container */}
               <Input 
                 id="labor-cost-per-hour" 
                 type="number" 
                 step="0.01" 
                 value={laborCostPerHour} 
                 onChange={(e) => setLaborCostPerHour(e.target.value)} 
-                className="flex-1 bg-background" 
+                className="flex-1 bg-background rounded-r-none border-r-0" /* Estilo para input anexado */
               />
               <LoadHourlyCostButton onLoad={(cost) => setLaborCostPerHour(cost.toFixed(2))} />
             </div>

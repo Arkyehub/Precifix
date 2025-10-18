@@ -188,6 +188,7 @@ export const LoadHourlyCostButton = ({ onLoad }: LoadHourlyCostButtonProps) => {
       onClick={handleLoadClick}
       disabled={isLoadingCosts || isLoadingHours}
       title="Carregar Custo por Hora da Análise de Custos"
+      className="bg-primary text-primary-foreground hover:bg-primary-glow rounded-l-none" // Adicionado estilo para botão anexado
     >
       {isLoadingCosts || isLoadingHours ? (
         <RefreshCw className="h-4 w-4 animate-spin" />
