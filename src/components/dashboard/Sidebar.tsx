@@ -7,8 +7,6 @@ import {
   Car,
   CreditCard,
   FileText,
-  User as UserIcon,
-  Settings,
   X, // Para o botão de fechar em mobile
   Gauge, // Importado o ícone Gauge (velocímetro)
 } from 'lucide-react';
@@ -22,8 +20,7 @@ const navigationLinks = [
   { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
   { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
   { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
-  { to: '/profile', icon: UserIcon, label: 'Meu Perfil' },
-  { to: '/settings', icon: Settings, label: 'Configurações' },
+  // Removidos 'Meu Perfil' e 'Configurações' para evitar redundância
 ];
 
 export const Sidebar = () => {
@@ -73,7 +70,7 @@ export const Sidebar = () => {
                 onClick={closeSidebar}
                 className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'text-sidebar-foreground font-bold shadow-sm border-l-4 border-primary pl-[calc(0.75rem-4px)]' // Removido bg-sidebar-primary e ajustado text-color
+                    ? 'text-sidebar-foreground font-bold shadow-sm border-l-4 border-primary pl-[calc(0.75rem-4px)]'
                     : 'text-sidebar-foreground font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:font-bold'
                 }`}
               >
