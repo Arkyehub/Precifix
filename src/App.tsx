@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard"; // Alterado de Index para Dashboard
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ServicesPage from "./pages/ServicesPage";
@@ -14,7 +14,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import { SessionContextProvider } from "./components/SessionContextProvider";
-import { DashboardLayout } from "./components/dashboard/DashboardLayout"; // Importar o novo DashboardLayout
+import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
 const queryClient = new QueryClient();
 
@@ -30,15 +30,15 @@ const App = () => (
             <Route 
               path="/" 
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
-                  <Index />
+                <DashboardLayout>
+                  <Dashboard /> {/* Usar o novo Dashboard */}
                 </DashboardLayout>
               } 
             />
             <Route 
               path="/manage-costs"
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <ManageCostsPage />
                 </DashboardLayout>
               } 
@@ -46,7 +46,7 @@ const App = () => (
             <Route 
               path="/products"
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <ProductCatalogPage />
                 </DashboardLayout>
               } 
@@ -54,7 +54,7 @@ const App = () => (
             <Route 
               path="/services" 
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <ServicesPage />
                 </DashboardLayout>
               } 
@@ -62,7 +62,7 @@ const App = () => (
             <Route 
               path="/payment-methods" 
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <PaymentMethodsPage />
                 </DashboardLayout>
               } 
@@ -70,7 +70,7 @@ const App = () => (
             <Route 
               path="/generate-quote" 
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <QuoteGenerationPage />
                 </DashboardLayout>
               } 
@@ -78,7 +78,7 @@ const App = () => (
             <Route 
               path="/profile"
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <ProfilePage />
                 </DashboardLayout>
               } 
@@ -86,7 +86,7 @@ const App = () => (
             <Route 
               path="/settings"
               element={
-                <DashboardLayout> {/* Usar DashboardLayout */}
+                <DashboardLayout>
                   <SettingsPage />
                 </DashboardLayout>
               } 

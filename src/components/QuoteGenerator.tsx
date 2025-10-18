@@ -4,12 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Loader2 } from "lucide-react"; // Adicionado Loader2
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QuotedService } from "./QuoteServiceFormDialog"; // Importar a interface QuotedService
 
 interface QuoteGeneratorProps {
-  selectedServices: string[];
+  selectedServices: QuotedService[]; // Agora recebe objetos QuotedService completos
   totalCost: number;
   finalPrice: number;
   executionTime: number;
@@ -21,12 +25,15 @@ export const QuoteGenerator = ({
   finalPrice,
   executionTime 
 }: QuoteGeneratorProps) => {
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [clientName, setClientName] = useState("");
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,7 +46,49 @@ export const QuoteGenerator = ({
     }
   };
 
-  const generatePDF = () => {
+  const saveQuoteMutation = useMutation({
+    mutationFn: async (quoteData: {
+      client_name: string;
+      vehicle: string;
+      total_price: number;
+      quote_date: string;
+      services_summary: any[];
+    }) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .insert({
+          user_id: user.id,
+          client_name: quoteData.client_name,
+          vehicle: quoteData.vehicle,
+          total_price: quoteData.total_price,
+          quote_date: quoteData.quote_date,
+          services_summary: quoteData.services_summary,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] }); // Invalida o calendário
+      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] }); // Invalida a contagem de orçamentos
+      toast({
+        title: "Orçamento salvo!",
+        description: "O orçamento foi salvo e está disponível no Painel Principal.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao salvar orçamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generatePDF = async () => {
     if (!clientName || !vehicle) {
       toast({
         title: "Campos obrigatórios",
@@ -48,6 +97,22 @@ export const QuoteGenerator = ({
       });
       return;
     }
+
+    // Prepare services summary for PDF and DB
+    const servicesSummaryForPdf = selectedServices.map(service => ({
+      name: service.name,
+      price: service.quote_price ?? service.price,
+      execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
+    }));
+
+    // Save quote to database
+    await saveQuoteMutation.mutateAsync({
+      client_name: clientName,
+      vehicle: vehicle,
+      total_price: finalPrice,
+      quote_date: quoteDate,
+      services_summary: servicesSummaryForPdf,
+    });
 
     const doc = new jsPDF();
     let yPosition = 20;
@@ -105,22 +170,18 @@ export const QuoteGenerator = ({
     yPosition += 10;
 
     // Lista de serviços
-    const serviceTime = selectedServices.length > 0 
-      ? Math.floor(executionTime / selectedServices.length) 
-      : executionTime;
-    
-    selectedServices.forEach((service, index) => {
+    servicesSummaryForPdf.forEach((service, index) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
       }
       
-      doc.text(service, 20, yPosition);
-      doc.text(`${serviceTime} min`, 120, yPosition);
-      doc.text(`R$ ${(finalPrice / selectedServices.length).toFixed(2)}`, 160, yPosition);
+      doc.text(service.name, 20, yPosition);
+      doc.text(`${service.execution_time_minutes} min`, 120, yPosition);
+      doc.text(`R$ ${service.price.toFixed(2)}`, 160, yPosition);
       yPosition += 7;
       
-      if (index < selectedServices.length - 1) {
+      if (index < servicesSummaryForPdf.length - 1) {
         doc.setDrawColor(220, 220, 220);
         doc.line(15, yPosition - 2, 195, yPosition - 2);
       }
@@ -266,9 +327,14 @@ export const QuoteGenerator = ({
           <Button 
             onClick={generatePDF}
             className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+            disabled={saveQuoteMutation.isPending}
           >
-            <Download className="mr-2 h-4 w-4" />
-            Gerar PDF
+            {saveQuoteMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {saveQuoteMutation.isPending ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
           </Button>
         </div>
 

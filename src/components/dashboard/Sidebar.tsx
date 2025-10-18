@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   X, // Para o botão de fechar em mobile
-  Gauge, // Importado o ícone Gauge (velocímetro)
+  LayoutDashboard, // Alterado de Gauge para LayoutDashboard
 } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
@@ -31,7 +31,7 @@ export const Sidebar = () => {
         <div className="flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3" onClick={closeSidebar}>
             <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
-              <Gauge className="h-6 w-6 text-primary-foreground" /> {/* Ícone Gauge (velocímetro) */}
+              <LayoutDashboard className="h-6 w-6 text-primary-foreground" /> {/* Ícone LayoutDashboard */}
             </div>
             <h2 className="text-xl font-bold text-sidebar-foreground">PrecifiCar</h2>
           </Link>
@@ -55,7 +55,7 @@ export const Sidebar = () => {
                 onClick={closeSidebar}
                 className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'bg-background text-sidebar-foreground font-bold shadow-sm border-l-4 border-primary pl-[calc(0.75rem-4px)]' // Adicionado bg-background
+                    ? 'bg-background text-sidebar-foreground font-bold shadow-sm border-l-4 border-primary pl-[calc(0.75rem-4px)]'
                     : 'text-sidebar-foreground font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:font-bold'
                 }`}
               >
