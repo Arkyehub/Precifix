@@ -226,7 +226,7 @@ export const QuoteGenerator = ({
               type="file"
               accept="image/*"
               onChange={handleLogoUpload}
-              className="bg-background/50"
+              className="bg-background/50 file:bg-primary file:text-primary-foreground file:hover:bg-primary-glow file:rounded-md file:px-4 file:py-2"
             />
             {companyLogo && (
               <div className="mt-2">

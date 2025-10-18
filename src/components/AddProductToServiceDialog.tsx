@@ -306,11 +306,10 @@ export const AddProductToServiceDialog = ({ isOpen, onClose, serviceId, productI
                   />
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="default"
                     size="icon"
                     onClick={handleResetDilution}
                     disabled={!selectedProductId || !selectedProductDetails}
-                    className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
                     title="Restaurar diluição padrão do catálogo"
                   >
                     <RefreshCw className="h-4 w-4" />
