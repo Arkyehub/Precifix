@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Settings, User as UserIcon, CreditCard } from 'lucide-react';
+import { Menu, LogOut, Settings, User as UserIcon, CreditCard, Search } from 'lucide-react'; // Import Search icon
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // Import Input
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,12 +14,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
-import { useSidebar } from './SidebarContext'; // Importar o contexto da sidebar
+import { useSidebar } from './SidebarContext';
 
 export const Header = () => {
   const { user } = useSession();
   const navigate = useNavigate();
-  const { toggleSidebar } = useSidebar(); // Usar o toggleSidebar do contexto
+  const { toggleSidebar } = useSidebar();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -51,12 +52,18 @@ export const Header = () => {
           <Menu className="h-6 w-6" />
         </Button>
 
-        {/* O título 'PrecifiCar' foi removido daqui para evitar redundância com a barra lateral. */}
-        {/* O espaço que ele ocupava será ajustado automaticamente pelo layout flex. */}
-        <div className="flex-1 lg:flex-none"></div> {/* Div vazia para manter o layout flexível */}
+        {/* Search Bar */}
+        <div className="relative flex-1 max-w-md mx-4 hidden lg:block"> {/* Added max-w-md and mx-4 for spacing, hidden on small screens */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar..."
+            className="pl-9 bg-background border-input focus-visible:ring-primary" // Adjusted padding-left for icon
+          />
+        </div>
 
         {/* Right: User Avatar and Dropdown */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto"> {/* Changed flex-1 lg:flex-none to ml-auto to push content to right */}
           <div className="flex flex-col items-end mr-2">
             <p className="text-base font-bold text-foreground">Olá, {userName}</p>
           </div>
