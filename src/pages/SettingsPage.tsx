@@ -262,13 +262,10 @@ const PasswordUpdateForm = () => {
                 {renderPasswordRequirementsTooltipContent()}
               </Tooltip>
             </TooltipProvider>
-            
-            {/* Régua de Força de Senha */}
-            <div className="mt-2">
-              <Label className="text-sm text-muted-foreground">Força da Senha:</Label>
-              <Progress value={passwordStrength} className="h-2 mt-1" indicatorClassName={getProgressBarColor(passwordStrength)} />
-            </div>
           </div>
+          
+          {/* Régua de Força de Senha - Ajustada */}
+          <Progress value={passwordStrength} className="h-2 mt-[-4px] mb-2" indicatorClassName={getProgressBarColor(passwordStrength)} />
 
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
