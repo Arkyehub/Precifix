@@ -78,15 +78,6 @@ export default {
           DEFAULT: "hsl(270 70% 60%)", // A nice purple
           foreground: "hsl(270 70% 10%)",
         },
-        // Novas cores para o gradiente de resumo do orçamento
-        "quote-summary-start": {
-          DEFAULT: "hsl(200 60% 95%)", // Azul bem clarinho para light mode
-          _dark: "hsl(200 15% 20%)", // Azul acinzentado mais escuro para dark mode
-        },
-        "quote-summary-end": {
-          DEFAULT: "hsl(210 10% 92%)", // Cinza prateado para light mode
-          _dark: "hsl(210 5% 15%)", // Cinza mais escuro para dark mode
-        },
       },
       borderRadius: {
         lg: "var(--radius)",

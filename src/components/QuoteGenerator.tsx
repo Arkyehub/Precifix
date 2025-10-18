@@ -248,7 +248,7 @@ export const QuoteGenerator = ({
         </div>
 
         <div className="pt-4 border-t border-border/50">
-          <div className="bg-gradient-to-r from-quote-summary-start to-quote-summary-end rounded-lg p-4 mb-4">
+          <div className="bg-background rounded-lg p-4 mb-4 shadow-md">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Serviços Selecionados:</span>
               <span className="font-semibold text-foreground">{selectedServices.length}</span>
