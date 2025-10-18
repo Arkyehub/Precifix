@@ -171,12 +171,16 @@ export const ProductCostCalculationMethod = () => {
     <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
       <CardHeader>
         <div className="flex items-center gap-3">
-          <Package className="h-5 w-5 text-primary" />
-          <CardTitle className="text-foreground">Método de Cálculo de Custo de Produtos</CardTitle>
+          <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+            <Package className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <CardTitle className="text-foreground">Método de Cálculo de Custo de Produtos</CardTitle>
+            <CardDescription>
+              Escolha como você deseja que o sistema calcule o custo dos produtos utilizados em seus serviços.
+            </CardDescription>
+          </div>
         </div>
-        <CardDescription>
-          Escolha como você deseja que o sistema calcule o custo dos produtos utilizados em seus serviços.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <RadioGroup
@@ -184,7 +188,7 @@ export const ProductCostCalculationMethod = () => {
           onValueChange={handleCalculationMethodChange}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
+          <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
             <RadioGroupItem 
               value="per-service" 
               id="per-service" 
@@ -198,7 +202,7 @@ export const ProductCostCalculationMethod = () => {
             </Label>
           </div>
 
-          <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer">
+          <div className="flex items-center space-x-3 p-4 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
             <RadioGroupItem 
               value="monthly-average" 
               id="monthly-average" 
