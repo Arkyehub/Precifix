@@ -33,7 +33,8 @@ export const QuoteSelectedServicesList = ({
               variant="ghost"
               size="icon"
               onClick={() => onEditServiceForQuote(service)}
-              className="text-foreground hover:text-primary hover:bg-primary/10" {/* Estilo do botão de lápis */}
+              className="text-foreground hover:text-primary hover:bg-primary/10"
+              // Estilo do botão de lápis
               title={`Editar ${service.name} para este orçamento`}
             >
               <Pencil className="h-4 w-4" />
