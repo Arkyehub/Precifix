@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2 } from "lucide-react";
+import { FileText, Download, Loader2, Phone, MapPin } from "lucide-react"; // Importar Phone e MapPin
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"; // Importar useQuery
 import { QuotedService } from "./QuoteServiceFormDialog";
 import { PaymentMethod } from "./PaymentMethodFormDialog"; // Importar PaymentMethod
+import { formatPhoneNumber } from '@/lib/utils'; // Importar formatPhoneNumber
 
 // Interface para os dados do perfil, para uso interno neste componente
 interface Profile {
@@ -81,6 +82,12 @@ export const QuoteGenerator = ({
   const [quoteDate, setQuoteDate] = useState(getTodayDateString()); // Usar a função auxiliar
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
+  
+  // Novos estados para campos opcionais
+  const [showPhoneNumberField, setShowPhoneNumberField] = useState(false);
+  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
+  const [showAddressField, setShowAddressField] = useState(false);
+  const [address, setAddress] = useState('');
 
   // Fetch user profile data
   const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
@@ -139,6 +146,11 @@ export const QuoteGenerator = ({
       });
     },
   });
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setRawPhoneNumber(value);
+  };
 
   const generatePDF = async () => {
     if (!clientName || !vehicle) {
@@ -222,7 +234,21 @@ export const QuoteGenerator = ({
     doc.text(`Cliente: ${clientName}`, 15, yPosition);
     yPosition += 6;
     doc.text(`Veículo: ${vehicle}`, 15, yPosition);
-    yPosition += 12;
+    yPosition += 6;
+
+    // Adicionar Telefone se visível e preenchido
+    if (showPhoneNumberField && rawPhoneNumber.trim()) {
+      doc.text(`Telefone: ${formatPhoneNumber(rawPhoneNumber)}`, 15, yPosition);
+      yPosition += 6;
+    }
+
+    // Adicionar Endereço se visível e preenchido
+    if (showAddressField && address.trim()) {
+      doc.text(`Endereço: ${address}`, 15, yPosition);
+      yPosition += 6;
+    }
+
+    yPosition += 6; // Espaçamento extra antes dos serviços
 
     // Serviços Selecionados
     doc.setFontSize(14);
@@ -386,6 +412,57 @@ export const QuoteGenerator = ({
               className="bg-background/50"
             />
           </div>
+
+          {/* Botões para campos opcionais */}
+          <div className="flex gap-2 md:col-span-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowPhoneNumberField(!showPhoneNumberField)}
+              className={`flex items-center gap-2 ${showPhoneNumberField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
+            >
+              <Phone className="h-4 w-4 text-primary" />
+              Telefone
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowAddressField(!showAddressField)}
+              className={`flex items-center gap-2 ${showAddressField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
+            >
+              <MapPin className="h-4 w-4 text-primary" />
+              Endereço
+            </Button>
+          </div>
+
+          {/* Campo de Telefone (condicional) */}
+          {showPhoneNumberField && (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="phoneNumber">Telefone (Opcional)</Label>
+              <Input 
+                id="phoneNumber" 
+                value={formatPhoneNumber(rawPhoneNumber)}
+                onChange={handlePhoneNumberChange} 
+                placeholder="(XX) XXXXX-XXXX"
+                maxLength={15}
+                className="bg-background/50 placeholder:text-gray-300" 
+              />
+            </div>
+          )}
+
+          {/* Campo de Endereço (condicional) */}
+          {showAddressField && (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Endereço (Opcional)</Label>
+              <Textarea
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Ex: Rua Exemplo, 123, Bairro, Cidade - UF"
+                className="bg-background/50 min-h-[80px]"
+              />
+            </div>
+          )}
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="observations">Observações Adicionais</Label>

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { ImageCropperDialog } from '@/components/ImageCropperDialog'; // Importar o novo componente
+import { formatPhoneNumber } from '@/lib/utils'; // Importar formatPhoneNumber do utilitário
 
 interface Profile {
   id: string;
@@ -47,20 +48,6 @@ const formatCpfCnpj = (value: string) => {
       .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
       .replace(/\.(\d{3})(\d)/, '.$1/$2')
       .replace(/(\d{4})(\d)/, '$1-$2');
-  }
-};
-
-// Helper function to format Phone Number
-const formatPhoneNumber = (value: string) => {
-  const cleaned = value.replace(/\D/g, '');
-  if (cleaned.length <= 10) { // Standard phone number (e.g., 8 digits)
-    return cleaned
-      .replace(/^(\d{2})(\d)/g, '($1) $2')
-      .replace(/(\d{4})(\d)/, '$1-$2');
-  } else { // Mobile phone number (e.g., 9 digits)
-    return cleaned
-      .replace(/^(\d{2})(\d)/g, '($1) $2')
-      .replace(/(\d{5})(\d)/, '$1-$2');
   }
 };
 
