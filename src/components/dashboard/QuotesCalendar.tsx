@@ -41,7 +41,10 @@ export const QuotesCalendar = () => {
   const quotesByDate = React.useMemo(() => {
     const map = new Map<string, Quote[]>();
     quotes?.forEach(quote => {
-      const dateKey = format(new Date(quote.quote_date), 'yyyy-MM-dd');
+      // Parse the date string as a local date to avoid timezone shifts
+      const [year, month, day] = quote.quote_date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day); // Month is 0-indexed
+      const dateKey = format(localDate, 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
