@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard"; // Alterado de Index para Dashboard
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ServicesPage from "./pages/ServicesPage";
@@ -13,6 +13,7 @@ import QuoteGenerationPage from "./pages/QuoteGenerationPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
+import StorageTestPage from "./pages/StorageTestPage"; // Import the new page
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -31,7 +32,7 @@ const App = () => (
               path="/" 
               element={
                 <DashboardLayout>
-                  <Dashboard /> {/* Usar o novo Dashboard */}
+                  <Dashboard />
                 </DashboardLayout>
               } 
             />
@@ -90,6 +91,14 @@ const App = () => (
                   <SettingsPage />
                 </DashboardLayout>
               } 
+            />
+            <Route // New route for StorageTestPage
+              path="/storage-test"
+              element={
+                <DashboardLayout>
+                  <StorageTestPage />
+                </DashboardLayout>
+              }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

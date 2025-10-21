@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   X, // Para o botão de fechar em mobile
   Gauge, // Alterado de LayoutDashboard para Gauge
+  FolderOpen, // Import FolderOpen icon
 } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
