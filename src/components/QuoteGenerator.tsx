@@ -404,35 +404,35 @@ export const QuoteGenerator = ({
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="vehicle">Veículo (Marca/Modelo) *</Label>
-            <Input
-              id="vehicle"
-              value={vehicle}
-              onChange={(e) => setVehicle(e.target.value)}
-              placeholder="Ex: Honda Civic 2020"
-              className="bg-background/50"
-            />
-          </div>
-
-          {/* Botões para campos opcionais */}
-          <div className="flex gap-2 md:col-span-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setShowPhoneNumberField(!showPhoneNumberField)}
-              className={`flex items-center gap-2 ${showPhoneNumberField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
-            >
-              <Phone className="h-4 w-4 text-primary" />
-              Telefone
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setShowAddressField(!showAddressField)}
-              className={`flex items-center gap-2 ${showAddressField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
-            >
-              <MapPin className="h-4 w-4 text-primary" />
-              Endereço
-            </Button>
+            <div className="flex gap-2"> {/* Flex container para o input e botões */}
+              <Input
+                id="vehicle"
+                value={vehicle}
+                onChange={(e) => setVehicle(e.target.value)}
+                placeholder="Ex: Honda Civic 2020"
+                className="flex-1 bg-background/50"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" // Botão menor
+                onClick={() => setShowPhoneNumberField(!showPhoneNumberField)}
+                className={`flex items-center justify-center ${showPhoneNumberField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
+                title="Adicionar Telefone"
+              >
+                <Phone className="h-4 w-4 text-primary" />
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" // Botão menor
+                onClick={() => setShowAddressField(!showAddressField)}
+                className={`flex items-center justify-center ${showAddressField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
+                title="Adicionar Endereço"
+              >
+                <MapPin className="h-4 w-4 text-primary" />
+              </Button>
+            </div>
           </div>
 
           {/* Campo de Telefone (condicional) */}
