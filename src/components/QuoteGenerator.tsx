@@ -9,9 +9,23 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"; // Importar useQuery
 import { QuotedService } from "./QuoteServiceFormDialog";
 import { PaymentMethod } from "./PaymentMethodFormDialog"; // Importar PaymentMethod
+
+// Interface para os dados do perfil, para uso interno neste componente
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  document_number: string | null;
+  address: string | null;
+  address_number: string | null;
+  zip_code: string | null;
+  phone_number: string | null;
+  avatar_url: string | null;
+}
 
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
@@ -22,6 +36,24 @@ interface QuoteGeneratorProps {
   currentPaymentMethod: PaymentMethod | undefined; // Novo prop
   selectedInstallments: number | null; // Novo prop
 }
+
+// Função auxiliar para obter a URL da imagem como Data URL (base64)
+const getImageDataUrl = async (url: string | null): Promise<string | null> => {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { mode: 'cors' }); // Garante que CORS seja tratado
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Erro ao buscar ou converter imagem para Data URL:", error);
+    return null;
+  }
+};
 
 export const QuoteGenerator = ({ 
   selectedServices, 
@@ -49,6 +81,22 @@ export const QuoteGenerator = ({
   const [quoteDate, setQuoteDate] = useState(getTodayDateString()); // Usar a função auxiliar
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
+
+  // Fetch user profile data
+  const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
+    queryKey: ['userProfileForQuote', user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   const saveQuoteMutation = useMutation({
     mutationFn: async (quoteData: {
@@ -102,6 +150,15 @@ export const QuoteGenerator = ({
       return;
     }
 
+    if (profileError) {
+      toast({
+        title: "Erro ao carregar perfil",
+        description: "Não foi possível carregar os dados do seu perfil para o PDF.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Prepare services summary for PDF and DB
     const servicesSummaryForPdf = selectedServices.map(service => ({
       name: service.name,
@@ -126,20 +183,12 @@ export const QuoteGenerator = ({
     doc.rect(0, 0, 210, 40, 'F');
     
     // Imagem de perfil do usuário (avatar)
-    const userAvatarUrl = user?.user_metadata?.avatar_url;
-    if (userAvatarUrl) {
-      try {
-        const img = new Image();
-        img.src = userAvatarUrl;
-        img.onload = () => {
-          const imgWidth = 25;
-          const imgHeight = 25;
-          const x = 210 - 15 - imgWidth; // 15mm da direita
-          doc.addImage(img, 'JPEG', x, 10, imgWidth, imgHeight);
-        };
-      } catch (e) {
-        console.error("Erro ao adicionar avatar do usuário", e);
-      }
+    const avatarDataUrl = await getImageDataUrl(profile?.avatar_url);
+    if (avatarDataUrl) {
+      const imgWidth = 25;
+      const imgHeight = 25;
+      const x = 210 - 15 - imgWidth; // 15mm da direita
+      doc.addImage(avatarDataUrl, 'JPEG', x, 10, imgWidth, imgHeight);
     }
     
     doc.setTextColor(255, 255, 255);
@@ -151,6 +200,13 @@ export const QuoteGenerator = ({
     const [yearStr, monthStr, dayStr] = quoteDate.split('-');
     const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
     doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
+
+    // Nome da Empresa
+    if (profile?.company_name) {
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text(profile.company_name, 15, 15); // Posição ajustada para o nome da empresa
+    }
 
     yPosition = 55;
     doc.setTextColor(0, 0, 0);
@@ -362,14 +418,14 @@ export const QuoteGenerator = ({
           <Button 
             onClick={generatePDF}
             className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-            disabled={saveQuoteMutation.isPending}
+            disabled={saveQuoteMutation.isPending || isLoadingProfile} // Desabilitar enquanto o perfil carrega
           >
-            {saveQuoteMutation.isPending ? (
+            {saveQuoteMutation.isPending || isLoadingProfile ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            {saveQuoteMutation.isPending ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
+            {saveQuoteMutation.isPending || isLoadingProfile ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
           </Button>
         </div>
 
