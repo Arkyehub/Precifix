@@ -4,26 +4,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2 } from "lucide-react"; // Adicionado Loader2
+import { FileText, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { QuotedService } from "./QuoteServiceFormDialog"; // Importar a interface QuotedService
+import { QuotedService } from "./QuoteServiceFormDialog";
+import { PaymentMethod } from "./PaymentMethodFormDialog"; // Importar PaymentMethod
 
 interface QuoteGeneratorProps {
-  selectedServices: QuotedService[]; // Agora recebe objetos QuotedService completos
+  selectedServices: QuotedService[];
   totalCost: number;
-  finalPrice: number;
+  finalPrice: number; // Este agora é o valueAfterDiscount
   executionTime: number;
+  calculatedDiscount: number; // Novo prop
+  currentPaymentMethod: PaymentMethod | undefined; // Novo prop
+  selectedInstallments: number | null; // Novo prop
 }
 
 export const QuoteGenerator = ({ 
   selectedServices, 
   totalCost, 
-  finalPrice,
-  executionTime 
+  finalPrice, // Este é o valor após o desconto, antes da taxa de pagamento
+  executionTime,
+  calculatedDiscount,
+  currentPaymentMethod,
+  selectedInstallments,
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -33,18 +40,6 @@ export const QuoteGenerator = ({
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCompanyLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const saveQuoteMutation = useMutation({
     mutationFn: async (quoteData: {
@@ -72,8 +67,8 @@ export const QuoteGenerator = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] }); // Invalida o calendário
-      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] }); // Invalida a contagem de orçamentos
+      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       toast({
         title: "Orçamento salvo!",
         description: "O orçamento foi salvo e está disponível no Painel Principal.",
@@ -109,7 +104,7 @@ export const QuoteGenerator = ({
     await saveQuoteMutation.mutateAsync({
       client_name: clientName,
       vehicle: vehicle,
-      total_price: finalPrice,
+      total_price: finalPrice, // Usar finalPrice (que é valueAfterDiscount) para o total do orçamento
       quote_date: quoteDate,
       services_summary: servicesSummaryForPdf,
     });
@@ -121,17 +116,26 @@ export const QuoteGenerator = ({
     doc.setFillColor(255, 204, 0); // Amarelo dourado
     doc.rect(0, 0, 210, 40, 'F');
     
-    if (companyLogo) {
+    // Imagem de perfil do usuário (avatar)
+    const userAvatarUrl = user?.user_metadata?.avatar_url;
+    if (userAvatarUrl) {
       try {
-        doc.addImage(companyLogo, 'PNG', 15, 10, 30, 20);
+        const img = new Image();
+        img.src = userAvatarUrl;
+        img.onload = () => {
+          const imgWidth = 25;
+          const imgHeight = 25;
+          const x = 210 - 15 - imgWidth; // 15mm da direita
+          doc.addImage(img, 'JPEG', x, 10, imgWidth, imgHeight);
+        };
       } catch (e) {
-        console.error("Erro ao adicionar logo", e);
+        console.error("Erro ao adicionar avatar do usuário", e);
       }
     }
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(24);
-    doc.text("ORÇAMENTO", companyLogo ? 55 : 15, 25);
+    doc.text("ORÇAMENTO", 15, 25);
     
     doc.setFontSize(10);
     doc.text(`Data: ${new Date(quoteDate).toLocaleDateString('pt-BR')}`, 15, 35);
@@ -189,13 +193,50 @@ export const QuoteGenerator = ({
 
     yPosition += 8;
 
+    // Seção de Desconto
+    if (calculatedDiscount > 0) {
+      if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text("Desconto Aplicado:", 15, yPosition);
+      doc.setFont(undefined, 'normal');
+      doc.text(`- R$ ${calculatedDiscount.toFixed(2)}`, 160, yPosition, { align: 'right' });
+      yPosition += 10;
+    }
+
+    // Seção de Forma de Pagamento
+    if (currentPaymentMethod) {
+      if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text("Forma de Pagamento:", 15, yPosition);
+      doc.setFont(undefined, 'normal');
+      let paymentMethodText = currentPaymentMethod.name;
+
+      if (currentPaymentMethod.type === 'credit_card' && selectedInstallments) {
+        const installmentDetails = currentPaymentMethod.installments?.find(inst => inst.installments === selectedInstallments);
+        if (installmentDetails) {
+          paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x `;
+          if (installmentDetails.rate === 0) {
+            paymentMethodText += "(sem juros)";
+          } else {
+            paymentMethodText += `(taxa de ${installmentDetails.rate.toFixed(2)}%)`;
+          }
+        }
+      } else if (currentPaymentMethod.type !== 'cash' && currentPaymentMethod.type !== 'pix' && currentPaymentMethod.rate > 0) {
+        paymentMethodText += ` (taxa de ${currentPaymentMethod.rate.toFixed(2)}%)`;
+      }
+      doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
+      yPosition += 10;
+    }
+
     // Total
     doc.setFillColor(255, 204, 0); // Amarelo dourado
     doc.rect(15, yPosition - 5, 180, 12, 'F');
     doc.setTextColor(0, 0, 0); // Texto preto para contraste
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3);
+    doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3); // Usar finalPrice (valueAfterDiscount)
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
     yPosition += 20;
@@ -281,22 +322,6 @@ export const QuoteGenerator = ({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="companyLogo">Logo da Empresa (Opcional)</Label>
-            <Input
-              id="companyLogo"
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="bg-background/50"
-            />
-            {companyLogo && (
-              <div className="mt-2">
-                <img src={companyLogo} alt="Logo preview" className="h-20 object-contain" />
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
             <Label htmlFor="observations">Observações Adicionais</Label>
             <Textarea
               id="observations"
@@ -320,7 +345,7 @@ export const QuoteGenerator = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-lg font-bold text-foreground">Valor Total:</span>
-              <span className="text-2xl font-bold text-primary">R$ {finalPrice.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-primary">R$ {finalPrice.toFixed(2)}</span> {/* Este é o valor após o desconto */}
             </div>
           </div>
 

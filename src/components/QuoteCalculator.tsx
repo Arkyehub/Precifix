@@ -399,10 +399,13 @@ export const QuoteCalculator = () => {
 
       {quotedServices.length > 0 && (
         <QuoteGenerator
-          selectedServices={quotedServices} // Corrigido para passar o array de objetos QuotedService
+          selectedServices={quotedServices}
           totalCost={totalCost}
-          finalPrice={finalPriceWithFee} // O gerador de PDF usa o valor da receita final
+          finalPrice={valueAfterDiscount} // Passar o valor após o desconto para o PDF
           executionTime={totalExecutionTime}
+          calculatedDiscount={calculatedDiscount} // Passar o desconto calculado
+          currentPaymentMethod={currentPaymentMethod} // Passar a forma de pagamento selecionada
+          selectedInstallments={selectedInstallments} // Passar as parcelas selecionadas
         />
       )}
 
