@@ -295,8 +295,8 @@ export const QuoteCalculator = () => {
   // Calcular o Lucro Líquido
   const netProfit = finalPriceWithFee - totalCost;
 
-  // Calcular a Margem de Lucro Real (baseada no Lucro Líquido e no Custo Total)
-  const currentProfitMarginPercentage = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+  // Calcular a Margem de Lucro Real (baseada no Lucro Líquido e no Valor a Receber (final))
+  const currentProfitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
 
   // Calcular o Preço Sugerido com base na Margem de Lucro Desejada
   const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
