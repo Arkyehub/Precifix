@@ -401,7 +401,8 @@ export const QuoteCalculator = () => {
         <QuoteGenerator
           selectedServices={quotedServices}
           totalCost={totalCost}
-          finalPrice={valueAfterDiscount} // Passar o valor após o desconto para o PDF
+          totalServiceValue={totalServiceValue} // Passar o valor total dos serviços
+          valueAfterDiscount={valueAfterDiscount} // Passar o valor após o desconto
           executionTime={totalExecutionTime}
           calculatedDiscount={calculatedDiscount} // Passar o desconto calculado
           currentPaymentMethod={currentPaymentMethod} // Passar a forma de pagamento selecionada
