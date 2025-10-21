@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon, Camera, Loader2 } from 'lucide-react'; // Importar Loader2
+import { User as UserIcon, Camera, Loader2 } from 'lucide-react';
 import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { ImageCropperDialog } from '@/components/ImageCropperDialog'; // Importar o novo componente
 
 interface Profile {
   id: string;
@@ -63,6 +64,74 @@ const formatPhoneNumber = (value: string) => {
   }
 };
 
+// Nova função utilitária para redimensionar e comprimir a imagem (movida de dentro do componente)
+const resizeAndCompressImage = (file: File): Promise<File | null> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIMENSION = 1000; // Max width/height
+        const MAX_FILE_SIZE_BYTES = 500 * 1024; // 500 KB
+
+        let width = img.width;
+        let height = img.height;
+
+        // Check dimensions
+        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          if (width > height) {
+            height = (height * MAX_DIMENSION) / width;
+            width = MAX_DIMENSION;
+          } else {
+            width = (width * MAX_DIMENSION) / height;
+            height = MAX_DIMENSION;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.9; // Start with high quality
+        const attemptCompression = () => {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              console.error("Failed to create blob during compression.");
+              resolve(null);
+              return;
+            }
+
+            if (blob.size > MAX_FILE_SIZE_BYTES && quality > 0.1) {
+              quality -= 0.1; // Reduce quality
+              attemptCompression(); // Try again with lower quality
+            } else if (blob.size > MAX_FILE_SIZE_BYTES && quality <= 0.1) {
+              console.warn("Image still too large after max compression (max 500KB).");
+              resolve(null);
+            } else {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            }
+          }, 'image/jpeg', quality);
+        };
+
+        attemptCompression();
+      };
+      img.onerror = () => {
+        console.error("Error loading image for resizing/compression.");
+        resolve(null);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      console.error("Error reading file for resizing/compression.");
+      resolve(null);
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+
 const ProfilePage = () => {
   const { user, session } = useSession();
   const queryClient = useQueryClient();
@@ -79,7 +148,11 @@ const ProfilePage = () => {
   const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
-  const [isProcessingImage, setIsProcessingImage] = useState(false); // Novo estado para processamento local
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+
+  // Estados para o cropper
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [imageSrcForCropper, setImageSrcForCropper] = useState<string | null>(null);
 
   // Fetch user profile data
   const { data: profile, isLoading, error } = useQuery<Profile>({
@@ -161,89 +234,6 @@ const ProfilePage = () => {
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
     setRawPhoneNumber(value);
-  };
-
-  // Helper function to process and validate image
-  const processImage = (file: File): Promise<File | null> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX_DIMENSION = 1000; // Max width/height
-          const MAX_FILE_SIZE_BYTES = 500 * 1024; // 500 KB
-
-          let width = img.width;
-          let height = img.height;
-
-          // Check dimensions
-          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-            if (width > height) {
-              height = (height * MAX_DIMENSION) / width;
-              width = MAX_DIMENSION;
-            } else {
-              width = (width * MAX_DIMENSION) / height;
-              height = MAX_DIMENSION;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          let quality = 0.9; // Start with high quality
-          const attemptCompression = () => {
-            canvas.toBlob((blob) => {
-              if (!blob) {
-                toast({
-                  title: "Erro ao processar imagem",
-                  description: "Não foi possível gerar a imagem.",
-                  variant: "destructive",
-                });
-                resolve(null);
-                return;
-              }
-
-              if (blob.size > MAX_FILE_SIZE_BYTES && quality > 0.1) {
-                quality -= 0.1; // Reduce quality
-                attemptCompression(); // Try again with lower quality
-              } else if (blob.size > MAX_FILE_SIZE_BYTES && quality <= 0.1) {
-                toast({
-                  title: "Imagem muito grande",
-                  description: "A imagem ainda é muito grande mesmo após compressão máxima (máx 500KB).",
-                  variant: "destructive",
-                });
-                resolve(null);
-              } else {
-                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-              }
-            }, 'image/jpeg', quality);
-          };
-
-          attemptCompression();
-        };
-        img.onerror = () => {
-          toast({
-            title: "Erro ao carregar imagem",
-            description: "O arquivo selecionado não é uma imagem válida.",
-            variant: "destructive",
-          });
-          resolve(null);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.onerror = () => {
-        toast({
-          title: "Erro ao ler arquivo",
-          description: "Não foi possível ler o arquivo de imagem.",
-          variant: "destructive",
-        });
-        resolve(null);
-      };
-      reader.readAsDataURL(file);
-    });
   };
 
   const updateProfileMutation = useMutation({
@@ -338,36 +328,48 @@ const ProfilePage = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      setIsProcessingImage(true); // Inicia o processamento
-      setAvatarFile(null); // Limpa o arquivo anterior
-      setCurrentAvatarUrl(null); // Limpa a pré-visualização anterior
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageSrcForCropper(reader.result as string);
+        setIsCropperOpen(true);
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  };
 
-      try {
-        const processedFile = await processImage(selectedFile);
-        if (processedFile) {
-          setAvatarFile(processedFile);
-          setCurrentAvatarUrl(URL.createObjectURL(processedFile));
-        } else {
-          // Erro já foi exibido pelo processImage
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ''; // Limpa o input para permitir re-seleção
-          }
-        }
-      } catch (error) {
-        console.error("Erro durante o processamento da imagem:", error);
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setIsProcessingImage(true);
+    setAvatarFile(null);
+    setCurrentAvatarUrl(null);
+
+    try {
+      const croppedFile = new File([croppedBlob], "avatar.jpeg", { type: "image/jpeg" });
+      const processedFile = await resizeAndCompressImage(croppedFile);
+      
+      if (processedFile) {
+        setAvatarFile(processedFile);
+        setCurrentAvatarUrl(URL.createObjectURL(processedFile));
+      } else {
         toast({
-          title: "Erro inesperado",
-          description: "Ocorreu um erro ao processar a imagem.",
+          title: "Erro ao processar imagem",
+          description: "Não foi possível otimizar a imagem após o corte.",
           variant: "destructive",
         });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      } finally {
-        setIsProcessingImage(false); // Finaliza o processamento
+      }
+    } catch (error) {
+      console.error("Erro durante o processamento da imagem após corte:", error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao processar a imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Limpa o input para permitir re-seleção
       }
     }
   };
@@ -500,6 +502,21 @@ const ProfilePage = () => {
           </form>
         </CardContent>
       </Card>
+
+      <ImageCropperDialog
+        isOpen={isCropperOpen}
+        imageSrc={imageSrcForCropper}
+        onClose={() => {
+          setIsCropperOpen(false);
+          setImageSrcForCropper(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ''; // Limpa o input de arquivo
+          }
+        }}
+        onCropComplete={handleCropComplete}
+        aspectRatio={1} // Para avatar circular
+        cropShape="round"
+      />
     </div>
   );
 };
