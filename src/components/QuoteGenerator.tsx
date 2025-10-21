@@ -191,7 +191,7 @@ export const QuoteGenerator = ({
       doc.addImage(avatarDataUrl, 'JPEG', x, 10, imgWidth, imgHeight);
     }
     
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(0, 0, 0); // Definir cor do texto para preto
     doc.setFontSize(24);
     doc.text("ORÇAMENTO", 15, 25);
     
@@ -209,7 +209,7 @@ export const QuoteGenerator = ({
     }
 
     yPosition = 55;
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(0, 0, 0); // Resetar para preto para o restante do documento
 
     // Dados do Cliente
     doc.setFontSize(14);
