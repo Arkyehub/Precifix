@@ -4,15 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2, Phone, MapPin } from "lucide-react"; // Importar Phone e MapPin
+import { FileText, Download, Loader2, Phone, MapPin, Send } from "lucide-react"; // Importar Send
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"; // Importar useQuery
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
-import { PaymentMethod } from "./PaymentMethodFormDialog"; // Importar PaymentMethod
-import { formatPhoneNumber } from '@/lib/utils'; // Importar formatPhoneNumber
+import { PaymentMethod } from "./PaymentMethodFormDialog";
+import { formatPhoneNumber } from '@/lib/utils';
 
 // Interface para os dados do perfil, para uso interno neste componente
 interface Profile {
@@ -42,7 +42,7 @@ interface QuoteGeneratorProps {
 const getImageDataUrl = async (url: string | null): Promise<string | null> => {
   if (!url) return null;
   try {
-    const response = await fetch(url, { mode: 'cors' }); // Garante que CORS seja tratado
+    const response = await fetch(url, { mode: 'cors' });
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -56,10 +56,198 @@ const getImageDataUrl = async (url: string | null): Promise<string | null> => {
   }
 };
 
+// Função para gerar o PDF como um Blob
+const createQuotePdfBlob = async (
+  clientName: string,
+  vehicle: string,
+  quoteDate: string,
+  selectedServices: QuotedService[],
+  finalPrice: number,
+  calculatedDiscount: number,
+  currentPaymentMethod: PaymentMethod | undefined,
+  selectedInstallments: number | null,
+  observations: string,
+  profile: Profile | undefined,
+  showPhoneNumberField: boolean,
+  rawPhoneNumber: string,
+  showAddressField: boolean,
+  address: string,
+): Promise<Blob> => {
+  const doc = new jsPDF();
+  let yPosition = 20;
+
+  // Cabeçalho
+  doc.setFillColor(255, 204, 0); // Amarelo dourado
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  // Imagem de perfil do usuário (avatar)
+  const avatarDataUrl = await getImageDataUrl(profile?.avatar_url);
+  if (avatarDataUrl) {
+    const imgWidth = 25;
+    const imgHeight = 25;
+    const x = 210 - 15 - imgWidth; // 15mm da direita
+    doc.addImage(avatarDataUrl, 'JPEG', x, 10, imgWidth, imgHeight);
+  }
+  
+  doc.setTextColor(0, 0, 0); // Definir cor do texto para preto
+  doc.setFontSize(24);
+  doc.text("ORÇAMENTO", 15, 25);
+  
+  doc.setFontSize(10);
+  const [yearStr, monthStr, dayStr] = quoteDate.split('-');
+  const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
+  doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
+
+  // Nome da Empresa
+  if (profile?.company_name) {
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text(profile.company_name, 15, 15);
+  }
+
+  yPosition = 55;
+  doc.setTextColor(0, 0, 0);
+
+  // Dados do Cliente
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text("Dados do Cliente", 15, yPosition);
+  yPosition += 8;
+
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Cliente: ${clientName}`, 15, yPosition);
+  yPosition += 6;
+  doc.text(`Veículo: ${vehicle}`, 15, yPosition);
+  yPosition += 6;
+
+  if (showPhoneNumberField && rawPhoneNumber.trim()) {
+    doc.text(`Telefone: ${formatPhoneNumber(rawPhoneNumber)}`, 15, yPosition);
+    yPosition += 6;
+  }
+
+  if (showAddressField && address.trim()) {
+    doc.text(`Endereço: ${address}`, 15, yPosition);
+    yPosition += 6;
+  }
+
+  yPosition += 6;
+
+  // Serviços Selecionados
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text("Serviços Contratados", 15, yPosition);
+  yPosition += 8;
+
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'normal');
+  
+  // Cabeçalho da tabela
+  doc.setFillColor(240, 240, 240);
+  doc.rect(15, yPosition - 5, 180, 8, 'F');
+  doc.text("Serviço", 20, yPosition);
+  doc.text("Tempo", 120, yPosition);
+  doc.text("Valor", 160, yPosition);
+  yPosition += 10;
+
+  const servicesSummaryForPdf = selectedServices.map(service => ({
+    name: service.name,
+    price: service.quote_price ?? service.price,
+    execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
+  }));
+
+  servicesSummaryForPdf.forEach((service, index) => {
+    if (yPosition > 270) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    
+    doc.text(service.name, 20, yPosition);
+    doc.text(`${service.execution_time_minutes} min`, 120, yPosition);
+    doc.text(`R$ ${service.price.toFixed(2)}`, 160, yPosition);
+    
+    if (index < servicesSummaryForPdf.length - 1) {
+      doc.setDrawColor(220, 220, 220);
+      doc.line(15, yPosition + 5, 195, yPosition + 5);
+      yPosition += 12;
+    } else {
+      yPosition += 7;
+    }
+  });
+
+  yPosition += 8;
+
+  // Seção de Desconto
+  if (calculatedDiscount > 0) {
+    if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text("Desconto Aplicado:", 15, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(`- R$ ${calculatedDiscount.toFixed(2)}`, 160, yPosition, { align: 'right' });
+    yPosition += 10;
+  }
+
+  // Seção de Forma de Pagamento
+  if (currentPaymentMethod) {
+    if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text("Forma de Pagamento:", 15, yPosition);
+    doc.setFont(undefined, 'normal');
+    let paymentMethodText = currentPaymentMethod.name;
+
+    if (currentPaymentMethod.type === 'credit_card' && selectedInstallments) {
+      const installmentDetails = currentPaymentMethod.installments?.find(inst => inst.installments === selectedInstallments);
+      if (installmentDetails) {
+        paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x `;
+        if (installmentDetails.rate === 0) {
+          paymentMethodText += "(sem juros)";
+        }
+      }
+    }
+    doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
+    yPosition += 10;
+  }
+
+  // Total
+  doc.setFillColor(255, 204, 0);
+  doc.rect(15, yPosition - 5, 180, 12, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(undefined, 'normal');
+  yPosition += 20;
+
+  // Observações
+  if (observations) {
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text("Observações:", 15, yPosition);
+    yPosition += 7;
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    const splitObs = doc.splitTextToSize(observations, 180);
+    doc.text(splitObs, 15, yPosition);
+    yPosition += splitObs.length * 5 + 10;
+  }
+
+  // Rodapé
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  const footerY = 280;
+  doc.text("Agradecemos pela preferência! Qualquer dúvida, estamos à disposição.", 105, footerY, { align: 'center' });
+
+  return doc.output('blob');
+};
+
 export const QuoteGenerator = ({ 
   selectedServices, 
   totalCost, 
-  finalPrice, // Este é o valor após o desconto, antes da taxa de pagamento
+  finalPrice,
   executionTime,
   calculatedDiscount,
   currentPaymentMethod,
@@ -69,7 +257,6 @@ export const QuoteGenerator = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Função auxiliar para obter a data de hoje no formato YYYY-MM-DD (local)
   const getTodayDateString = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -79,17 +266,15 @@ export const QuoteGenerator = ({
   };
 
   const [clientName, setClientName] = useState("");
-  const [quoteDate, setQuoteDate] = useState(getTodayDateString()); // Usar a função auxiliar
+  const [quoteDate, setQuoteDate] = useState(getTodayDateString());
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
   
-  // Novos estados para campos opcionais
   const [showPhoneNumberField, setShowPhoneNumberField] = useState(false);
   const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [showAddressField, setShowAddressField] = useState(false);
   const [address, setAddress] = useState('');
 
-  // Fetch user profile data
   const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
     queryKey: ['userProfileForQuote', user?.id],
     queryFn: async () => {
@@ -112,6 +297,7 @@ export const QuoteGenerator = ({
       total_price: number;
       quote_date: string;
       services_summary: any[];
+      pdf_url?: string; // Adicionar campo para URL do PDF
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -124,6 +310,7 @@ export const QuoteGenerator = ({
           total_price: quoteData.total_price,
           quote_date: quoteData.quote_date,
           services_summary: quoteData.services_summary,
+          pdf_url: quoteData.pdf_url, // Salvar a URL do PDF
         })
         .select()
         .single();
@@ -133,14 +320,39 @@ export const QuoteGenerator = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
-      toast({
-        title: "Orçamento salvo!",
-        description: "O orçamento foi salvo e está disponível no Painel Principal.",
-      });
     },
     onError: (err) => {
       toast({
         title: "Erro ao salvar orçamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploadPdfMutation = useMutation({
+    mutationFn: async ({ pdfBlob, fileName }: { pdfBlob: Blob; fileName: string }) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const filePath = `${user.id}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('quotes')
+        .upload(filePath, pdfBlob, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'application/pdf',
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('quotes')
+        .getPublicUrl(filePath);
+      return publicUrlData.publicUrl;
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao fazer upload do PDF",
         description: err.message,
         variant: "destructive",
       });
@@ -152,216 +364,133 @@ export const QuoteGenerator = ({
     setRawPhoneNumber(value);
   };
 
-  const generatePDF = async () => {
+  const validateInputs = () => {
     if (!clientName || !vehicle) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha o nome do cliente e o veículo.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
-
     if (profileError) {
       toast({
         title: "Erro ao carregar perfil",
         description: "Não foi possível carregar os dados do seu perfil para o PDF.",
         variant: "destructive",
       });
+      return false;
+    }
+    return true;
+  };
+
+  const getServicesSummaryForDb = () => selectedServices.map(service => ({
+    name: service.name,
+    price: service.quote_price ?? service.price,
+    execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
+  }));
+
+  const handleGenerateAndDownloadPDF = async () => {
+    if (!validateInputs()) return;
+
+    try {
+      const pdfBlob = await createQuotePdfBlob(
+        clientName, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
+        currentPaymentMethod, selectedInstallments, observations, profile,
+        showPhoneNumberField, rawPhoneNumber, showAddressField, address
+      );
+
+      const fileName = `orcamento_${clientName.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
+      
+      // Salvar orçamento no banco de dados (sem URL do PDF por enquanto)
+      await saveQuoteMutation.mutateAsync({
+        client_name: clientName,
+        vehicle: vehicle,
+        total_price: finalPrice,
+        quote_date: quoteDate,
+        services_summary: getServicesSummaryForDb(),
+      });
+
+      // Download do PDF
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF gerado e salvo!",
+        description: "O orçamento foi baixado para seu dispositivo e salvo no sistema.",
+      });
+    } catch (error: any) {
+      console.error("Erro ao gerar ou salvar PDF:", error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: error.message || "Não foi possível gerar o PDF do orçamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendViaWhatsApp = async () => {
+    if (!validateInputs()) return;
+    if (!rawPhoneNumber.trim()) {
+      toast({
+        title: "Número de telefone ausente",
+        description: "Por favor, insira o telefone do cliente para enviar via WhatsApp.",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Prepare services summary for PDF and DB
-    const servicesSummaryForPdf = selectedServices.map(service => ({
-      name: service.name,
-      price: service.quote_price ?? service.price,
-      execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
-    }));
+    try {
+      const pdfBlob = await createQuotePdfBlob(
+        clientName, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
+        currentPaymentMethod, selectedInstallments, observations, profile,
+        showPhoneNumberField, rawPhoneNumber, showAddressField, address
+      );
 
-    // Save quote to database
-    await saveQuoteMutation.mutateAsync({
-      client_name: clientName,
-      vehicle: vehicle,
-      total_price: finalPrice, // Usar finalPrice (que é valueAfterDiscount) para o total do orçamento
-      quote_date: quoteDate,
-      services_summary: servicesSummaryForPdf,
-    });
+      const fileName = `orcamento_${clientName.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
+      const pdfUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName });
 
-    const doc = new jsPDF();
-    let yPosition = 20;
+      // Salvar orçamento no banco de dados com a URL do PDF
+      await saveQuoteMutation.mutateAsync({
+        client_name: clientName,
+        vehicle: vehicle,
+        total_price: finalPrice,
+        quote_date: quoteDate,
+        services_summary: getServicesSummaryForDb(),
+        pdf_url: pdfUrl,
+      });
 
-    // Cabeçalho
-    doc.setFillColor(255, 204, 0); // Amarelo dourado
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    // Imagem de perfil do usuário (avatar)
-    const avatarDataUrl = await getImageDataUrl(profile?.avatar_url);
-    if (avatarDataUrl) {
-      const imgWidth = 25;
-      const imgHeight = 25;
-      const x = 210 - 15 - imgWidth; // 15mm da direita
-      doc.addImage(avatarDataUrl, 'JPEG', x, 10, imgWidth, imgHeight);
-    }
-    
-    doc.setTextColor(0, 0, 0); // Definir cor do texto para preto
-    doc.setFontSize(24);
-    doc.text("ORÇAMENTO", 15, 25);
-    
-    doc.setFontSize(10);
-    // Criar um objeto Date localmente a partir da string YYYY-MM-DD para evitar problemas de fuso horário
-    const [yearStr, monthStr, dayStr] = quoteDate.split('-');
-    const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-    doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
-
-    // Nome da Empresa
-    if (profile?.company_name) {
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text(profile.company_name, 15, 15); // Posição ajustada para o nome da empresa
-    }
-
-    yPosition = 55;
-    doc.setTextColor(0, 0, 0); // Resetar para preto para o restante do documento
-
-    // Dados do Cliente
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text("Dados do Cliente", 15, yPosition);
-    yPosition += 8;
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Cliente: ${clientName}`, 15, yPosition);
-    yPosition += 6;
-    doc.text(`Veículo: ${vehicle}`, 15, yPosition);
-    yPosition += 6;
-
-    // Adicionar Telefone se visível e preenchido
-    if (showPhoneNumberField && rawPhoneNumber.trim()) {
-      doc.text(`Telefone: ${formatPhoneNumber(rawPhoneNumber)}`, 15, yPosition);
-      yPosition += 6;
-    }
-
-    // Adicionar Endereço se visível e preenchido
-    if (showAddressField && address.trim()) {
-      doc.text(`Endereço: ${address}`, 15, yPosition);
-      yPosition += 6;
-    }
-
-    yPosition += 6; // Espaçamento extra antes dos serviços
-
-    // Serviços Selecionados
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text("Serviços Contratados", 15, yPosition);
-    yPosition += 8;
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    
-    // Cabeçalho da tabela
-    doc.setFillColor(240, 240, 240);
-    doc.rect(15, yPosition - 5, 180, 8, 'F');
-    doc.text("Serviço", 20, yPosition);
-    doc.text("Tempo", 120, yPosition);
-    doc.text("Valor", 160, yPosition);
-    yPosition += 10;
-
-    // Lista de serviços
-    servicesSummaryForPdf.forEach((service, index) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
+      const companyName = profile?.company_name || 'Nossa Empresa';
+      const whatsappMessage = encodeURIComponent(
+        `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${pdfUrl}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
+      );
+      const whatsappLink = `https://wa.me/55${rawPhoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`;
       
-      doc.text(service.name, 20, yPosition);
-      doc.text(`${service.execution_time_minutes} min`, 120, yPosition);
-      doc.text(`R$ ${service.price.toFixed(2)}`, 160, yPosition);
-      
-      if (index < servicesSummaryForPdf.length - 1) {
-        doc.setDrawColor(220, 220, 220);
-        doc.line(15, yPosition + 5, 195, yPosition + 5); // Desenha a linha 5 unidades abaixo do texto
-        yPosition += 12; // Incrementa yPosition para o próximo texto + espaço da linha
-      } else {
-        yPosition += 7; // Para o último item, apenas incrementa para o próximo bloco
-      }
-    });
+      window.open(whatsappLink, '_blank');
 
-    yPosition += 8;
-
-    // Seção de Desconto
-    if (calculatedDiscount > 0) {
-      if (yPosition > 270) { doc.addPage(); yPosition = 20; }
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text("Desconto Aplicado:", 15, yPosition);
-      doc.setFont(undefined, 'normal');
-      doc.text(`- R$ ${calculatedDiscount.toFixed(2)}`, 160, yPosition, { align: 'right' });
-      yPosition += 10;
+      toast({
+        title: "Orçamento enviado via WhatsApp!",
+        description: "O link do PDF foi enviado para o cliente.",
+      });
+    } catch (error: any) {
+      console.error("Erro ao enviar via WhatsApp:", error);
+      toast({
+        title: "Erro ao enviar via WhatsApp",
+        description: error.message || "Não foi possível enviar o orçamento via WhatsApp.",
+        variant: "destructive",
+      });
     }
-
-    // Seção de Forma de Pagamento
-    if (currentPaymentMethod) {
-      if (yPosition > 270) { doc.addPage(); yPosition = 20; }
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text("Forma de Pagamento:", 15, yPosition);
-      doc.setFont(undefined, 'normal');
-      let paymentMethodText = currentPaymentMethod.name;
-
-      if (currentPaymentMethod.type === 'credit_card' && selectedInstallments) {
-        const installmentDetails = currentPaymentMethod.installments?.find(inst => inst.installments === selectedInstallments);
-        if (installmentDetails) {
-          paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x `;
-          if (installmentDetails.rate === 0) {
-            paymentMethodText += "(sem juros)";
-          }
-        }
-      }
-      doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
-      yPosition += 10;
-    }
-
-    // Total
-    doc.setFillColor(255, 204, 0); // Amarelo dourado
-    doc.rect(15, yPosition - 5, 180, 12, 'F');
-    doc.setTextColor(0, 0, 0); // Texto preto para contraste
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3); // Usar finalPrice (valueAfterDiscount)
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'normal');
-    yPosition += 20;
-
-    // Observações
-    if (observations) {
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text("Observações:", 15, yPosition);
-      yPosition += 7;
-      
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      const splitObs = doc.splitTextToSize(observations, 180);
-      doc.text(splitObs, 15, yPosition);
-      yPosition += splitObs.length * 5 + 10;
-    }
-
-    // Rodapé
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    const footerY = 280;
-    doc.text("Agradecemos pela preferência! Qualquer dúvida, estamos à disposição.", 105, footerY, { align: 'center' });
-
-    // Salvar PDF
-    doc.save(`orcamento_${clientName.replace(/\s+/g, '_')}_${quoteDate}.pdf`);
-    
-    toast({
-      title: "PDF gerado com sucesso!",
-      description: "O orçamento foi baixado para seu dispositivo.",
-    });
   };
 
+  const isGeneratingOrSaving = saveQuoteMutation.isPending || isLoadingProfile;
+  const isSendingWhatsApp = uploadPdfMutation.isPending || isGeneratingOrSaving;
+  const isWhatsAppButtonEnabled = rawPhoneNumber.trim().length > 0 && !isSendingWhatsApp;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -404,7 +533,7 @@ export const QuoteGenerator = ({
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="vehicle">Veículo (Marca/Modelo) *</Label>
-            <div className="flex gap-2"> {/* Flex container para o input e botões */}
+            <div className="flex gap-2">
               <Input
                 id="vehicle"
                 value={vehicle}
@@ -415,7 +544,7 @@ export const QuoteGenerator = ({
               <Button 
                 type="button" 
                 variant="outline" 
-                size="icon" // Botão menor
+                size="icon"
                 onClick={() => setShowPhoneNumberField(!showPhoneNumberField)}
                 className={`flex items-center justify-center ${showPhoneNumberField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
                 title="Adicionar Telefone"
@@ -425,7 +554,7 @@ export const QuoteGenerator = ({
               <Button 
                 type="button" 
                 variant="outline" 
-                size="icon" // Botão menor
+                size="icon"
                 onClick={() => setShowAddressField(!showAddressField)}
                 className={`flex items-center justify-center ${showAddressField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
                 title="Adicionar Endereço"
@@ -435,7 +564,6 @@ export const QuoteGenerator = ({
             </div>
           </div>
 
-          {/* Campo de Telefone (condicional) */}
           {showPhoneNumberField && (
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="phoneNumber">Telefone (Opcional)</Label>
@@ -450,7 +578,6 @@ export const QuoteGenerator = ({
             </div>
           )}
 
-          {/* Campo de Endereço (condicional) */}
           {showAddressField && (
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="address">Endereço (Opcional)</Label>
@@ -488,22 +615,36 @@ export const QuoteGenerator = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-lg font-bold text-foreground">Valor Total:</span>
-              <span className="text-2xl font-bold text-primary">R$ {finalPrice.toFixed(2)}</span> {/* Este é o valor após o desconto */}
+              <span className="text-2xl font-bold text-primary">R$ {finalPrice.toFixed(2)}</span>
             </div>
           </div>
 
-          <Button 
-            onClick={generatePDF}
-            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-            disabled={saveQuoteMutation.isPending || isLoadingProfile} // Desabilitar enquanto o perfil carrega
-          >
-            {saveQuoteMutation.isPending || isLoadingProfile ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            {saveQuoteMutation.isPending || isLoadingProfile ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button 
+              onClick={handleGenerateAndDownloadPDF}
+              className="flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+              disabled={isGeneratingOrSaving}
+            >
+              {isGeneratingOrSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isGeneratingOrSaving ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
+            </Button>
+            <Button 
+              onClick={handleSendViaWhatsApp}
+              className={`flex-1 ${isWhatsAppButtonEnabled ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-muted text-muted-foreground cursor-not-allowed'} transition-colors`}
+              disabled={!isWhatsAppButtonEnabled}
+            >
+              {isSendingWhatsApp ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              {isSendingWhatsApp ? "Enviando..." : "Enviar via WhatsApp"}
+            </Button>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground text-center italic">
