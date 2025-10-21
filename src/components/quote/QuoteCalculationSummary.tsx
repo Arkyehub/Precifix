@@ -118,9 +118,6 @@ export const QuoteCalculationSummary = ({
           <span className="font-medium text-foreground">Margem de Lucro Real:</span>
           <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Calculada sobre o "Valor a Receber (final)" após descontos e taxas.
-        </p>
       </div>
 
       {/* Margem de Lucro Desejada e Preço Sugerido */}
