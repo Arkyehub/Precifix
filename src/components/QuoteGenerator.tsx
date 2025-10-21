@@ -36,8 +36,17 @@ export const QuoteGenerator = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Função auxiliar para obter a data de hoje no formato YYYY-MM-DD (local)
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [clientName, setClientName] = useState("");
-  const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
+  const [quoteDate, setQuoteDate] = useState(getTodayDateString()); // Usar a função auxiliar
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
 
@@ -138,7 +147,10 @@ export const QuoteGenerator = ({
     doc.text("ORÇAMENTO", 15, 25);
     
     doc.setFontSize(10);
-    doc.text(`Data: ${new Date(quoteDate).toLocaleDateString('pt-BR')}`, 15, 35);
+    // Criar um objeto Date localmente a partir da string YYYY-MM-DD para evitar problemas de fuso horário
+    const [yearStr, monthStr, dayStr] = quoteDate.split('-');
+    const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
+    doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
 
     yPosition = 55;
     doc.setTextColor(0, 0, 0);
@@ -224,7 +236,6 @@ export const QuoteGenerator = ({
           }
         }
       }
-      // Removido o else if para outras taxas, pois a solicitação é para remover todas as taxas da descrição.
       doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
       yPosition += 10;
     }
