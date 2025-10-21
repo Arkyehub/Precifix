@@ -119,29 +119,6 @@ export const QuoteCalculationSummary = ({
           <span className="text-xl font-bold text-purple-500">{currentProfitMarginPercentage.toFixed(1)}%</span>
         </div>
       </div>
-
-      {/* Margem de Lucro Desejada e Preço Sugerido */}
-      <div className="p-4 bg-background rounded-lg border border-border/50 border-l-4 border-primary mt-4">
-        <div className="space-y-2">
-          <Label htmlFor="profit-margin" className="text-sm">Margem de Lucro Desejada (%)</Label>
-          <Input
-            id="profit-margin"
-            type="text"
-            step="0.1"
-            value={displayProfitMargin}
-            onChange={(e) => onDisplayProfitMarginChange(e.target.value)}
-            onBlur={handleProfitMarginBlur}
-            className="bg-background text-lg font-semibold"
-          />
-          <p className="text-xs text-muted-foreground">
-            Ajuste a margem para ver um preço sugerido.
-          </p>
-        </div>
-        <div className="flex justify-between items-center mt-4">
-          <span className="font-medium text-foreground">Preço Sugerido (com margem desejada):</span>
-          <span className="text-xl font-bold text-primary">R$ {suggestedPriceBasedOnDesiredMargin.toFixed(2)}</span>
-        </div>
-      </div>
     </div>
   );
 };
