@@ -16,8 +16,7 @@ import { PaymentMethod } from "./PaymentMethodFormDialog"; // Importar PaymentMe
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
   totalCost: number;
-  totalServiceValue: number; // Novo prop: valor total dos serviços antes do desconto
-  valueAfterDiscount: number; // Renomeado de finalPrice para clareza
+  finalPrice: number; // Este agora é o valueAfterDiscount
   executionTime: number;
   calculatedDiscount: number; // Novo prop
   currentPaymentMethod: PaymentMethod | undefined; // Novo prop
@@ -27,8 +26,7 @@ interface QuoteGeneratorProps {
 export const QuoteGenerator = ({ 
   selectedServices, 
   totalCost, 
-  totalServiceValue, // Usar o novo prop
-  valueAfterDiscount, // Usar o novo nome do prop
+  finalPrice, // Este é o valor após o desconto, antes da taxa de pagamento
   executionTime,
   calculatedDiscount,
   currentPaymentMethod,
@@ -106,7 +104,7 @@ export const QuoteGenerator = ({
     await saveQuoteMutation.mutateAsync({
       client_name: clientName,
       vehicle: vehicle,
-      total_price: valueAfterDiscount, // Usar valueAfterDiscount para o total do orçamento no DB
+      total_price: finalPrice, // Usar finalPrice (que é valueAfterDiscount) para o total do orçamento
       quote_date: quoteDate,
       services_summary: servicesSummaryForPdf,
     });
@@ -217,15 +215,17 @@ export const QuoteGenerator = ({
 
       if (currentPaymentMethod.type === 'credit_card' && selectedInstallments) {
         const installmentDetails = currentPaymentMethod.installments?.find(inst => inst.installments === selectedInstallments);
-        if (installmentDetails && installmentDetails.rate === 0) {
-          paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x (sem juros)`;
-        } else {
-          paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x`;
+        if (installmentDetails) {
+          paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x `;
+          if (installmentDetails.rate === 0) {
+            paymentMethodText += "(sem juros)";
+          } else {
+            paymentMethodText += `(taxa de ${installmentDetails.rate.toFixed(2)}%)`;
+          }
         }
-      } else if (currentPaymentMethod.type === 'debit_card') {
-        paymentMethodText = `Cartão de Débito`;
+      } else if (currentPaymentMethod.type !== 'cash' && currentPaymentMethod.type !== 'pix' && currentPaymentMethod.rate > 0) {
+        paymentMethodText += ` (taxa de ${currentPaymentMethod.rate.toFixed(2)}%)`;
       }
-      // Para 'cash' e 'pix', o nome já é suficiente e não há taxa para exibir
       doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
       yPosition += 10;
     }
@@ -236,7 +236,7 @@ export const QuoteGenerator = ({
     doc.setTextColor(0, 0, 0); // Texto preto para contraste
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text(`VALOR TOTAL: R$ ${totalServiceValue.toFixed(2)}`, 20, yPosition + 3); // Usar totalServiceValue
+    doc.text(`VALOR TOTAL: R$ ${finalPrice.toFixed(2)}`, 20, yPosition + 3); // Usar finalPrice (valueAfterDiscount)
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
     yPosition += 20;
@@ -345,7 +345,7 @@ export const QuoteGenerator = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-lg font-bold text-foreground">Valor Total:</span>
-              <span className="text-2xl font-bold text-primary">R$ {valueAfterDiscount.toFixed(2)}</span> {/* Este é o valor após o desconto */}
+              <span className="text-2xl font-bold text-primary">R$ {finalPrice.toFixed(2)}</span> {/* Este é o valor após o desconto */}
             </div>
           </div>
 
