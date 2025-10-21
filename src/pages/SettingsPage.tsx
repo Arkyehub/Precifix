@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -287,7 +287,7 @@ const PasswordUpdateForm = () => {
                   <span className="w-full">
                     <Button 
                       type="submit" 
-                      className="w-full pointer-events-none" // Impede o botão de capturar eventos
+                      className="w-full pointer-events-none mt-6" // Adicionado mt-6 aqui
                       disabled={isButtonDisabled}
                     >
                       {updatePasswordMutation.isPending ? (
@@ -304,7 +304,7 @@ const PasswordUpdateForm = () => {
           ) : (
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full mt-6" // Adicionado mt-6 aqui
               disabled={isButtonDisabled}
             >
               {updatePasswordMutation.isPending ? (
