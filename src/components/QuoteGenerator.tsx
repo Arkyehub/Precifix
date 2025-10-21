@@ -466,7 +466,7 @@ export const QuoteGenerator = ({
         pdf_url: pdfUrl,
       });
 
-      const companyName = profile?.company_name || 'Nossa Empresa';
+      const companyName = profile?.company_name || 'Precimetro'; // Alterado aqui
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${pdfUrl}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
       );
@@ -630,7 +630,7 @@ export const QuoteGenerator = ({
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              {isGeneratingOrSaving ? "Gerando e Salvando..." : "Gerar PDF e Salvar Orçamento"}
+              {isGeneratingOrSaving ? "Gerar PDF e Salvar Orçamento" : "Gerar PDF e Salvar Orçamento"}
             </Button>
             <Button 
               onClick={handleSendViaWhatsApp}

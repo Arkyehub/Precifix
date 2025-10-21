@@ -15,7 +15,7 @@ function Login() {
               <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
                 <Gauge className="h-8 w-8 text-primary-foreground" />
               </div>
-              <h2 className="text-3xl font-bold text-foreground">Precímetro</h2>
+              <h2 className="text-3xl font-bold text-foreground">Precimetro</h2>
             </div>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>

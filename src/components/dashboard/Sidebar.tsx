@@ -34,7 +34,7 @@ export const Sidebar = () => {
             <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
               <Gauge className="h-6 w-6 text-primary-foreground" /> {/* Ícone Gauge */}
             </div>
-            <h2 className="text-xl font-bold text-sidebar-foreground">Precímetro</h2>
+            <h2 className="text-xl font-bold text-sidebar-foreground">Precimetro</h2>
           </Link>
           <Button
             variant="ghost"
@@ -68,7 +68,7 @@ export const Sidebar = () => {
         </nav>
 
         <div className="mt-auto px-6 py-4 border-t border-sidebar-border text-xs text-sidebar-foreground/70">
-          <p>&copy; {new Date().getFullYear()} Precímetro. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Precimetro. Todos os direitos reservados.</p>
         </div>
       </aside>
     </>
