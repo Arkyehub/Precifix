@@ -183,11 +183,13 @@ export const QuoteGenerator = ({
       doc.text(service.name, 20, yPosition);
       doc.text(`${service.execution_time_minutes} min`, 120, yPosition);
       doc.text(`R$ ${service.price.toFixed(2)}`, 160, yPosition);
-      yPosition += 7;
       
       if (index < servicesSummaryForPdf.length - 1) {
         doc.setDrawColor(220, 220, 220);
-        doc.line(15, yPosition - 2, 195, yPosition - 2);
+        doc.line(15, yPosition + 5, 195, yPosition + 5); // Desenha a linha 5 unidades abaixo do texto
+        yPosition += 12; // Incrementa yPosition para o próximo texto + espaço da linha
+      } else {
+        yPosition += 7; // Para o último item, apenas incrementa para o próximo bloco
       }
     });
 
@@ -219,13 +221,10 @@ export const QuoteGenerator = ({
           paymentMethodText = `Cartão de Crédito em até ${selectedInstallments}x `;
           if (installmentDetails.rate === 0) {
             paymentMethodText += "(sem juros)";
-          } else {
-            paymentMethodText += `(taxa de ${installmentDetails.rate.toFixed(2)}%)`;
           }
         }
-      } else if (currentPaymentMethod.type !== 'cash' && currentPaymentMethod.type !== 'pix' && currentPaymentMethod.rate > 0) {
-        paymentMethodText += ` (taxa de ${currentPaymentMethod.rate.toFixed(2)}%)`;
       }
+      // Removido o else if para outras taxas, pois a solicitação é para remover todas as taxas da descrição.
       doc.text(paymentMethodText, 160, yPosition, { align: 'right' });
       yPosition += 10;
     }
