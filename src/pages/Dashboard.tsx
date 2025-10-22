@@ -2,6 +2,7 @@ import React from 'react';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { ServiceProfitabilityChart } from '@/components/dashboard/ServiceProfitabilityChart';
 import { QuotesCalendar } from '@/components/dashboard/QuotesCalendar';
+import { DashboardAnnualSummary } from '@/components/dashboard/DashboardAnnualSummary'; // Importar o novo componente
 import { Gauge } from 'lucide-react';
 
 const Dashboard = () => {
@@ -14,6 +15,7 @@ const Dashboard = () => {
 
       <DashboardStats />
       <ServiceProfitabilityChart />
+      <DashboardAnnualSummary /> {/* Adicionado o novo componente aqui */}
       <QuotesCalendar />
     </div>
   );
