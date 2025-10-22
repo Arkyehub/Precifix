@@ -8,17 +8,17 @@ import {
   User as UserIcon,
   Settings,
   FolderOpen,
-  ReceiptText, // Importar o novo ícone
+  ReceiptText,
 } from 'lucide-react';
 
 export const navigationLinks = [
   { to: '/', icon: Gauge, label: 'Painel Principal' },
   { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
+  { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' }, // Movido para cá
   { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
   { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
   { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
   { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
-  { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' }, // Novo link de navegação
   { to: '/storage-test', icon: FolderOpen, label: 'Testar Storage' },
 ];
 
