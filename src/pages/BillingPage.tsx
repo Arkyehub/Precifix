@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ReceiptText, Loader2 } from 'lucide-react';
+import { ReceiptText, Loader2, Plus } from 'lucide-react'; // Importar o ícone Plus
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthlyBillingCard } from '@/components/billing/MonthlyBillingCard';
 import { MonthlyExpensesDisplay } from '@/components/billing/MonthlyExpensesDisplay';
-import { AnnualResultSummary } from '@/components/billing/AnnualResultSummary'; // Importar o novo componente
+import { AnnualResultSummary } from '@/components/billing/AnnualResultSummary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button'; // Importar Button
+import { useToast } from '@/hooks/use-toast'; // Importar useToast
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -35,11 +37,13 @@ export interface MonthlyExpense {
 
 const BillingPage = () => {
   const { user } = useSession();
+  const { toast } = useToast(); // Inicializar useToast
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [localAvailableYears, setLocalAvailableYears] = useState<number[]>([]); // Estado local para anos
 
   // Fetch all monthly billing records for the user
   const { data: monthlyBillingRecords, isLoading: isLoadingBillingRecords, error: billingRecordsError } = useQuery<MonthlyBilling[]>({
@@ -58,20 +62,45 @@ const BillingPage = () => {
     enabled: !!user,
   });
 
+  // Efeito para inicializar e atualizar a lista de anos disponíveis
+  React.useEffect(() => {
+    let years = Array.from(new Set(monthlyBillingRecords?.map(r => r.year) || []));
+    if (!years.includes(currentYear)) {
+      years.push(currentYear);
+    }
+    years.sort((a, b) => b - a); // Sort descending
+    setLocalAvailableYears(years);
+  }, [monthlyBillingRecords, currentYear]);
+
   const currentMonthlyBilling = monthlyBillingRecords?.find(
     (record) => record.month === selectedMonth && record.year === selectedYear
   );
-
-  const availableYears = Array.from(new Set(monthlyBillingRecords?.map(r => r.year) || []));
-  if (!availableYears.includes(currentYear)) {
-    availableYears.push(currentYear);
-  }
-  availableYears.sort((a, b) => b - a); // Sort descending
 
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
     label: format(new Date(2000, i, 1), 'MMMM', { locale: ptBR }),
   }));
+
+  const handleAddYear = () => {
+    const latestYear = localAvailableYears.length > 0 ? Math.max(...localAvailableYears) : currentYear;
+    const newYear = latestYear + 1;
+    if (localAvailableYears.includes(newYear)) {
+      toast({
+        title: "Ano já existe",
+        description: `O ano ${newYear} já está disponível na lista.`,
+        variant: "default",
+      });
+      setSelectedYear(newYear);
+      return;
+    }
+    const updatedYears = [...localAvailableYears, newYear].sort((a, b) => b - a);
+    setLocalAvailableYears(updatedYears);
+    setSelectedYear(newYear);
+    toast({
+      title: "Novo ano adicionado!",
+      description: `O ano ${newYear} foi adicionado e selecionado.`,
+    });
+  };
 
   if (isLoadingBillingRecords) {
     return (
@@ -124,21 +153,31 @@ const BillingPage = () => {
             </div>
             <div className="flex-1 space-y-2">
               <label htmlFor="select-year" className="text-sm font-medium text-foreground">Ano</label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value, 10))}
-              >
-                <SelectTrigger id="select-year" className="bg-background">
-                  <SelectValue placeholder="Selecione o ano" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2"> {/* Flex container para o Select e o Botão */}
+                <Select
+                  value={selectedYear.toString()}
+                  onValueChange={(value) => setSelectedYear(parseInt(value, 10))}
+                >
+                  <SelectTrigger id="select-year" className="bg-background">
+                    <SelectValue placeholder="Selecione o ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {localAvailableYears.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={handleAddYear}
+                  title="Adicionar novo ano"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -154,7 +193,7 @@ const BillingPage = () => {
             year={selectedYear}
           />
 
-          <AnnualResultSummary year={selectedYear} /> {/* Novo componente aqui */}
+          <AnnualResultSummary year={selectedYear} />
         </CardContent>
       </Card>
     </div>
