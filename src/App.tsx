@@ -13,7 +13,8 @@ import QuoteGenerationPage from "./pages/QuoteGenerationPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
-import StorageTestPage from "./pages/StorageTestPage"; // Import the new page
+import StorageTestPage from "./pages/StorageTestPage";
+import BillingPage from "./pages/BillingPage"; // Importar a nova página
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -92,11 +93,19 @@ const App = () => (
                 </DashboardLayout>
               } 
             />
-            <Route // New route for StorageTestPage
+            <Route 
               path="/storage-test"
               element={
                 <DashboardLayout>
                   <StorageTestPage />
+                </DashboardLayout>
+              }
+            />
+            <Route // Nova rota para BillingPage
+              path="/billing"
+              element={
+                <DashboardLayout>
+                  <BillingPage />
                 </DashboardLayout>
               }
             />

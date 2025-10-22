@@ -7,7 +7,8 @@ import {
   FileText,
   User as UserIcon,
   Settings,
-  FolderOpen, // Import FolderOpen icon
+  FolderOpen,
+  ReceiptText, // Importar o novo ícone
 } from 'lucide-react';
 
 export const navigationLinks = [
@@ -17,7 +18,8 @@ export const navigationLinks = [
   { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
   { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
   { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
-  { to: '/storage-test', icon: FolderOpen, label: 'Testar Storage' }, // New navigation link
+  { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' }, // Novo link de navegação
+  { to: '/storage-test', icon: FolderOpen, label: 'Testar Storage' },
 ];
 
 export const userDropdownLinks = [
