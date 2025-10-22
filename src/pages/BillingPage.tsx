@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ReceiptText, Loader2, Plus } from 'lucide-react'; // Importar o ícone Plus
+import { ReceiptText, Loader2, Plus } from 'lucide-react';
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +8,11 @@ import { MonthlyBillingCard } from '@/components/billing/MonthlyBillingCard';
 import { MonthlyExpensesDisplay } from '@/components/billing/MonthlyExpensesDisplay';
 import { AnnualResultSummary } from '@/components/billing/AnnualResultSummary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button'; // Importar Button
-import { useToast } from '@/hooks/use-toast'; // Importar useToast
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ManageYearsDialog } from '@/components/billing/ManageYearsDialog'; // Importar o novo diálogo
 
 export interface MonthlyBilling {
   id: string;
@@ -37,13 +38,14 @@ export interface MonthlyExpense {
 
 const BillingPage = () => {
   const { user } = useSession();
-  const { toast } = useToast(); // Inicializar useToast
+  const { toast } = useToast();
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [localAvailableYears, setLocalAvailableYears] = useState<number[]>([]); // Estado local para anos
+  const [localAvailableYears, setLocalAvailableYears] = useState<number[]>([]);
+  const [isManageYearsDialogOpen, setIsManageYearsDialogOpen] = useState(false); // Estado para controlar o diálogo
 
   // Fetch all monthly billing records for the user
   const { data: monthlyBillingRecords, isLoading: isLoadingBillingRecords, error: billingRecordsError } = useQuery<MonthlyBilling[]>({
@@ -81,25 +83,12 @@ const BillingPage = () => {
     label: format(new Date(2000, i, 1), 'MMMM', { locale: ptBR }),
   }));
 
-  const handleAddYear = () => {
-    const latestYear = localAvailableYears.length > 0 ? Math.max(...localAvailableYears) : currentYear;
-    const newYear = latestYear + 1;
-    if (localAvailableYears.includes(newYear)) {
-      toast({
-        title: "Ano já existe",
-        description: `O ano ${newYear} já está disponível na lista.`,
-        variant: "default",
-      });
-      setSelectedYear(newYear);
-      return;
-    }
-    const updatedYears = [...localAvailableYears, newYear].sort((a, b) => b - a);
+  const handleYearsUpdate = (updatedYears: number[]) => {
     setLocalAvailableYears(updatedYears);
-    setSelectedYear(newYear);
-    toast({
-      title: "Novo ano adicionado!",
-      description: `O ano ${newYear} foi adicionado e selecionado.`,
-    });
+  };
+
+  const handleSelectYearFromDialog = (year: number) => {
+    setSelectedYear(year);
   };
 
   if (isLoadingBillingRecords) {
@@ -153,7 +142,7 @@ const BillingPage = () => {
             </div>
             <div className="flex-1 space-y-2">
               <label htmlFor="select-year" className="text-sm font-medium text-foreground">Ano</label>
-              <div className="flex items-center gap-2"> {/* Flex container para o Select e o Botão */}
+              <div className="flex items-center gap-2">
                 <Select
                   value={selectedYear.toString()}
                   onValueChange={(value) => setSelectedYear(parseInt(value, 10))}
@@ -169,11 +158,11 @@ const BillingPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={handleAddYear}
-                  title="Adicionar novo ano"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsManageYearsDialogOpen(true)} // Abre o diálogo
+                  title="Gerenciar anos"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -196,6 +185,15 @@ const BillingPage = () => {
           <AnnualResultSummary year={selectedYear} />
         </CardContent>
       </Card>
+
+      <ManageYearsDialog
+        isOpen={isManageYearsDialogOpen}
+        onClose={() => setIsManageYearsDialogOpen(false)}
+        availableYears={localAvailableYears}
+        onYearsUpdate={handleYearsUpdate}
+        selectedYear={selectedYear}
+        onSelectYear={handleSelectYearFromDialog}
+      />
     </div>
   );
 };
