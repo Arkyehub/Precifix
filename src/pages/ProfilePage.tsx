@@ -342,7 +342,7 @@ const ProfilePage = () => {
       } else {
         toast({
           title: "Erro ao processar imagem",
-          description: "Não foi possível otimizar a imagem após o corte.",
+          description: "Não foi possível otimizar a imagem após o corte. Tente uma imagem menor.",
           variant: "destructive",
         });
       }
