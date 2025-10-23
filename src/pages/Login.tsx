@@ -2,8 +2,9 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button'; // Adicionado import do Button
-import { Gauge, Globe } from 'lucide-react'; // Importar o ícone Gauge e Globe (substituído Google por Globe)
+import { Button } from '@/components/ui/button';
+import { Gauge } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc'; // Importando o ícone oficial do Google
 
 function Login() {
   const handleGoogleLogin = async () => {
@@ -25,7 +26,6 @@ function Login() {
       <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            {/* Substituído a imagem pelo ícone e texto */}
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
                 <Gauge className="h-8 w-8 text-primary-foreground" />
@@ -41,7 +41,7 @@ function Login() {
         <CardContent className="space-y-4">
           <Auth
             supabaseClient={supabase}
-            providers={[]} // Removido providers para esconder os botões padrão
+            providers={[]}
             appearance={{
               theme: ThemeSupa,
               variables: {
@@ -54,10 +54,9 @@ function Login() {
                     inputBorderHover: 'hsl(var(--primary))',
                     inputBorderFocus: 'hsl(var(--primary))',
                     inputText: 'hsl(var(--foreground))',
-                    defaultButtonBackground: 'hsl(var(--primary))', // Fundo do botão primário
-                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Fundo do botão primário ao passar o mouse
-                    defaultButtonBorder: 'hsl(var(--primary))', // Borda do botão primário
-                    // defaultButtonText e anchorTextColor serão sobrescritos pelo CSS abaixo
+                    defaultButtonBackground: 'hsl(var(--primary))',
+                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))',
+                    defaultButtonBorder: 'hsl(var(--primary))',
                     dividerBackground: 'hsl(var(--border))',
                   },
                 },
@@ -103,16 +102,14 @@ function Login() {
               },
             }}
           />
-          {/* Botão personalizado do Google abaixo do formulário */}
           <Button
             onClick={handleGoogleLogin}
-            className="w-full bg-white border border-primary text-foreground hover:bg-primary/5 transition-colors"
+            className="w-full bg-white border border-gray-300 text-foreground hover:bg-gray-50 transition-colors flex items-center justify-center"
             variant="outline"
           >
-            <Globe className="mr-2 h-4 w-4" />
+            <FcGoogle className="mr-2 h-5 w-5" />
             Logar com Google
           </Button>
-          {/* Bloco de estilo para forçar a cor do texto e do botão primário */}
           <style>{`
             .supabase-auth-ui_ui-button {
               color: black !important;
@@ -120,7 +117,6 @@ function Login() {
             .supabase-auth-ui_ui-anchor {
               color: black !important;
             }
-            /* Estilo para o botão primário "Entrar" */
             .supabase-auth-ui_ui-button:not([data-provider]) {
               background-color: hsl(var(--primary)) !important;
               border-color: hsl(var(--primary)) !important;
