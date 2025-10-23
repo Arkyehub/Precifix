@@ -3,7 +3,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button'; // Adicionado import do Button
-import { Gauge } from 'lucide-react'; // Importar o ícone Gauge
+import { Gauge, Globe } from 'lucide-react'; // Importar o ícone Gauge e Globe (substituído Google por Globe)
 
 function Login() {
   const handleGoogleLogin = async () => {
@@ -109,6 +109,7 @@ function Login() {
             className="w-full bg-white border border-primary text-foreground hover:bg-primary/5 transition-colors"
             variant="outline"
           >
+            <Globe className="mr-2 h-4 w-4" />
             Logar com Google
           </Button>
           {/* Bloco de estilo para forçar a cor do texto e do botão primário */}
