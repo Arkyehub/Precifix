@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } => 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Menu, LogOut, Settings, User as UserIcon, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
