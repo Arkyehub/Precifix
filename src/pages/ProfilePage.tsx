@@ -134,7 +134,7 @@ const ProfilePage = () => {
   const [addressNumber, setAddressNumber] = useState('');
   const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState<string | null>(null); // Nova variável para a URL temporária da prévia
   const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   // Estados para o cropper
@@ -167,7 +167,7 @@ const ProfilePage = () => {
       setAddress(profile.address || '');
       setAddressNumber(profile.address_number || '');
       setRawPhoneNumber(profile.phone_number || '');
-      setCurrentAvatarUrl(profile.avatar_url);
+      // Não definimos tempAvatarUrl aqui, ele é apenas para a prévia de um novo arquivo
     }
   }, [profile]);
 
@@ -227,7 +227,7 @@ const ProfilePage = () => {
     mutationFn: async (updatedProfile: Partial<Profile>) => {
       if (!user) throw new Error("User not authenticated.");
 
-      let newAvatarUrl = currentAvatarUrl;
+      let newAvatarUrl = profile?.avatar_url; // Começa com a URL atual do perfil
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}.${fileExt}`;
@@ -266,6 +266,7 @@ const ProfilePage = () => {
 
       if (profileError) throw profileError;
 
+      // Atualiza os metadados do usuário na autenticação do Supabase
       if (newAvatarUrl !== user.user_metadata?.avatar_url || updatedProfile.first_name !== user.user_metadata?.first_name || updatedProfile.last_name !== user.user_metadata?.last_name) {
         const { data: authUpdateData, error: authUpdateError } = await supabase.auth.updateUser({
           data: {
@@ -285,8 +286,8 @@ const ProfilePage = () => {
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
-      setCurrentAvatarUrl(data.avatar_url);
-      setAvatarFile(null);
+      setAvatarFile(null); // Limpa o arquivo temporário
+      setTempAvatarUrl(null); // Limpa a URL temporária
     },
     onError: (err) => {
       toast({
@@ -329,8 +330,8 @@ const ProfilePage = () => {
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     setIsProcessingImage(true);
-    setAvatarFile(null);
-    setCurrentAvatarUrl(null);
+    setAvatarFile(null); // Limpa o arquivo anterior
+    setTempAvatarUrl(null); // Limpa a URL temporária anterior
 
     try {
       const croppedFile = new File([croppedBlob], "avatar.jpeg", { type: "image/jpeg" });
@@ -338,7 +339,7 @@ const ProfilePage = () => {
       
       if (processedFile) {
         setAvatarFile(processedFile);
-        setCurrentAvatarUrl(URL.createObjectURL(processedFile));
+        setTempAvatarUrl(URL.createObjectURL(processedFile)); // Define a URL temporária para prévia
       } else {
         toast({
           title: "Erro ao processar imagem",
@@ -369,6 +370,9 @@ const ProfilePage = () => {
   };
 
   const isUploadingOrProcessing = isProcessingImage || updateProfileMutation.isPending;
+
+  // Determina qual URL de avatar usar para exibição
+  const avatarToDisplay = tempAvatarUrl || profile?.avatar_url;
 
   if (isLoading) return <p>Carregando perfil...</p>;
   if (error) return <p>Erro ao carregar perfil: {error.message}</p>;
@@ -401,8 +405,8 @@ const ProfilePage = () => {
                     </AvatarFallback>
                   ) : (
                     <>
-                      {currentAvatarUrl ? (
-                        <AvatarImage src={currentAvatarUrl} alt={firstName || "User"} />
+                      {avatarToDisplay ? (
+                        <AvatarImage src={avatarToDisplay} alt={firstName || "User"} />
                       ) : (
                         <AvatarFallback className="w-32 h-32 text-5xl bg-primary text-primary-foreground">
                           {getUserInitials(user)}
