@@ -2,9 +2,24 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // Adicionado import do Button
 import { Gauge } from 'lucide-react'; // Importar o ícone Gauge
 
 function Login() {
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Erro ao fazer login com Google:', error.message);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
@@ -23,10 +38,10 @@ function Login() {
             Faça login ou crie uma conta para continuar.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Auth
             supabaseClient={supabase}
-            providers={['google']} 
+            providers={[]} // Removido providers para esconder os botões padrão
             appearance={{
               theme: ThemeSupa,
               variables: {
@@ -88,7 +103,15 @@ function Login() {
               },
             }}
           />
-          {/* Bloco de estilo para forçar a cor do texto e do botão do Google */}
+          {/* Botão personalizado do Google abaixo do formulário */}
+          <Button
+            onClick={handleGoogleLogin}
+            className="w-full bg-white border border-primary text-foreground hover:bg-primary/5 transition-colors"
+            variant="outline"
+          >
+            Logar com Google
+          </Button>
+          {/* Bloco de estilo para forçar a cor do texto e do botão primário */}
           <style>{`
             .supabase-auth-ui_ui-button {
               color: black !important;
@@ -96,14 +119,14 @@ function Login() {
             .supabase-auth-ui_ui-anchor {
               color: black !important;
             }
-            /* Estilo específico para o botão do Google */
-            .supabase-auth-ui_ui-button[data-provider="google"] {
-              background-color: white !important;
+            /* Estilo para o botão primário "Entrar" */
+            .supabase-auth-ui_ui-button:not([data-provider]) {
+              background-color: hsl(var(--primary)) !important;
               border-color: hsl(var(--primary)) !important;
-              color: hsl(var(--foreground)) !important;
+              color: hsl(var(--primary-foreground)) !important;
             }
-            .supabase-auth-ui_ui-button[data-provider="google"]:hover {
-              background-color: hsl(var(--primary) / 0.1) !important; /* Um leve hover amarelo */
+            .supabase-auth-ui_ui-button:not([data-provider]):hover {
+              background-color: hsl(var(--primary-glow)) !important;
             }
           `}</style>
         </CardContent>
