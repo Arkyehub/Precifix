@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } => 'react-router-dom';
 import { Menu, LogOut, Settings, User as UserIcon, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +38,13 @@ export const Header = () => {
 
   const userName = user?.user_metadata?.first_name || 'Usuário';
 
+  // Cache-busting para a URL do avatar no cabeçalho
+  const headerAvatarUrl = user?.user_metadata?.avatar_url;
+  const avatarUpdatedAt = user?.user_metadata?.avatar_updated_at; // Campo que adicionamos
+  const finalHeaderAvatarSrc = headerAvatarUrl && avatarUpdatedAt
+    ? `${headerAvatarUrl}?t=${new Date(avatarUpdatedAt).getTime()}`
+    : headerAvatarUrl;
+
   return (
     <header className="z-40 py-4 bg-sidebar shadow-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-full px-6">
@@ -61,7 +68,7 @@ export const Header = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full"> {/* Aumentado para h-10 w-10 */}
                 <Avatar className="h-10 w-10"> {/* Aumentado para h-10 w-10 */}
-                  <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={user?.email || "User"} />
+                  <AvatarImage src={finalHeaderAvatarSrc || ""} alt={user?.email || "User"} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {getUserInitials(user)}
                   </AvatarFallback>

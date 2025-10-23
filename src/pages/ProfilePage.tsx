@@ -23,6 +23,7 @@ interface Profile {
   zip_code: string | null;
   phone_number: string | null;
   avatar_url: string | null;
+  updated_at: string; // Adicionado updated_at para cache-busting
 }
 
 // Helper function to format CEP
@@ -227,7 +228,9 @@ const ProfilePage = () => {
     mutationFn: async (updatedProfile: Partial<Profile>) => {
       if (!user) throw new Error("User not authenticated.");
 
-      let newAvatarUrl = profile?.avatar_url; // Começa com a URL atual do perfil
+      let newAvatarUrl = profile?.avatar_url;
+      let currentProfileUpdatedAt = profile?.updated_at; // Get current updated_at
+
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}.${fileExt}`;
@@ -248,7 +251,8 @@ const ProfilePage = () => {
         newAvatarUrl = publicUrlData.publicUrl;
       }
 
-      const { error: profileError } = await supabase
+      // Update profiles table
+      const { data: updatedProfileData, error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: updatedProfile.first_name,
@@ -260,34 +264,49 @@ const ProfilePage = () => {
           address_number: updatedProfile.address_number,
           phone_number: updatedProfile.phone_number,
           avatar_url: newAvatarUrl,
-          updated_at: new Date().toISOString(),
+          // updated_at is automatically handled by the trigger 'update_updated_at_column'
+          // but we need its *new* value for auth.updateUser
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('updated_at') // Select updated_at to get the new timestamp
+        .single();
 
       if (profileError) throw profileError;
+      if (updatedProfileData) {
+        currentProfileUpdatedAt = updatedProfileData.updated_at; // Use the newly updated timestamp
+      }
 
-      // Atualiza os metadados do usuário na autenticação do Supabase
-      if (newAvatarUrl !== user.user_metadata?.avatar_url || updatedProfile.first_name !== user.user_metadata?.first_name || updatedProfile.last_name !== user.user_metadata?.last_name) {
+      // Update user metadata in Supabase Auth
+      // Only update if avatar_url or name fields have changed
+      const shouldUpdateAuthMetadata = 
+        newAvatarUrl !== user.user_metadata?.avatar_url || 
+        updatedProfile.first_name !== user.user_metadata?.first_name || 
+        updatedProfile.last_name !== user.user_metadata?.last_name ||
+        (newAvatarUrl && currentProfileUpdatedAt); // Also update if avatar was just set/updated
+
+      if (shouldUpdateAuthMetadata) {
         const { data: authUpdateData, error: authUpdateError } = await supabase.auth.updateUser({
           data: {
             first_name: updatedProfile.first_name,
             last_name: updatedProfile.last_name,
             avatar_url: newAvatarUrl,
+            avatar_updated_at: currentProfileUpdatedAt, // Store the timestamp for cache-busting in header
           },
         });
         if (authUpdateError) console.error("Error updating auth user metadata:", authUpdateError);
       }
 
-      return { ...profile, ...updatedProfile, avatar_url: newAvatarUrl };
+      return { ...profile, ...updatedProfile, avatar_url: newAvatarUrl, updated_at: currentProfileUpdatedAt };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['userProfile', user?.id] });
+      // No need to manually update session here, onAuthStateChange should handle it
       toast({
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
       });
-      setAvatarFile(null); // Limpa o arquivo temporário
-      setTempAvatarUrl(null); // Limpa a URL temporária
+      setAvatarFile(null);
+      setTempAvatarUrl(null);
     },
     onError: (err) => {
       toast({
@@ -372,7 +391,10 @@ const ProfilePage = () => {
   const isUploadingOrProcessing = isProcessingImage || updateProfileMutation.isPending;
 
   // Determina qual URL de avatar usar para exibição
-  const avatarToDisplay = tempAvatarUrl || profile?.avatar_url;
+  // Adiciona o timestamp para cache-busting se profile.updated_at estiver disponível
+  const avatarToDisplay = tempAvatarUrl || (profile?.avatar_url && profile?.updated_at 
+    ? `${profile.avatar_url}?t=${new Date(profile.updated_at).getTime()}` 
+    : profile?.avatar_url);
 
   if (isLoading) return <p>Carregando perfil...</p>;
   if (error) return <p>Erro ao carregar perfil: {error.message}</p>;
