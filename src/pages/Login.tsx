@@ -85,16 +85,30 @@ function Login() {
                   button_label: 'Enviar link mágico',
                   link_text: 'Enviar link mágico',
                 },
+                providers: {
+                  google: {
+                    button_label: 'Logar com Google', // Texto do botão do Google
+                  },
+                },
               },
             }}
           />
-          {/* Bloco de estilo para forçar a cor do texto */}
+          {/* Bloco de estilo para forçar a cor do texto e do botão do Google */}
           <style>{`
             .supabase-auth-ui_ui-button {
               color: black !important;
             }
             .supabase-auth-ui_ui-anchor {
               color: black !important;
+            }
+            /* Estilo específico para o botão do Google */
+            .supabase-auth-ui_ui-button[data-provider="google"] {
+              background-color: white !important;
+              border-color: hsl(var(--primary)) !important;
+              color: hsl(var(--foreground)) !important;
+            }
+            .supabase-auth-ui_ui-button[data-provider="google"]:hover {
+              background-color: hsl(var(--primary) / 0.1) !important; /* Um leve hover amarelo */
             }
           `}</style>
         </CardContent>
