@@ -85,11 +85,6 @@ function Login() {
                   button_label: 'Enviar link mágico',
                   link_text: 'Enviar link mágico',
                 },
-                providers: {
-                  google: {
-                    button_label: 'Logar com Google', // Texto do botão do Google
-                  },
-                },
               },
             }}
           />
