@@ -22,14 +22,14 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black p-4">
+    <div className="flex min-h-screen items-center justify-center bg-sidebar p-4"> {/* Alterado bg-black para bg-sidebar */}
       <Card className="w-full max-w-md bg-black text-white border-gray-800">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
-              className="h-24 w-auto" // Ajustado para h-24 e w-auto para o novo logo retangular
+              className="h-24 w-auto"
             />
           </div>
           <CardTitle className="text-3xl font-bold text-white">Bem-vindo de volta!</CardTitle>
