@@ -29,7 +29,7 @@ function Login() {
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
-              className="h-12 w-auto" 
+              className="h-20 w-auto" 
               style={{ filter: 'drop-shadow(0 0 5px rgba(0, 0, 0, 0.2))' }}
             />
           </div>
