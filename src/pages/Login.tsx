@@ -22,15 +22,14 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md bg-gray-900 text-white shadow-[var(--shadow-elegant)] border-gray-700">
+    <div className="flex min-h-screen items-center justify-center bg-black p-4">
+      <Card className="w-full max-w-md bg-black text-white border-gray-800">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
-              className="h-20 w-auto" 
-              style={{ filter: 'drop-shadow(0 0 5px rgba(255, 255, 255, 0.2))' }}
+              className="h-20 w-auto"
             />
           </div>
           <CardTitle className="text-3xl font-bold text-white">Bem-vindo de volta!</CardTitle>
@@ -50,21 +49,18 @@ function Login() {
                     // Cores para o tema escuro
                     brand: 'hsl(var(--primary))',
                     brandAccent: 'hsl(var(--primary-glow))',
-                    inputBackground: 'hsl(0 0% 15%)', // Fundo do input escuro
-                    inputBorder: 'hsl(0 0% 30%)',
+                    inputBackground: 'hsl(0 0% 10%)', // Fundo do input preto
+                    inputBorder: 'hsl(0 0% 20%)',
                     inputBorderHover: 'hsl(var(--primary))',
                     inputBorderFocus: 'hsl(var(--primary))',
                     inputText: 'hsl(0 0% 90%)', // Texto do input claro
-                    defaultButtonBackground: 'hsl(var(--primary))',
-                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))',
+                    defaultButtonBackground: 'hsl(var(--primary))', // Cor de fundo do botão primário
+                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Cor de fundo do botão primário ao passar o mouse
                     defaultButtonBorder: 'hsl(var(--primary))',
-                    dividerBackground: 'hsl(0 0% 30%)',
-                    // Cores de fundo e texto do Auth UI
                     defaultButtonText: 'hsl(0 0% 0%)', // Texto do botão primário preto
-                    defaultButtonBackground: 'hsl(var(--primary))',
-                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))',
+                    dividerBackground: 'hsl(0 0% 20%)',
                     messageText: 'hsl(0 0% 90%)', // Texto de mensagens
-                    anchorText: 'hsl(var(--primary))', // Links
+                    anchorTextColor: 'hsl(var(--primary))', // Links (corrigido de anchorText para anchorTextColor)
                   },
                 },
               },
@@ -118,10 +114,11 @@ function Login() {
             Logar com Google
           </Button>
           <style>{`
-            /* Sobrescreve estilos para garantir que o fundo do Auth UI seja escuro */
+            /* Sobrescreve estilos para garantir que o fundo do Auth UI seja preto */
             .supabase-auth-ui_ui-card {
-              background-color: transparent !important;
+              background-color: black !important;
               box-shadow: none !important;
+              border: none !important;
             }
             .supabase-auth-ui_ui-button {
               color: black !important;
