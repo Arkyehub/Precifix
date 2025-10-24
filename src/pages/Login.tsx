@@ -60,7 +60,7 @@ function Login() {
                     defaultButtonText: 'hsl(0 0% 0%)', // Texto do botão primário preto
                     dividerBackground: 'hsl(0 0% 20%)',
                     messageText: 'hsl(0 0% 90%)', // Texto de mensagens
-                    anchorTextColor: 'hsl(var(--primary))', // Links (corrigido de anchorText para anchorTextColor)
+                    anchorTextColor: 'hsl(var(--primary))', // Links
                   },
                 },
               },
