@@ -132,7 +132,7 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex items-center gap-3 mb-6">
           <Gauge className="h-6 w-6 text-foreground" />
-          <h1 className="text-2xl font-bold text-foreground">Painel Principal</h1>
+          <h1 className="text-2xl font-bold text-foreground">Painel Principal Precifix</h1>
         </div>
 
         {sectionOrder.map((key, index) => {

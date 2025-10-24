@@ -26,12 +26,12 @@ function Login() {
       <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
-                <Gauge className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <h2 className="text-3xl font-bold text-foreground">Precimetro</h2>
-            </div>
+            <img 
+              src="/precifix-logo.png" 
+              alt="Precifix Logo" 
+              className="h-12 w-auto" 
+              style={{ filter: 'drop-shadow(0 0 5px rgba(0, 0, 0, 0.2))' }}
+            />
           </div>
           <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>
           <CardDescription className="text-muted-foreground">

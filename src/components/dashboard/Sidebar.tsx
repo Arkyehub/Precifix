@@ -31,10 +31,11 @@ export const Sidebar = () => {
       >
         <div className="flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3" onClick={closeSidebar}>
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg shadow-[var(--shadow-elegant)]">
-              <Gauge className="h-6 w-6 text-primary-foreground" /> {/* Ícone Gauge */}
-            </div>
-            <h2 className="text-xl font-bold text-sidebar-foreground">Precimetro</h2>
+            <img 
+              src="/precifix-logo.png" 
+              alt="Precifix Logo" 
+              className="h-8 w-auto" 
+            />
           </Link>
           <Button
             variant="ghost"
@@ -68,7 +69,7 @@ export const Sidebar = () => {
         </nav>
 
         <div className="mt-auto px-6 py-4 border-t border-sidebar-border text-xs text-sidebar-foreground/70">
-          <p>&copy; {new Date().getFullYear()} Precimetro. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Precifix. Todos os direitos reservados.</p>
         </div>
       </aside>
     </>
