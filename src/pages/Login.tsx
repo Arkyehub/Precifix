@@ -23,18 +23,18 @@ function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md bg-gradient-to-br from-card to-card/80 shadow-[var(--shadow-elegant)] border-border/50">
+      <Card className="w-full max-w-md bg-gray-900 text-white shadow-[var(--shadow-elegant)] border-gray-700">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
               className="h-20 w-auto" 
-              style={{ filter: 'drop-shadow(0 0 5px rgba(0, 0, 0, 0.2))' }}
+              style={{ filter: 'drop-shadow(0 0 5px rgba(255, 255, 255, 0.2))' }}
             />
           </div>
-          <CardTitle className="text-3xl font-bold text-foreground">Bem-vindo de volta!</CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardTitle className="text-3xl font-bold text-white">Bem-vindo de volta!</CardTitle>
+          <CardDescription className="text-gray-400">
             Faça login ou crie uma conta para continuar.
           </CardDescription>
         </CardHeader>
@@ -47,22 +47,29 @@ function Login() {
               variables: {
                 default: {
                   colors: {
+                    // Cores para o tema escuro
                     brand: 'hsl(var(--primary))',
                     brandAccent: 'hsl(var(--primary-glow))',
-                    inputBackground: 'hsl(var(--background))',
-                    inputBorder: 'hsl(var(--border))',
+                    inputBackground: 'hsl(0 0% 15%)', // Fundo do input escuro
+                    inputBorder: 'hsl(0 0% 30%)',
                     inputBorderHover: 'hsl(var(--primary))',
                     inputBorderFocus: 'hsl(var(--primary))',
-                    inputText: 'hsl(var(--foreground))',
+                    inputText: 'hsl(0 0% 90%)', // Texto do input claro
                     defaultButtonBackground: 'hsl(var(--primary))',
                     defaultButtonBackgroundHover: 'hsl(var(--primary-glow))',
                     defaultButtonBorder: 'hsl(var(--primary))',
-                    dividerBackground: 'hsl(var(--border))',
+                    dividerBackground: 'hsl(0 0% 30%)',
+                    // Cores de fundo e texto do Auth UI
+                    defaultButtonText: 'hsl(0 0% 0%)', // Texto do botão primário preto
+                    defaultButtonBackground: 'hsl(var(--primary))',
+                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))',
+                    messageText: 'hsl(0 0% 90%)', // Texto de mensagens
+                    anchorText: 'hsl(var(--primary))', // Links
                   },
                 },
               },
             }}
-            theme="light"
+            theme="dark" // Força o tema escuro
             localization={{
               variables: {
                 sign_in: {
@@ -111,11 +118,16 @@ function Login() {
             Logar com Google
           </Button>
           <style>{`
+            /* Sobrescreve estilos para garantir que o fundo do Auth UI seja escuro */
+            .supabase-auth-ui_ui-card {
+              background-color: transparent !important;
+              box-shadow: none !important;
+            }
             .supabase-auth-ui_ui-button {
               color: black !important;
             }
             .supabase-auth-ui_ui-anchor {
-              color: black !important;
+              color: hsl(var(--primary)) !important;
             }
             .supabase-auth-ui_ui-button:not([data-provider]) {
               background-color: hsl(var(--primary)) !important;
