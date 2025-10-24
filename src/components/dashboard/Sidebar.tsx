@@ -34,7 +34,7 @@ export const Sidebar = () => {
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
-              className="h-8 w-auto" // Mantido h-8, mas a proporção retangular deve fazê-lo parecer maior
+              className="h-10 w-auto" // Aumentado para h-10
             />
           </Link>
           <Button
