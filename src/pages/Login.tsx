@@ -29,7 +29,7 @@ function Login() {
             <img 
               src="/precifix-logo.png" 
               alt="Precifix Logo" 
-              className="h-48 w-auto" // Aumentado para h-48
+              className="h-24 w-auto" // Ajustado para h-24 e w-auto para o novo logo retangular
             />
           </div>
           <CardTitle className="text-3xl font-bold text-white">Bem-vindo de volta!</CardTitle>
