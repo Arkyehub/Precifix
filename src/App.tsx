@@ -14,7 +14,8 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import StorageTestPage from "./pages/StorageTestPage";
-import BillingPage from "./pages/BillingPage"; // Importar a nova página
+import BillingPage from "./pages/BillingPage";
+import ClientsPage from "./pages/ClientsPage"; // Importar a nova página
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -70,6 +71,14 @@ const App = () => (
               } 
             />
             <Route 
+              path="/clients" // Nova rota para ClientsPage
+              element={
+                <DashboardLayout>
+                  <ClientsPage />
+                </DashboardLayout>
+              } 
+            />
+            <Route 
               path="/generate-quote" 
               element={
                 <DashboardLayout>
@@ -101,7 +110,7 @@ const App = () => (
                 </DashboardLayout>
               }
             />
-            <Route // Nova rota para BillingPage
+            <Route 
               path="/billing"
               element={
                 <DashboardLayout>

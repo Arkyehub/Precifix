@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2, Phone, MapPin, Send } from "lucide-react"; // Importar Send
+import { FileText, Download, Loader2, Phone, MapPin, Send, Users, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,9 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
 import { PaymentMethod } from "./PaymentMethodFormDialog";
 import { formatPhoneNumber } from '@/lib/utils';
+import { Client } from '@/types/clients'; // Importar Client
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientFormDialog } from './ClientFormDialog'; // Importar o diálogo de cliente
 
 // Interface para os dados do perfil, para uso interno neste componente
 interface Profile {
@@ -31,30 +34,16 @@ interface Profile {
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
   totalCost: number;
-  finalPrice: number; // Este agora é o valueAfterDiscount
+  finalPrice: number;
   executionTime: number;
-  calculatedDiscount: number; // Novo prop
-  currentPaymentMethod: PaymentMethod | undefined; // Novo prop
-  selectedInstallments: number | null; // Novo prop
+  calculatedDiscount: number;
+  currentPaymentMethod: PaymentMethod | undefined;
+  selectedInstallments: number | null;
+  // Novos props para gerenciamento de cliente
+  selectedClient: Client | undefined;
+  onClientSelect: (clientId: string | null) => void;
+  onClientSaved: (client: Client) => void;
 }
-
-// Função auxiliar para obter a URL da imagem como Data URL (base64)
-const getImageDataUrl = async (url: string | null): Promise<string | null> => {
-  if (!url) return null;
-  try {
-    const response = await fetch(url, { mode: 'cors' });
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error("Erro ao buscar ou converter imagem para Data URL:", error);
-    return null;
-  }
-};
 
 // Função para gerar o PDF como um Blob
 const createQuotePdfBlob = async (
@@ -68,10 +57,7 @@ const createQuotePdfBlob = async (
   selectedInstallments: number | null,
   observations: string,
   profile: Profile | undefined,
-  showPhoneNumberField: boolean,
-  rawPhoneNumber: string,
-  showAddressField: boolean,
-  address: string,
+  clientDetails: { phoneNumber: string | null; address: string | null }, // Detalhes do cliente
 ): Promise<Blob> => {
   const doc = new jsPDF();
   let yPosition = 20;
@@ -121,13 +107,13 @@ const createQuotePdfBlob = async (
   doc.text(`Veículo: ${vehicle}`, 15, yPosition);
   yPosition += 6;
 
-  if (showPhoneNumberField && rawPhoneNumber.trim()) {
-    doc.text(`Telefone: ${formatPhoneNumber(rawPhoneNumber)}`, 15, yPosition);
+  if (clientDetails.phoneNumber) {
+    doc.text(`Telefone: ${formatPhoneNumber(clientDetails.phoneNumber)}`, 15, yPosition);
     yPosition += 6;
   }
 
-  if (showAddressField && address.trim()) {
-    doc.text(`Endereço: ${address}`, 15, yPosition);
+  if (clientDetails.address) {
+    doc.text(`Endereço: ${clientDetails.address}`, 15, yPosition);
     yPosition += 6;
   }
 
@@ -244,6 +230,24 @@ const createQuotePdfBlob = async (
   return doc.output('blob');
 };
 
+// Função auxiliar para obter a URL da imagem como Data URL (base64)
+const getImageDataUrl = async (url: string | null): Promise<string | null> => {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Erro ao buscar ou converter imagem para Data URL:", error);
+    return null;
+  }
+};
+
 export const QuoteGenerator = ({ 
   selectedServices, 
   totalCost, 
@@ -252,6 +256,9 @@ export const QuoteGenerator = ({
   calculatedDiscount,
   currentPaymentMethod,
   selectedInstallments,
+  selectedClient,
+  onClientSelect,
+  onClientSaved,
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -265,15 +272,31 @@ export const QuoteGenerator = ({
     return `${year}-${month}-${day}`;
   };
 
-  const [clientName, setClientName] = useState("");
+  const [clientNameInput, setClientNameInput] = useState(selectedClient?.name || "");
   const [quoteDate, setQuoteDate] = useState(getTodayDateString());
   const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
   
-  const [showPhoneNumberField, setShowPhoneNumberField] = useState(false);
-  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
-  const [showAddressField, setShowAddressField] = useState(false);
-  const [address, setAddress] = useState('');
+  // Campos de contato/endereço que podem ser sobrescritos ou preenchidos manualmente
+  const [rawPhoneNumber, setRawPhoneNumber] = useState(selectedClient?.phone_number || '');
+  const [address, setAddress] = useState(selectedClient?.address || '');
+
+  const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
+
+  // Sincronizar campos de input com o cliente selecionado
+  useEffect(() => {
+    if (selectedClient) {
+      setClientNameInput(selectedClient.name);
+      setRawPhoneNumber(selectedClient.phone_number || '');
+      setAddress(selectedClient.address || '');
+    } else {
+      // Se nenhum cliente estiver selecionado, mas o input de nome estiver vazio, limpa os outros campos
+      if (!clientNameInput) {
+        setRawPhoneNumber('');
+        setAddress('');
+      }
+    }
+  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
     queryKey: ['userProfileForQuote', user?.id],
@@ -290,6 +313,22 @@ export const QuoteGenerator = ({
     enabled: !!user,
   });
 
+  // Fetch clients for the select dropdown
+  const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
+    queryKey: ['clientsForQuote', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, phone_number, address')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const saveQuoteMutation = useMutation({
     mutationFn: async (quoteData: {
       client_name: string;
@@ -297,7 +336,8 @@ export const QuoteGenerator = ({
       total_price: number;
       quote_date: string;
       services_summary: any[];
-      pdf_url?: string; // Adicionar campo para URL do PDF
+      pdf_url?: string;
+      client_id?: string; // Adicionar client_id
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -310,7 +350,8 @@ export const QuoteGenerator = ({
           total_price: quoteData.total_price,
           quote_date: quoteData.quote_date,
           services_summary: quoteData.services_summary,
-          pdf_url: quoteData.pdf_url, // Salvar a URL do PDF
+          pdf_url: quoteData.pdf_url,
+          client_id: quoteData.client_id, // Salvar client_id
         })
         .select()
         .single();
@@ -365,7 +406,7 @@ export const QuoteGenerator = ({
   };
 
   const validateInputs = () => {
-    if (!clientName || !vehicle) {
+    if (!clientNameInput || !vehicle) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha o nome do cliente e o veículo.",
@@ -395,20 +436,21 @@ export const QuoteGenerator = ({
 
     try {
       const pdfBlob = await createQuotePdfBlob(
-        clientName, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
+        clientNameInput, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
         currentPaymentMethod, selectedInstallments, observations, profile,
-        showPhoneNumberField, rawPhoneNumber, showAddressField, address
+        { phoneNumber: rawPhoneNumber, address: address }
       );
 
-      const fileName = `orcamento_${clientName.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
+      const fileName = `orcamento_${clientNameInput.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
       
       // Salvar orçamento no banco de dados (sem URL do PDF por enquanto)
       await saveQuoteMutation.mutateAsync({
-        client_name: clientName,
+        client_name: clientNameInput,
         vehicle: vehicle,
         total_price: finalPrice,
         quote_date: quoteDate,
         services_summary: getServicesSummaryForDb(),
+        client_id: selectedClient?.id, // Adicionar client_id
       });
 
       // Download do PDF
@@ -448,25 +490,26 @@ export const QuoteGenerator = ({
 
     try {
       const pdfBlob = await createQuotePdfBlob(
-        clientName, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
+        clientNameInput, vehicle, quoteDate, selectedServices, finalPrice, calculatedDiscount,
         currentPaymentMethod, selectedInstallments, observations, profile,
-        showPhoneNumberField, rawPhoneNumber, showAddressField, address
+        { phoneNumber: rawPhoneNumber, address: address }
       );
 
-      const fileName = `orcamento_${clientName.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
+      const fileName = `orcamento_${clientNameInput.replace(/\s+/g, '_')}_${quoteDate}.pdf`;
       const pdfUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName });
 
       // Salvar orçamento no banco de dados com a URL do PDF
       await saveQuoteMutation.mutateAsync({
-        client_name: clientName,
+        client_name: clientNameInput,
         vehicle: vehicle,
         total_price: finalPrice,
         quote_date: quoteDate,
         services_summary: getServicesSummaryForDb(),
         pdf_url: pdfUrl,
+        client_id: selectedClient?.id, // Adicionar client_id
       });
 
-      const companyName = profile?.company_name || 'Precifix'; // Alterado aqui
+      const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${pdfUrl}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
       );
@@ -489,7 +532,7 @@ export const QuoteGenerator = ({
   };
 
   const isGeneratingOrSaving = saveQuoteMutation.isPending || isLoadingProfile;
-  const isSendingWhatsApp = uploadPdfMutation.isPending || isGeneratingOrSaving;
+  const isSendingWhatsApp = uploadFileMutation.isPending || isGeneratingOrSaving;
   const isWhatsAppButtonEnabled = rawPhoneNumber.trim().length > 0 && !isSendingWhatsApp;
 
   return (
@@ -509,12 +552,47 @@ export const QuoteGenerator = ({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="client-select">Selecionar Cliente</Label>
+            <div className="flex gap-2">
+              <Select 
+                value={selectedClient?.id || ''} 
+                onValueChange={onClientSelect}
+                disabled={isLoadingClients}
+              >
+                <SelectTrigger id="client-select" className="flex-1 bg-background">
+                  <SelectValue placeholder="Escolha um cliente cadastrado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsClientFormDialogOpen(true)}
+                title="Adicionar Novo Cliente"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {isLoadingClients && <p className="text-sm text-muted-foreground">Carregando clientes...</p>}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="clientName">Nome do Cliente *</Label>
             <Input
               id="clientName"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
+              value={clientNameInput}
+              onChange={(e) => {
+                setClientNameInput(e.target.value);
+                onClientSelect(null); // Desseleciona o cliente se o nome for editado manualmente
+              }}
               placeholder="Ex: João Silva"
               className="bg-background/50"
             />
@@ -533,63 +611,37 @@ export const QuoteGenerator = ({
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="vehicle">Veículo (Marca/Modelo) *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="vehicle"
-                value={vehicle}
-                onChange={(e) => setVehicle(e.target.value)}
-                placeholder="Ex: Honda Civic 2020"
-                className="flex-1 bg-background/50"
-              />
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="icon"
-                onClick={() => setShowPhoneNumberField(!showPhoneNumberField)}
-                className={`flex items-center justify-center ${showPhoneNumberField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
-                title="Adicionar Telefone"
-              >
-                <Phone className="h-4 w-4 text-primary" />
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="icon"
-                onClick={() => setShowAddressField(!showAddressField)}
-                className={`flex items-center justify-center ${showAddressField ? 'bg-primary/20 border-primary' : 'bg-background border-border'} hover:bg-primary/10`}
-                title="Adicionar Endereço"
-              >
-                <MapPin className="h-4 w-4 text-primary" />
-              </Button>
-            </div>
+            <Input
+              id="vehicle"
+              value={vehicle}
+              onChange={(e) => setVehicle(e.target.value)}
+              placeholder="Ex: Honda Civic 2020"
+              className="bg-background/50"
+            />
           </div>
 
-          {showPhoneNumberField && (
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="phoneNumber">Telefone (Opcional)</Label>
-              <Input 
-                id="phoneNumber" 
-                value={formatPhoneNumber(rawPhoneNumber)}
-                onChange={handlePhoneNumberChange} 
-                placeholder="(XX) XXXXX-XXXX"
-                maxLength={15}
-                className="bg-background/50 placeholder:text-gray-300" 
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber">Telefone</Label>
+            <Input 
+              id="phoneNumber" 
+              value={formatPhoneNumber(rawPhoneNumber)}
+              onChange={handlePhoneNumberChange} 
+              placeholder="(XX) XXXXX-XXXX"
+              maxLength={15}
+              className="bg-background/50 placeholder:text-gray-300" 
+            />
+          </div>
 
-          {showAddressField && (
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="address">Endereço (Opcional)</Label>
-              <Textarea
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ex: Rua Exemplo, 123, Bairro, Cidade - UF"
-                className="bg-background/50 min-h-[80px]"
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="address">Endereço</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Rua, Número, Cidade"
+              className="bg-background/50"
+            />
+          </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="observations">Observações Adicionais</Label>
@@ -651,6 +703,12 @@ export const QuoteGenerator = ({
           Seu orçamento está pronto para impressionar o cliente! 🚗✨
         </p>
       </CardContent>
+
+      <ClientFormDialog
+        isOpen={isClientFormDialogOpen}
+        onClose={() => setIsClientFormDialogOpen(false)}
+        onClientSaved={onClientSaved}
+      />
     </Card>
   );
 };

@@ -15,6 +15,7 @@ import { QuoteGlobalCostsInput } from '@/components/quote/QuoteGlobalCostsInput'
 import { QuoteDiscountSection } from '@/components/quote/QuoteDiscountSection';
 import { QuotePaymentMethodSection } from '@/components/quote/QuotePaymentMethodSection';
 import { QuoteCalculationSummary } from '@/components/quote/QuoteCalculationSummary';
+import { Client } from '@/types/clients'; // Importar Client
 
 interface Service {
   id: string;
@@ -61,12 +62,16 @@ export const QuoteCalculator = () => {
   const [paymentFee, setPaymentFee] = useState(0);
 
   // Estados para o desconto
-  const [discountValueInput, setDiscountValueInput] = useState('0,00'); // Valor digitado no input
-  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount'); // Tipo de desconto
-  const [calculatedDiscount, setCalculatedDiscount] = useState(0); // Valor do desconto em R$
+  const [discountValueInput, setDiscountValueInput] = useState('0,00');
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
+  const [calculatedDiscount, setCalculatedDiscount] = useState(0);
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
   const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
+
+  // Novo estado para o cliente
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
 
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -156,6 +161,32 @@ export const QuoteCalculator = () => {
     enabled: !!user,
   });
 
+  // Fetch client details when selectedClientId changes
+  const { data: clientDetails, isLoading: isLoadingClientDetails } = useQuery<Client | null>({
+    queryKey: ['clientDetails', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId || !user) return null;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', selectedClientId)
+        .eq('user_id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedClientId && !!user,
+  });
+
+  // Efeito para sincronizar selectedClient
+  useEffect(() => {
+    if (selectedClientId && clientDetails) {
+      setSelectedClient(clientDetails);
+    } else {
+      setSelectedClient(undefined);
+    }
+  }, [selectedClientId, clientDetails]);
+
   // Efeito para sincronizar selectedServiceIds com quotedServices
   useEffect(() => {
     if (!allServices) return;
@@ -202,6 +233,16 @@ export const QuoteCalculator = () => {
       title: "Serviço atualizado para o orçamento!",
       description: `${updatedService.name} foi configurado para este orçamento.`,
     });
+  };
+
+  // Função para lidar com a seleção de cliente
+  const handleClientSelect = (clientId: string | null) => {
+    setSelectedClientId(clientId);
+  };
+
+  // Função para lidar com o cliente salvo (usado no ClientFormDialog)
+  const handleClientSaved = (client: Client) => {
+    setSelectedClientId(client.id);
   };
 
   // Calculate total execution time
@@ -406,6 +447,9 @@ export const QuoteCalculator = () => {
           calculatedDiscount={calculatedDiscount} // Passar o desconto calculado
           currentPaymentMethod={currentPaymentMethod} // Passar a forma de pagamento selecionada
           selectedInstallments={selectedInstallments} // Passar as parcelas selecionadas
+          selectedClient={selectedClient} // Passar o cliente selecionado
+          onClientSelect={handleClientSelect} // Passar o handler de seleção
+          onClientSaved={handleClientSaved} // Passar o handler de salvamento
         />
       )}
 
