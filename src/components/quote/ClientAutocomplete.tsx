@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent } from '@/components/ui/popover'; // Removido PopoverTrigger
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Reintroduzido PopoverTrigger
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Client } from '@/types/clients';
@@ -44,7 +44,6 @@ export const ClientAutocomplete = ({
 }: ClientAutocompleteProps) => {
   const { user } = useSession();
   const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const debouncedSearchTerm = useDebounce(clientNameInput, 300);
 
   // Query para buscar clientes com base no termo de busca
@@ -78,7 +77,6 @@ export const ClientAutocomplete = ({
     onClientSelect(client);
     setClientNameInput(client.name);
     setOpen(false);
-    inputRef.current?.focus();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,45 +88,28 @@ export const ClientAutocomplete = ({
     // O useEffect cuidará de abrir/fechar baseado no debouncedSearchTerm
   };
 
-  const handleInputFocus = () => {
-    // Se já houver 2 ou mais caracteres, tenta abrir o popover
-    if (clientNameInput.length >= 2) {
-      setOpen(true);
-    }
-  };
-
   return (
     <div className="space-y-2">
       <Label htmlFor="clientName">Nome do Cliente *</Label>
       <div className="flex gap-2">
-        {/* Usamos o Popover sem o Trigger, mas controlamos a abertura manualmente */}
         <Popover open={open} onOpenChange={setOpen}>
-          <div className="flex-1 relative">
-            <Input
-              id="clientName"
-              ref={inputRef}
-              value={clientNameInput}
-              onChange={handleInputChange}
-              onFocus={handleInputFocus}
-              placeholder="Ex: João Silva (comece a digitar para buscar)"
-              className="bg-background/50 w-full"
-              autoComplete="off"
-              // No onBlur, fechamos o popover, mas com um pequeno delay para permitir o clique nos itens
-              onBlur={() => {
-                setTimeout(() => {
-                  setOpen(false);
-                }, 150);
-              }}
-            />
-            {/* O PopoverContent precisa de um Trigger para se posicionar, mas como não queremos que ele roube o foco,
-                usamos um div invisível que se comporta como âncora. */}
-            <div className="absolute inset-0 pointer-events-none" /> 
-          </div>
+          <PopoverTrigger asChild>
+            <div className="flex-1 relative">
+              <Input
+                id="clientName"
+                value={clientNameInput}
+                onChange={handleInputChange}
+                placeholder="Ex: João Silva (comece a digitar para buscar)"
+                className="bg-background/50 w-full"
+                autoComplete="off"
+              />
+            </div>
+          </PopoverTrigger>
           <PopoverContent 
             className="w-[calc(100%-1rem)] p-0" 
             align="start"
-            // Adicionamos um onMouseDown para evitar que o Popover feche imediatamente ao clicar nos itens
-            onMouseDown={(e) => e.preventDefault()}
+            // Adicionamos onOpenAutoFocus para evitar que o Popover roube o foco do Input
+            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <Command>
               <CommandList>
