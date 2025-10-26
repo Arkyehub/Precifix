@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
-import { calculateProductCost, formatMinutesToHHMM, parseHHMMToMinutes } from "@/lib/cost-calculations";
+import { calculateProductCost } from "@/lib/cost-calculations";
 import { QuoteGenerator } from './QuoteGenerator';
 import { QuoteServiceFormDialog, QuotedService } from './QuoteServiceFormDialog';
 import { PaymentMethod } from './PaymentMethodFormDialog';
