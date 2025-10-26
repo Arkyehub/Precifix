@@ -22,8 +22,14 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sidebar p-4"> {/* Alterado bg-black para bg-sidebar */}
-      <Card className="w-full max-w-md bg-black text-white border-gray-800">
+    <div 
+      className="flex min-h-screen items-center justify-center p-4 bg-cover bg-center relative"
+      style={{ backgroundImage: `url('/login-background.jpg')` }}
+    >
+      {/* Overlay escuro para garantir contraste */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div> 
+      
+      <Card className="w-full max-w-md bg-black/80 text-white border-gray-800 z-10"> {/* Adicionado z-10 para ficar acima do overlay */}
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
@@ -118,7 +124,7 @@ function Login() {
           <style>{`
             /* Sobrescreve estilos para garantir que o fundo do Auth UI seja preto */
             .supabase-auth-ui_ui-card {
-              background-color: black !important;
+              background-color: transparent !important; /* Tornar o fundo do Auth UI transparente */
               box-shadow: none !important;
               border: none !important;
             }
