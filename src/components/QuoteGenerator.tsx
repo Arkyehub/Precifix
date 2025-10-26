@@ -104,12 +104,21 @@ export const QuoteGenerator = ({
   } = useQuoteActions(profile);
 
   const validateInputs = () => {
+    // 1. Verificar se o perfil está carregando (se sim, desabilitar)
+    if (isLoadingProfile) {
+      return false;
+    }
+    // 2. Verificar campos obrigatórios
     if (!clientNameInput || !vehicle) {
       return false;
     }
-    if (profileError) {
+    // 3. Verificar se há serviços selecionados
+    if (selectedServices.length === 0) {
       return false;
     }
+    // 4. Se houver erro no perfil, ainda permitir a geração, mas logar o erro (o PDF pode ficar incompleto)
+    // Se o profileError for o único problema, não desabilitamos o botão aqui.
+    
     return true;
   };
 
@@ -138,7 +147,8 @@ export const QuoteGenerator = ({
     handleSendViaWhatsApp(quoteData);
   };
 
-  const isWhatsAppButtonEnabled = rawPhoneNumber.trim().length > 0 && !isSendingWhatsApp;
+  const isDownloadButtonEnabled = validateInputs() && !isGeneratingOrSaving;
+  const isWhatsAppButtonEnabled = validateInputs() && rawPhoneNumber.trim().length > 0 && !isSendingWhatsApp;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -194,7 +204,7 @@ export const QuoteGenerator = ({
             <Button 
               onClick={handleDownload}
               className="flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
-              disabled={isGeneratingOrSaving || !validateInputs()}
+              disabled={!isDownloadButtonEnabled}
             >
               {isGeneratingOrSaving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -206,7 +216,7 @@ export const QuoteGenerator = ({
             <Button 
               onClick={handleWhatsApp}
               className={`flex-1 ${isWhatsAppButtonEnabled ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-muted text-muted-foreground cursor-not-allowed'} transition-colors`}
-              disabled={!isWhatsAppButtonEnabled || !validateInputs()}
+              disabled={!isWhatsAppButtonEnabled}
             >
               {isSendingWhatsApp ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
