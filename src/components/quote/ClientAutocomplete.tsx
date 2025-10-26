@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, ChevronsUpDown, Plus, Search, Loader2 } from 'lucide-react';
+import { Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Importação adicionada
+import { Label } from '@/components/ui/label';
 import { Client } from '@/types/clients';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ export const ClientAutocomplete = ({
 }: ClientAutocompleteProps) => {
   const { user } = useSession();
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debouncedSearchTerm = useDebounce(clientNameInput, 300);
 
   // Query para buscar clientes com base no termo de busca
@@ -67,10 +68,17 @@ export const ClientAutocomplete = ({
     enabled: !!user && debouncedSearchTerm.length >= 2,
   });
 
+  // Efeito para controlar a abertura do Popover
+  useEffect(() => {
+    const shouldOpen = debouncedSearchTerm.length >= 2 && (clients?.length > 0 || isLoadingClients);
+    setOpen(shouldOpen);
+  }, [debouncedSearchTerm, clients, isLoadingClients]);
+
   const handleSelectClient = (client: Client) => {
     onClientSelect(client);
     setClientNameInput(client.name);
     setOpen(false);
+    inputRef.current?.focus(); // Mantém o foco no input após a seleção
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,23 +87,36 @@ export const ClientAutocomplete = ({
     if (selectedClient && selectedClient.name !== newName) {
       onClientDeselect();
     }
-    setOpen(newName.length >= 2);
+    // O useEffect acima cuidará de abrir/fechar baseado no debouncedSearchTerm
   };
 
   return (
     <div className="space-y-2">
       <Label htmlFor="clientName">Nome do Cliente *</Label>
       <div className="flex gap-2">
-        <Popover open={open && (clients?.length > 0 || isLoadingClients)} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
+          {/* O PopoverTrigger agora é um elemento invisível que envolve o Input */}
           <PopoverTrigger asChild>
-            <Input
-              id="clientName"
-              value={clientNameInput}
-              onChange={handleInputChange}
-              placeholder="Ex: João Silva (comece a digitar para buscar)"
-              className="bg-background/50"
-              autoComplete="off"
-            />
+            <div className="flex-1 relative">
+              <Input
+                id="clientName"
+                ref={inputRef}
+                value={clientNameInput}
+                onChange={handleInputChange}
+                placeholder="Ex: João Silva (comece a digitar para buscar)"
+                className="bg-background/50 w-full"
+                autoComplete="off"
+                // Adiciona um handler para fechar o popover ao perder o foco, se não houver resultados
+                onBlur={() => {
+                    // Pequeno delay para permitir o clique nos itens do Command
+                    setTimeout(() => {
+                        if (!clients || clients.length === 0) {
+                            setOpen(false);
+                        }
+                    }, 150);
+                }}
+              />
+            </div>
           </PopoverTrigger>
           <PopoverContent className="w-[calc(100%-1rem)] p-0" align="start">
             <Command>
