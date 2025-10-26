@@ -104,6 +104,8 @@ function Login() {
                 },
               },
             }}
+            // Adicionando redirectTo para o Auth component também, caso ele seja usado
+            redirectTo={window.location.origin}
           />
           <Button
             onClick={handleGoogleLogin}
