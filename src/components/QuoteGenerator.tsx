@@ -96,22 +96,6 @@ export const QuoteGenerator = ({
     enabled: !!user,
   });
 
-  // Fetch clients for the select dropdown (mantido aqui para passar para QuoteClientSection)
-  const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
-    queryKey: ['clientsForQuote', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name, phone_number, address')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
   const { 
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
@@ -188,8 +172,6 @@ export const QuoteGenerator = ({
           setAddress={setAddress}
           observations={observations}
           setObservations={setObservations}
-          isLoadingClients={isLoadingClients}
-          clients={clients}
         />
 
         <div className="pt-4 border-t border-border/50">

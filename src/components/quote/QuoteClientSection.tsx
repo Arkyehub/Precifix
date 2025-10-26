@@ -4,13 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/components/SessionContextProvider";
 import { Client } from '@/types/clients';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientFormDialog } from '../ClientFormDialog';
 import { formatPhoneNumber } from '@/lib/utils';
+import { ClientAutocomplete } from './ClientAutocomplete'; // Importar o novo componente
 
 interface QuoteClientSectionProps {
   selectedClient: Client | undefined;
@@ -28,8 +25,6 @@ interface QuoteClientSectionProps {
   setAddress: (address: string) => void;
   observations: string;
   setObservations: (obs: string) => void;
-  isLoadingClients: boolean;
-  clients: Client[] | undefined;
 }
 
 export const QuoteClientSection = ({
@@ -48,8 +43,6 @@ export const QuoteClientSection = ({
   setAddress,
   observations,
   setObservations,
-  isLoadingClients,
-  clients,
 }: QuoteClientSectionProps) => {
   const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
 
@@ -58,54 +51,35 @@ export const QuoteClientSection = ({
     setRawPhoneNumber(value);
   };
 
+  const handleClientSelectFromAutocomplete = (client: Client) => {
+    onClientSelect(client.id); // Seleciona o ID no componente pai
+  };
+
+  const handleClientDeselect = () => {
+    onClientSelect(null); // Desseleciona o ID no componente pai
+  };
+
+  const handleAddClientClick = () => {
+    setIsClientFormDialogOpen(true);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="space-y-2 md:col-span-2 pt-4 border-t border-border/50">
         <div className="flex items-center gap-2 mb-2">
           <Users className="h-4 w-4 text-primary" />
-          <Label htmlFor="client-select" className="text-sm font-medium">Dados do Cliente</Label>
+          <Label className="text-sm font-medium">Dados do Cliente</Label>
         </div>
-        <div className="flex gap-2">
-          <Select 
-            value={selectedClient?.id || ''} 
-            onValueChange={onClientSelect}
-            disabled={isLoadingClients}
-          >
-            <SelectTrigger id="client-select" className="flex-1 bg-background">
-              <SelectValue placeholder="Escolha um cliente cadastrado" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients?.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="icon"
-            onClick={() => setIsClientFormDialogOpen(true)}
-            title="Adicionar Novo Cliente"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        {isLoadingClients && <p className="text-sm text-muted-foreground">Carregando clientes...</p>}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="clientName">Nome do Cliente *</Label>
-        <Input
-          id="clientName"
-          value={clientNameInput}
-          onChange={(e) => {
-            setClientNameInput(e.target.value);
-            onClientSelect(null); // Desseleciona o cliente se o nome for editado manualmente
-          }}
-          placeholder="Ex: João Silva"
-          className="bg-background/50"
+      <div className="md:col-span-2">
+        <ClientAutocomplete
+          selectedClient={selectedClient}
+          onClientSelect={handleClientSelectFromAutocomplete}
+          onClientDeselect={handleClientDeselect}
+          clientNameInput={clientNameInput}
+          setClientNameInput={setClientNameInput}
+          onAddClientClick={handleAddClientClick}
         />
       </div>
 
