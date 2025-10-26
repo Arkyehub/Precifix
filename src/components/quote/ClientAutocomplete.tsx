@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent } from '@/components/ui/popover'; // Removido PopoverTrigger
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Client } from '@/types/clients';
@@ -78,7 +78,7 @@ export const ClientAutocomplete = ({
     onClientSelect(client);
     setClientNameInput(client.name);
     setOpen(false);
-    inputRef.current?.focus(); // Mantém o foco no input após a seleção
+    inputRef.current?.focus();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,38 +87,49 @@ export const ClientAutocomplete = ({
     if (selectedClient && selectedClient.name !== newName) {
       onClientDeselect();
     }
-    // O useEffect acima cuidará de abrir/fechar baseado no debouncedSearchTerm
+    // O useEffect cuidará de abrir/fechar baseado no debouncedSearchTerm
+  };
+
+  const handleInputFocus = () => {
+    // Se já houver 2 ou mais caracteres, tenta abrir o popover
+    if (clientNameInput.length >= 2) {
+      setOpen(true);
+    }
   };
 
   return (
     <div className="space-y-2">
       <Label htmlFor="clientName">Nome do Cliente *</Label>
       <div className="flex gap-2">
+        {/* Usamos o Popover sem o Trigger, mas controlamos a abertura manualmente */}
         <Popover open={open} onOpenChange={setOpen}>
-          {/* O PopoverTrigger agora é um elemento invisível que envolve o Input */}
-          <PopoverTrigger asChild>
-            <div className="flex-1 relative">
-              <Input
-                id="clientName"
-                ref={inputRef}
-                value={clientNameInput}
-                onChange={handleInputChange}
-                placeholder="Ex: João Silva (comece a digitar para buscar)"
-                className="bg-background/50 w-full"
-                autoComplete="off"
-                // Adiciona um handler para fechar o popover ao perder o foco, se não houver resultados
-                onBlur={() => {
-                    // Pequeno delay para permitir o clique nos itens do Command
-                    setTimeout(() => {
-                        if (!clients || clients.length === 0) {
-                            setOpen(false);
-                        }
-                    }, 150);
-                }}
-              />
-            </div>
-          </PopoverTrigger>
-          <PopoverContent className="w-[calc(100%-1rem)] p-0" align="start">
+          <div className="flex-1 relative">
+            <Input
+              id="clientName"
+              ref={inputRef}
+              value={clientNameInput}
+              onChange={handleInputChange}
+              onFocus={handleInputFocus}
+              placeholder="Ex: João Silva (comece a digitar para buscar)"
+              className="bg-background/50 w-full"
+              autoComplete="off"
+              // No onBlur, fechamos o popover, mas com um pequeno delay para permitir o clique nos itens
+              onBlur={() => {
+                setTimeout(() => {
+                  setOpen(false);
+                }, 150);
+              }}
+            />
+            {/* O PopoverContent precisa de um Trigger para se posicionar, mas como não queremos que ele roube o foco,
+                usamos um div invisível que se comporta como âncora. */}
+            <div className="absolute inset-0 pointer-events-none" /> 
+          </div>
+          <PopoverContent 
+            className="w-[calc(100%-1rem)] p-0" 
+            align="start"
+            // Adicionamos um onMouseDown para evitar que o Popover feche imediatamente ao clicar nos itens
+            onMouseDown={(e) => e.preventDefault()}
+          >
             <Command>
               <CommandList>
                 {isLoadingClients && (
