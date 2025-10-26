@@ -8,5 +8,6 @@ export interface Client {
   address: string | null;
   city: string | null;
   state: string | null;
+  vehicle: string | null; // Novo campo
   created_at: string;
 }

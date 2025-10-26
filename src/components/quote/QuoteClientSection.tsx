@@ -46,6 +46,27 @@ export const QuoteClientSection = ({
 }: QuoteClientSectionProps) => {
   const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
 
+  // Efeito para sincronizar campos de input com o cliente selecionado
+  useEffect(() => {
+    if (selectedClient) {
+      setClientNameInput(selectedClient.name);
+      setRawPhoneNumber(selectedClient.phone_number || '');
+      setAddress(selectedClient.address || '');
+      setVehicle(selectedClient.vehicle || ''); // Preencher veículo
+    } else {
+      // Se nenhum cliente estiver selecionado, mas o input de nome estiver vazio, limpa os outros campos
+      if (!clientNameInput) {
+        setRawPhoneNumber('');
+        setAddress('');
+        // Não limpamos o veículo aqui, pois o campo de veículo do orçamento é independente
+        // Mas se o cliente for deselecionado, o campo de veículo do orçamento deve ser limpo se ele foi preenchido pelo cliente.
+        // Vamos limpar o veículo se o cliente for deselecionado E o veículo do cliente era o que estava preenchido.
+        // Para simplificar, vamos apenas limpar o veículo se o cliente for deselecionado.
+        setVehicle(''); 
+      }
+    }
+  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
     setRawPhoneNumber(value);

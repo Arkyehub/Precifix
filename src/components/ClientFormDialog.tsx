@@ -29,6 +29,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const [address, setAddress] = useState(client?.address || '');
   const [city, setCity] = useState(client?.city || '');
   const [state, setState] = useState(client?.state || '');
+  const [vehicle, setVehicle] = useState(client?.vehicle || ''); // Novo estado
 
   useEffect(() => {
     if (client) {
@@ -39,6 +40,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       setAddress(client.address || '');
       setCity(client.city || '');
       setState(client.state || '');
+      setVehicle(client.vehicle || ''); // Definir veículo
     } else {
       setName('');
       setRawDocumentNumber('');
@@ -47,6 +49,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       setAddress('');
       setCity('');
       setState('');
+      setVehicle(''); // Limpar veículo
     }
   }, [client, isOpen]);
 
@@ -73,6 +76,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         address: newClient.address || null,
         city: newClient.city || null,
         state: newClient.state || null,
+        vehicle: newClient.vehicle || null, // Incluir veículo
       };
 
       let savedClient;
@@ -137,6 +141,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       address,
       city,
       state,
+      vehicle, // Incluir veículo no mutate
     });
   };
 
@@ -150,6 +155,10 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           <div className="space-y-2">
             <Label htmlFor="name">Nome/Razão Social *</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-background" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vehicle">Veículo (Marca/Modelo)</Label>
+            <Input id="vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} className="bg-background" placeholder="Ex: Honda Civic 2020" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

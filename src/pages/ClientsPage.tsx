@@ -82,7 +82,8 @@ const ClientsPage = () => {
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (client.document_number && client.document_number.includes(searchTerm.replace(/\D/g, ''))) ||
     (client.phone_number && client.phone_number.includes(searchTerm.replace(/\D/g, ''))) ||
-    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.vehicle && client.vehicle.toLowerCase().includes(searchTerm.toLowerCase())) // Incluir busca por veículo
   ) || [];
 
   if (isLoading) {
@@ -116,7 +117,7 @@ const ClientsPage = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Pesquisar por nome, CPF/CNPJ, telefone ou e-mail"
+                placeholder="Pesquisar por nome, CPF/CNPJ, telefone, e-mail ou veículo"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-background"
@@ -137,6 +138,7 @@ const ClientsPage = () => {
                 <TableRow>
                   <TableHead className="w-[100px]">Código</TableHead>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Veículo</TableHead> {/* Nova coluna */}
                   <TableHead>CPF/CNPJ</TableHead>
                   <TableHead>Cidade</TableHead>
                   <TableHead>Telefone</TableHead>
@@ -152,6 +154,7 @@ const ClientsPage = () => {
                         {clients!.length - index}
                       </TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.vehicle || 'N/A'}</TableCell> {/* Exibir veículo */}
                       <TableCell>{client.document_number ? formatCpfCnpj(client.document_number) : 'N/A'}</TableCell>
                       <TableCell>{client.city || 'N/A'}</TableCell>
                       <TableCell>{client.phone_number ? formatPhoneNumber(client.phone_number) : 'N/A'}</TableCell>
@@ -185,7 +188,7 @@ const ClientsPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground"> {/* Colspan ajustado para 7 */}
                       {searchTerm ? "Nenhum cliente encontrado com o termo de busca." : "Nenhum cliente cadastrado ainda."}
                     </TableCell>
                   </TableRow>
