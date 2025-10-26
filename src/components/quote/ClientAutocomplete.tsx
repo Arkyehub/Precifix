@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Reintroduzido PopoverTrigger
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Client } from '@/types/clients';
@@ -44,7 +44,9 @@ export const ClientAutocomplete = ({
 }: ClientAutocompleteProps) => {
   const { user } = useSession();
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debouncedSearchTerm = useDebounce(clientNameInput, 300);
+  const [popoverWidth, setPopoverWidth] = useState(0);
 
   // Query para buscar clientes com base no termo de busca
   const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
@@ -73,10 +75,18 @@ export const ClientAutocomplete = ({
     setOpen(shouldOpen);
   }, [debouncedSearchTerm, clients, isLoadingClients]);
 
+  // Efeito para calcular a largura do input e definir a largura do popover
+  useEffect(() => {
+    if (inputRef.current) {
+      setPopoverWidth(inputRef.current.offsetWidth);
+    }
+  }, [inputRef.current, open]);
+
   const handleSelectClient = (client: Client) => {
     onClientSelect(client);
     setClientNameInput(client.name);
     setOpen(false);
+    inputRef.current?.focus();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,7 +95,12 @@ export const ClientAutocomplete = ({
     if (selectedClient && selectedClient.name !== newName) {
       onClientDeselect();
     }
-    // O useEffect cuidará de abrir/fechar baseado no debouncedSearchTerm
+  };
+
+  const handleInputFocus = () => {
+    if (clientNameInput.length >= 2) {
+      setOpen(true);
+    }
   };
 
   return (
@@ -97,19 +112,27 @@ export const ClientAutocomplete = ({
             <div className="flex-1 relative">
               <Input
                 id="clientName"
+                ref={inputRef}
                 value={clientNameInput}
                 onChange={handleInputChange}
+                onFocus={handleInputFocus}
                 placeholder="Ex: João Silva (comece a digitar para buscar)"
                 className="bg-background/50 w-full"
                 autoComplete="off"
+                onBlur={() => {
+                  setTimeout(() => {
+                    setOpen(false);
+                  }, 150);
+                }}
               />
             </div>
           </PopoverTrigger>
           <PopoverContent 
-            className="w-[calc(100%-1rem)] p-0" 
+            style={{ width: popoverWidth }} // Define a largura do PopoverContent
+            className="p-0" 
             align="start"
-            // Adicionamos onOpenAutoFocus para evitar que o Popover roube o foco do Input
             onOpenAutoFocus={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
           >
             <Command>
               <CommandList>
@@ -134,7 +157,7 @@ export const ClientAutocomplete = ({
                             selectedClient?.id === client.id ? 'opacity-100' : 'opacity-0'
                           )}
                         />
-                        {client.name}
+                        <span className="font-bold">{client.name}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
