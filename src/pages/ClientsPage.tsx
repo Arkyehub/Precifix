@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Search, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Users, Search, Pencil, Trash2, Loader2, Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Client } from '@/types/clients';
 import { ClientFormDialog } from '@/components/ClientFormDialog';
 import { formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import adicionado
 
 const ClientsPage = () => {
   const { user } = useSession();
@@ -22,18 +23,46 @@ const ClientsPage = () => {
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch clients
-  const { data: clients, isLoading, error } = useQuery<Client[]>({
-    queryKey: ['clients', user?.id],
+  // Fetch clients with vehicle count
+  const { data: clientsWithVehicles, isLoading, error } = useQuery<{ client: Client; vehicleCount: number; firstVehicle?: string }[]>({
+    queryKey: ['clientsWithVehicles', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      if (clientsError) throw clientsError;
+
+      const clientsWithInfo = await Promise.all(clientsData.map(async (client) => {
+        const { count: vehicleCount, error: vehiclesError } = await supabase
+          .from('client_vehicles')
+          .select('COUNT(id)', { count: 'exact' })
+          .eq('client_id', client.id);
+        if (vehiclesError) {
+          console.error('Erro ao contar veículos:', vehiclesError);
+          return { client, vehicleCount: 0 };
+        }
+
+        let firstVehicle = 'Nenhum';
+        if (vehicleCount > 0) {
+          const { data: vehiclesData } = await supabase
+            .from('client_vehicles')
+            .select('brand, model, plate, year')
+            .eq('client_id', client.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          if (vehiclesData) {
+            firstVehicle = `${vehiclesData.brand} ${vehiclesData.model} - ${vehiclesData.plate || 'N/A'} (${vehiclesData.year})`;
+          }
+        }
+
+        return { client, vehicleCount, firstVehicle };
+      }));
+
+      return clientsWithInfo;
     },
     enabled: !!user,
   });
@@ -43,12 +72,13 @@ const ClientsPage = () => {
       const { error } = await supabase
         .from('clients')
         .delete()
-        .eq('id', id)
+        .eq('client_id', id)
         .eq('user_id', user?.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['clientsWithVehicles', user?.id] }); // Invalidar nova query
       toast({
         title: "Cliente removido",
         description: "O cliente foi excluído com sucesso.",
@@ -78,12 +108,11 @@ const ClientsPage = () => {
     deleteClientMutation.mutate(id);
   };
 
-  const filteredClients = clients?.filter(client => 
+  const filteredClients = clientsWithVehicles?.filter(({ client }) => 
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (client.document_number && client.document_number.includes(searchTerm.replace(/\D/g, ''))) ||
     (client.phone_number && client.phone_number.includes(searchTerm.replace(/\D/g, ''))) ||
-    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (client.vehicle && client.vehicle.toLowerCase().includes(searchTerm.toLowerCase())) // Incluir busca por veículo
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
   if (isLoading) {
@@ -138,7 +167,7 @@ const ClientsPage = () => {
                 <TableRow>
                   <TableHead className="w-[100px]">Código</TableHead>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Veículo</TableHead> {/* Nova coluna */}
+                  <TableHead>Veículos</TableHead> {/* Nova coluna para veículos */}
                   <TableHead>CPF/CNPJ</TableHead>
                   <TableHead>Cidade</TableHead>
                   <TableHead>Telefone</TableHead>
@@ -147,14 +176,36 @@ const ClientsPage = () => {
               </TableHeader>
               <TableBody>
                 {filteredClients.length > 0 ? (
-                  filteredClients.map((client, index) => (
+                  filteredClients.map(({ client, vehicleCount, firstVehicle }, index) => (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium text-muted-foreground">
-                        {/* Usando o índice reverso + 1 para simular um código decrescente */}
-                        {clients!.length - index}
+                        {clientsWithVehicles!.length - index}
                       </TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell>{client.vehicle || 'N/A'}</TableCell> {/* Exibir veículo */}
+                      <TableCell>
+                        {vehicleCount > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <Car className="h-4 w-4 text-primary" />
+                            <span className="text-sm">{vehicleCount} veículo(s)</span>
+                            {firstVehicle && firstVehicle !== 'Nenhum' && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-xs text-primary underline cursor-pointer hover:opacity-80">
+                                      {firstVehicle}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-sm">Primeiro veículo: {firstVehicle}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Nenhum</span>
+                        )}
+                      </TableCell>
                       <TableCell>{client.document_number ? formatCpfCnpj(client.document_number) : 'N/A'}</TableCell>
                       <TableCell>{client.city || 'N/A'}</TableCell>
                       <TableCell>{client.phone_number ? formatPhoneNumber(client.phone_number) : 'N/A'}</TableCell>
@@ -172,7 +223,7 @@ const ClientsPage = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o cliente "{client.name}".
+                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o cliente "{client.name}" e todos os seus veículos associados.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -188,7 +239,7 @@ const ClientsPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground"> {/* Colspan ajustado para 7 */}
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       {searchTerm ? "Nenhum cliente encontrado com o termo de busca." : "Nenhum cliente cadastrado ainda."}
                     </TableCell>
                   </TableRow>
