@@ -233,7 +233,7 @@ const ServicesPage = () => {
     : 'O custo dos produtos é uma média mensal, definida na página Gerenciar Custos, e distribuída pelos serviços.';
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
           <div className="flex items-center justify-between">

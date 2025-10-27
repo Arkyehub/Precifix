@@ -126,7 +126,7 @@ const ClientsPage = () => {
   if (error) return <p className="text-destructive">Erro ao carregar clientes: {error.message}</p>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
           <div className="flex items-center gap-3">
