@@ -145,8 +145,8 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
 
       const { vehicles: clientVehicles, ...clientDetails } = clientPayload;
 
-      const clientDataToUpsert = {
-        ...clientDetails,
+      const clientData = {
+        name: clientDetails.name,
         user_id: user.id,
         document_number: clientDetails.document_number || null,
         phone_number: clientDetails.phone_number || null,
@@ -156,27 +156,50 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         state: clientDetails.state || null,
       };
 
-      const { data: savedClient, error: clientError } = await supabase
-        .from('clients')
-        .upsert(clientDataToUpsert)
-        .select()
-        .single();
+      let savedClient: Client;
 
-      if (clientError) {
-        console.error("Supabase client upsert error:", clientError);
-        throw new Error(`Erro ao salvar cliente: ${clientError.message}`);
+      if (clientPayload.id) {
+        // --- UPDATE existing client ---
+        const { data, error: clientError } = await supabase
+          .from('clients')
+          .update(clientData)
+          .eq('id', clientPayload.id)
+          .select()
+          .single();
+
+        if (clientError) {
+          console.error("Supabase client update error:", clientError);
+          throw new Error(`Erro ao atualizar cliente: ${clientError.message}`);
+        }
+        savedClient = data;
+
+        // Delete old vehicles before inserting new ones
+        const { error: vehiclesDeleteError } = await supabase
+          .from('client_vehicles')
+          .delete()
+          .eq('client_id', savedClient.id);
+
+        if (vehiclesDeleteError) {
+          console.error("Supabase vehicle delete error:", vehiclesDeleteError);
+          throw new Error(`Erro ao limpar veículos antigos: ${vehiclesDeleteError.message}`);
+        }
+      } else {
+        // --- CREATE new client ---
+        const { data, error: clientError } = await supabase
+          .from('clients')
+          .insert(clientData)
+          .select()
+          .single();
+
+        if (clientError) {
+          console.error("Supabase client insert error:", clientError);
+          throw new Error(`Erro ao adicionar cliente: ${clientError.message}`);
+        }
+        savedClient = data;
+        // No need to delete vehicles for a new client.
       }
 
-      const { error: vehiclesDeleteError } = await supabase
-        .from('client_vehicles')
-        .delete()
-        .eq('client_id', savedClient.id);
-
-      if (vehiclesDeleteError) {
-        console.error("Supabase vehicle delete error:", vehiclesDeleteError);
-        throw new Error(`Erro ao limpar veículos antigos: ${vehiclesDeleteError.message}`);
-      }
-
+      // --- INSERT vehicles for both new and updated clients ---
       if (clientVehicles && clientVehicles.length > 0) {
         const vehiclesToInsert = clientVehicles.map(v => ({
           client_id: savedClient.id,
@@ -200,6 +223,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['clientsWithVehicles', user?.id] });
       toast({
         title: client ? "Cliente atualizado!" : "Cliente adicionado!",
         description: `${data.name} foi ${client ? 'atualizado' : 'adicionado'} com sucesso.`,
