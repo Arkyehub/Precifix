@@ -15,11 +15,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useSidebar } from './SidebarContext';
 import { userDropdownLinks } from '@/lib/navigation'; // Importar os links do dropdown do usuário
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 export const Header = () => {
   const { user } = useSession();
   const navigate = useNavigate();
-  const { toggleSidebar } = useSidebar();
+  const { toggleMobileSidebar, toggleDesktopSidebar } = useSidebar(); // Usar as novas funções de alternância
+  const isMobile = useIsMobile(); // Determinar se está em dispositivo móvel
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -45,29 +47,37 @@ export const Header = () => {
     ? `${headerAvatarUrl}?t=${new Date(avatarUpdatedAt).getTime()}`
     : headerAvatarUrl;
 
+  const handleMenuToggle = () => {
+    if (isMobile) {
+      toggleMobileSidebar();
+    } else {
+      toggleDesktopSidebar();
+    }
+  };
+
   return (
     <header className="z-40 py-4 bg-sidebar shadow-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-full px-6">
-        {/* Left: Hamburger Menu for mobile */}
+        {/* Esquerda: Botão de menu para mobile e desktop */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleSidebar}
-          className="mr-4 lg:hidden text-foreground hover:bg-muted/50"
-          aria-label="Abrir menu"
+          onClick={handleMenuToggle} // Usar a nova função de alternância inteligente
+          className="mr-4 text-foreground hover:bg-muted/50" // Removido lg:hidden, agora sempre visível
+          aria-label="Abrir/Fechar menu"
         >
           <Menu className="h-6 w-6" />
         </Button>
 
-        {/* Right: User Avatar and Dropdown */}
+        {/* Direita: Avatar do Usuário e Dropdown */}
         <div className="flex items-center gap-4 ml-auto">
           <div className="flex flex-col items-end mr-2">
             <p className="text-base font-bold text-foreground">Olá, {userName}</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full"> {/* Aumentado para h-10 w-10 */}
-                <Avatar className="h-10 w-10"> {/* Aumentado para h-10 w-10 */}
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
                   <AvatarImage src={finalHeaderAvatarSrc || ""} alt={user?.email || "User"} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {getUserInitials(user)}
