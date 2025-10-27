@@ -2,229 +2,343 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, FileText, Clock, DollarSign, Tag, Car, Users } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, CheckCircle, XCircle, FileText, Clock, DollarSign, Tag, Car, Users, MapPin, Mail, Phone } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { QuotedService } from '@/components/QuoteServiceFormDialog';
+// import { QuotedService } from '@/components/QuoteServiceFormDialog'; // Removido para definir localmente
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
-import { cn } from '@/lib/utils';
+import { cn, formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
+
+// Definindo QuotedService localmente para garantir que 'duration_minutes' exista
+interface QuotedService {
+  name: string;
+  price: number;
+  duration_minutes: number;
+  // Outras propriedades necessárias podem ser adicionadas aqui
+}
 
 interface Quote {
   id: string;
+  user_id: string;
+  client_id: string;
   client_name: string;
-  vehicle: string;
+  client_document: string;
+  client_phone: string;
+  client_email: string;
+  client_address: string;
+  client_city: string;
+  client_state: string;
+  client_zip_code: string;
+  vehicle_id: string;
+  vehicle_plate: string;
+  vehicle_brand: string;
+  vehicle_model: string;
+  vehicle_year: number;
+  services: QuotedService[];
+  products: any[];
+  total_cost: number;
   total_price: number;
-  quote_date: string;
-  services_summary: QuotedService[];
-  observations: string;
-  status: 'pending' | 'confirmed' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected';
+  valid_until: string;
   created_at: string;
-  // Adicionar campos de perfil para exibição
-  profile_company_name: string | null;
-  profile_phone_number: string | null;
-  profile_address: string | null;
+  notes: string;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+  company_name: string;
+  phone_number: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
 }
 
 const QuoteViewPage = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient(); // Mantido para acesso ao contexto
 
   // 1. Query para buscar o orçamento (acesso público)
-  const { data: quote, isLoading, error } = useQuery<Quote>({
+  const { data: quote, isLoading: isLoadingQuote, error: quoteError } = useQuery<Quote>({
     queryKey: ['publicQuote', quoteId],
     queryFn: async () => {
-      if (!quoteId) throw new Error("ID do orçamento ausente.");
-      
-      // Nota: Esta query depende de uma política RLS de SELECT pública na tabela 'quotes'
+      if (!quoteId) throw new Error("ID do orçamento não fornecido.");
+
+      // Buscando apenas os dados do orçamento, sem join aninhado para evitar RLS complexo
       const { data, error } = await supabase
         .from('quotes')
-        .select(`
-          *,
-          profile_company_name:profiles(company_name),
-          profile_phone_number:profiles(phone_number),
-          profile_address:profiles(address)
-        `)
+        .select('*')
         .eq('id', quoteId)
         .single();
 
-      if (error) throw error;
-      
-      // Flatten profile data
-      const profileCompanyName = Array.isArray(data.profile_company_name) ? data.profile_company_name[0]?.company_name : data.profile_company_name?.company_name;
-      const profilePhoneNumber = Array.isArray(data.profile_phone_number) ? data.profile_phone_number[0]?.phone_number : data.profile_phone_number?.phone_number;
-      const profileAddress = Array.isArray(data.profile_address) ? data.profile_address[0]?.address : data.profile_address?.address;
-
-      return {
-        ...data,
-        profile_company_name: profileCompanyName,
-        profile_phone_number: profilePhoneNumber,
-        profile_address: profileAddress,
-      } as Quote;
+      if (error) {
+        // Se o erro for RLS ou Not Found, tratamos como 'Não Encontrado'
+        if (error.code === 'PGRST116' || error.code === '42501') { // PGRST116: No rows found, 42501: RLS
+          throw new Error("Orçamento Não Encontrado.");
+        }
+        throw error;
+      }
+      return data as Quote;
     },
     enabled: !!quoteId,
+    retry: false,
   });
 
-  // 2. Mutação para confirmar o orçamento (acesso público)
-  const confirmQuoteMutation = useMutation({
-    mutationFn: async () => {
-      if (!quoteId) throw new Error("ID do orçamento ausente.");
-      
-      // Nota: Esta mutação depende de uma política RLS de UPDATE pública na tabela 'quotes'
+  // 2. Query para buscar o perfil do usuário (depende do quote.user_id)
+  const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
+    queryKey: ['publicProfile', quote?.user_id],
+    queryFn: async () => {
+      if (!quote?.user_id) return null;
+
+      // Busca o perfil do usuário que criou o orçamento
       const { data, error } = await supabase
-        .from('quotes')
-        .update({ status: 'confirmed' })
-        .eq('id', quoteId)
-        .eq('status', 'pending') // Garante que só pode confirmar se estiver pendente
-        .select()
+        .from('profiles')
+        .select('id, full_name, company_name, phone_number, email, address, city, state, zip_code')
+        .eq('id', quote.user_id)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Erro ao buscar perfil:", error);
+        // Não lançamos erro fatal aqui, apenas retornamos null para que o orçamento ainda seja exibido
+        return null;
+      }
+      return data as Profile;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['publicQuote', quoteId] });
-      toast({
-        title: "Orçamento Confirmado!",
-        description: "Sua confirmação foi registrada. O prestador de serviço será notificado.",
-        variant: "default",
-      });
-    },
-    onError: (err) => {
-      console.error("Erro ao confirmar orçamento:", err);
-      toast({
-        title: "Erro na Confirmação",
-        description: "Não foi possível confirmar o orçamento. Ele pode já ter sido confirmado ou rejeitado.",
-        variant: "destructive",
-      });
-    },
+    enabled: !!quote?.user_id, // Só executa se o orçamento e o user_id existirem
+    retry: false,
   });
 
-  const handleConfirm = () => {
-    confirmQuoteMutation.mutate();
-  };
+  const isLoading = isLoadingQuote || isLoadingProfile;
 
-  if (isLoading) {
+  if (isLoadingQuote) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex justify-center items-center h-screen bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2 text-muted-foreground">Carregando orçamento...</p>
       </div>
     );
   }
 
-  if (error || !quote) {
+  if (quoteError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-xl border-destructive/50 shadow-lg">
-          <CardHeader className="text-center">
-            <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <CardTitle className="text-2xl text-destructive">Orçamento Não Encontrado</CardTitle>
-            <CardDescription>
-              O link do orçamento pode estar incorreto ou o orçamento foi excluído.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive">Orçamento Não Encontrado</h1>
+        <p className="text-muted-foreground mt-2 text-center">
+          O link do orçamento pode estar incorreto ou o orçamento foi excluído.
+        </p>
+        <p className="text-xs text-gray-400 mt-4">Detalhe do erro: {quoteError.message}</p>
       </div>
     );
   }
 
-  const isConfirmed = quote.status === 'confirmed';
-  const isRejected = quote.status === 'rejected';
-  const quoteDateFormatted = format(new Date(quote.quote_date), 'dd/MM/yyyy', { locale: ptBR });
+  if (!quote) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive">Orçamento Não Encontrado</h1>
+        <p className="text-muted-foreground mt-2 text-center">
+          O link do orçamento pode estar incorreto ou o orçamento foi excluído.
+        </p>
+      </div>
+    );
+  }
+
+  const statusMap = {
+    pending: { text: 'Pendente', icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
+    accepted: { text: 'Aceito', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
+    rejected: { text: 'Rejeitado', icon: XCircle, color: 'text-red-600 bg-red-100' },
+  };
+
+  const currentStatus = statusMap[quote.status] || statusMap.pending;
+  const totalServicesPrice = quote.services.reduce((sum, s) => sum + s.price, 0);
+  const totalProductsPrice = quote.products.reduce((sum, p) => sum + p.price, 0);
+  const totalQuotePrice = totalServicesPrice + totalProductsPrice;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      <Card className="mx-auto max-w-xl shadow-2xl border-t-8 border-primary">
-        <CardHeader className="bg-primary/10 p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-primary">Orçamento #{quote.id.substring(0, 8)}</CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">Emitido em: {quoteDateFormatted}</CardDescription>
-            </div>
-            <div className={cn(
-              "px-3 py-1 rounded-full font-semibold text-sm",
-              isConfirmed ? "bg-success text-success-foreground" :
-              isRejected ? "bg-destructive text-destructive-foreground" :
-              "bg-primary text-primary-foreground"
-            )}>
-              {isConfirmed ? 'CONFIRMADO' : isRejected ? 'REJEITADO' : 'PENDENTE'}
-            </div>
+      <div className="max-w-4xl mx-auto">
+        <header className="mb-8 flex justify-between items-start flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 flex items-center">
+              <FileText className="h-6 w-6 mr-2 text-primary" />
+              Orçamento #{quote.id.substring(0, 8).toUpperCase()}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Emitido em: {format(new Date(quote.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Válido até: {format(new Date(quote.valid_until), 'dd/MM/yyyy', { locale: ptBR })}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          
-          {/* Status Section */}
-          <div className="p-4 rounded-lg border border-border/50 bg-background shadow-sm">
-            <h3 className="font-semibold text-lg mb-3 text-foreground">Informações do Prestador</h3>
-            <div className="text-sm space-y-1 text-muted-foreground">
-              <p className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Empresa: {quote.profile_company_name || 'N/A'}</p>
-              <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Telefone: {quote.profile_phone_number || 'N/A'}</p>
-              <p className="flex items-center gap-2"><Tag className="h-4 w-4 text-primary" /> Endereço: {quote.profile_address || 'N/A'}</p>
-            </div>
+          <div className={cn("px-3 py-1 rounded-full text-sm font-semibold", currentStatus.color)}>
+            <currentStatus.icon className="h-4 w-4 inline mr-1" />
+            {currentStatus.text}
           </div>
+        </header>
 
-          {/* Client & Vehicle */}
-          <div className="p-4 rounded-lg border border-border/50 bg-background shadow-sm">
-            <h3 className="font-semibold text-lg mb-3 text-foreground">Detalhes do Cliente</h3>
-            <div className="text-sm space-y-1 text-muted-foreground">
-              <p className="flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Cliente: {quote.client_name}</p>
-              <p className="flex items-center gap-2"><Car className="h-4 w-4 text-primary" /> Veículo: {quote.vehicle}</p>
-            </div>
-          </div>
-
-          {/* Services Summary */}
-          <div className="p-4 rounded-lg border border-border/50 bg-background shadow-sm">
-            <h3 className="font-semibold text-lg mb-3 text-foreground">Serviços e Valores</h3>
-            <div className="space-y-2">
-              {quote.services_summary.map((service, index) => (
-                <div key={index} className="flex justify-between items-center border-b border-border/50 pb-2 last:border-b-0">
-                  <div className="text-sm">
-                    <p className="font-medium text-foreground">{service.name}</p>
-                    <p className="text-xs text-muted-foreground">Tempo: {formatMinutesToHHMM(service.execution_time_minutes)}</p>
-                  </div>
-                  <span className="font-bold text-primary">R$ {service.price.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="pt-4 border-t border-border/50 mt-4 flex justify-between items-center">
-              <span className="text-xl font-bold text-foreground">Total:</span>
-              <span className="text-3xl font-bold text-success">R$ {quote.total_price.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Confirmation Button */}
-          <div className="pt-4">
-            {isConfirmed ? (
-              <Button className="w-full bg-success hover:bg-success/90 text-success-foreground" disabled>
-                <CheckCircle className="mr-2 h-5 w-5" />
-                Orçamento Confirmado!
-              </Button>
-            ) : isRejected ? (
-              <Button className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled>
-                <XCircle className="mr-2 h-5 w-5" />
-                Orçamento Rejeitado
-              </Button>
+        {/* Informações da Empresa (Perfil) */}
+        <Card className="mb-6 shadow-lg">
+          <CardHeader className="border-b p-4">
+            <CardTitle className="text-lg flex items-center text-primary">
+              <Users className="h-5 w-5 mr-2" />
+              Informações da Empresa
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {isLoadingProfile ? (
+              <div className="col-span-2 flex items-center text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando perfil...
+              </div>
+            ) : profile ? (
+              <>
+                <p><strong>Empresa:</strong> {profile.company_name || profile.full_name}</p>
+                <p><strong>Telefone:</strong> {profile.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A'}</p>
+                <p><strong>E-mail:</strong> {profile.email}</p>
+                <p><strong>Endereço:</strong> {profile.address}, {profile.city} - {profile.state}</p>
+              </>
             ) : (
-              <Button 
-                onClick={handleConfirm} 
-                className="w-full bg-primary hover:bg-primary-glow text-primary-foreground"
-                disabled={confirmQuoteMutation.isPending}
-              >
-                {confirmQuoteMutation.isPending ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <CheckCircle className="mr-2 h-5 w-5" />
-                )}
-                Confirmar Orçamento
-              </Button>
+              <p className="col-span-2 text-muted-foreground">Não foi possível carregar as informações da empresa.</p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Informações do Cliente e Veículo */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card className="shadow-lg">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-lg flex items-center text-primary">
+                <Users className="h-5 w-5 mr-2" />
+                Informações do Cliente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-2 text-sm">
+              <p><strong>Nome:</strong> {quote.client_name}</p>
+              <p><strong>CPF/CNPJ:</strong> {quote.client_document ? formatCpfCnpj(quote.client_document) : 'N/A'}</p>
+              <p><strong>Telefone:</strong> {quote.client_phone ? formatPhoneNumber(quote.client_phone) : 'N/A'}</p>
+              <p><strong>E-mail:</strong> {quote.client_email || 'N/A'}</p>
+              <p className="flex items-center">
+                <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+                {quote.client_address}, {quote.client_city} - {quote.client_state}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-lg flex items-center text-primary">
+                <Car className="h-5 w-5 mr-2" />
+                Informações do Veículo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-2 text-sm">
+              <p><strong>Placa:</strong> {quote.vehicle_plate || 'N/A'}</p>
+              <p><strong>Marca/Modelo:</strong> {quote.vehicle_brand} / {quote.vehicle_model}</p>
+              <p><strong>Ano:</strong> {quote.vehicle_year}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detalhes do Orçamento (Serviços e Produtos) */}
+        <Card className="mb-6 shadow-lg">
+          <CardHeader className="border-b p-4">
+            <CardTitle className="text-lg flex items-center text-primary">
+              <Tag className="h-5 w-5 mr-2" />
+              Itens do Orçamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Tempo/Qtd</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unitário</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {quote.services.map((item, index) => (
+                    <tr key={`service-${index}`}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Serviço</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{item.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
+                        {formatMinutesToHHMM(item.duration_minutes)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
+                        R$ {item.price.toFixed(2).replace('.', ',')}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                        R$ {item.price.toFixed(2).replace('.', ',')}
+                      </td>
+                    </tr>
+                  ))}
+                  {quote.products.map((item, index) => (
+                    <tr key={`product-${index}`}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Produto</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{item.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
+                        {item.quantity}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
+                        R$ {(item.price / item.quantity).toFixed(2).replace('.', ',')}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                        R$ {item.price.toFixed(2).replace('.', ',')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50">
+                    <td colSpan={4} className="px-4 py-3 text-right text-sm font-bold text-gray-900 uppercase">
+                      Total Geral
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-lg font-extrabold text-primary">
+                      R$ {totalQuotePrice.toFixed(2).replace('.', ',')}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notas */}
+        {quote.notes && (
+          <Card className="mb-6 shadow-lg">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-lg flex items-center text-primary">
+                <FileText className="h-5 w-5 mr-2" />
+                Observações
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 text-sm text-gray-600 whitespace-pre-wrap">
+              {quote.notes}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ações do Cliente (Aceitar/Rejeitar) */}
+        {quote.status === 'pending' && (
+          <div className="flex justify-end gap-4 mt-8">
+            <Button variant="destructive" className="px-6 py-3 text-lg">
+              Rejeitar Orçamento
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700 px-6 py-3 text-lg">
+              Aceitar Orçamento
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 };
