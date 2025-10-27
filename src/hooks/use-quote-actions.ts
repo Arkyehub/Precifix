@@ -33,6 +33,7 @@ interface QuoteData {
   profile: Profile | undefined;
   clientDetails: { phoneNumber: string | null; address: string | null };
   clientId?: string;
+  selectedVehicleId?: string; // Adicionado
 }
 
 // Função auxiliar para obter a URL da imagem como Data URL (base64)
@@ -258,6 +259,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       services_summary: any[];
       pdf_url?: string;
       client_id?: string;
+      vehicle_id?: string; // Adicionado
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -272,6 +274,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           services_summary: quoteData.services_summary,
           pdf_url: quoteData.pdf_url,
           client_id: quoteData.client_id,
+          vehicle_id: quoteData.vehicle_id, // Adicionado
         })
         .select()
         .single();
@@ -334,6 +337,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
         quote_date: quoteData.quote_date,
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
         client_id: quoteData.clientId,
+        vehicle_id: quoteData.selectedVehicleId, // Adicionado
       });
 
       // Download do PDF
@@ -385,6 +389,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
         pdf_url: pdfUrl,
         client_id: quoteData.clientId,
+        vehicle_id: quoteData.selectedVehicleId, // Adicionado
       });
 
       const companyName = profile?.company_name || 'Precifix';
