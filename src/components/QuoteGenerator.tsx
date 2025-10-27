@@ -25,9 +25,9 @@ interface QuoteGeneratorProps {
   selectedClient: Client | undefined;
   onClientSelect: (clientId: string | null) => void;
   onClientSaved: (client: Client) => void;
-  // Novos props para veículos (passados do pai se necessário)
-  selectedVehicleId?: string | null;
-  setSelectedVehicleId?: (id: string | null) => void;
+  // Novos props para veículos (agora obrigatórios)
+  selectedVehicleId: string | null;
+  setSelectedVehicleId: (id: string | null) => void;
 }
 
 const getTodayDateString = () => {
@@ -78,7 +78,20 @@ export const QuoteGenerator = ({
   const [rawPhoneNumber, setRawPhoneNumber] = useState(selectedClient?.phone_number || '');
   const [address, setAddress] = useState(selectedClient?.address || '');
 
-  // ... (efeitos existentes)
+  // Efeito para sincronizar o nome do cliente e detalhes de contato quando selectedClient muda
+  useEffect(() => {
+    if (selectedClient) {
+      setClientNameInput(selectedClient.name);
+      setRawPhoneNumber(selectedClient.phone_number || '');
+      setAddress(selectedClient.address || '');
+    } else {
+      // Se o cliente for deselecionado, mas o input de nome não estiver vazio, não limpe
+      if (!clientNameInput) {
+        setRawPhoneNumber('');
+        setAddress('');
+      }
+    }
+  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { 
     handleGenerateAndDownloadPDF, 
@@ -87,11 +100,34 @@ export const QuoteGenerator = ({
     isSendingWhatsApp 
   } = useQuoteActions(profile);
 
-  // ... (validações existentes, adicionar selectedVehicleId se obrigatório)
+  // Fetch vehicle details if selectedVehicleId is set
+  const { data: vehicleDetails } = useQuery<Vehicle | null>({
+    queryKey: ['vehicleDetails', selectedVehicleId],
+    queryFn: async () => {
+      if (!selectedVehicleId) return null;
+      const { data, error } = await supabase
+        .from('client_vehicles')
+        .select('*')
+        .eq('id', selectedVehicleId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedVehicleId,
+  });
+
+  // Atualiza o campo 'vehicle' com o modelo do veículo selecionado
+  useEffect(() => {
+    if (vehicleDetails) {
+      setVehicle(`${vehicleDetails.brand} ${vehicleDetails.model} (${vehicleDetails.plate || 'N/A'})`);
+    } else {
+      setVehicle("");
+    }
+  }, [vehicleDetails]);
 
   const quoteData = {
     client_name: clientNameInput,
-    vehicle, // Manter para compatibilidade, mas usar detalhes do veículo selecionado no PDF
+    vehicle, 
     quote_date: quoteDate,
     selectedServices,
     finalPrice,
@@ -106,7 +142,7 @@ export const QuoteGenerator = ({
     selectedVehicleId,
   };
 
-  // ... (handlers existentes)
+  const isQuoteValid = selectedServices.length > 0 && clientNameInput.trim() !== '' && finalPrice > 0;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -143,7 +179,37 @@ export const QuoteGenerator = ({
           setSelectedVehicleId={setSelectedVehicleId}
         />
 
-        {/* ... resto do componente inalterado */}
+        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
+          <Button
+            onClick={() => handleGenerateAndDownloadPDF(quoteData)}
+            disabled={!isQuoteValid || isGeneratingOrSaving}
+            className="flex-1 bg-primary hover:bg-primary-glow"
+          >
+            {isGeneratingOrSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Gerar e Baixar PDF
+          </Button>
+          <Button
+            onClick={() => handleSendViaWhatsApp(quoteData)}
+            disabled={!isQuoteValid || isSendingWhatsApp || !rawPhoneNumber}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+          >
+            {isSendingWhatsApp ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Enviar via WhatsApp
+          </Button>
+        </div>
+        {!isQuoteValid && (
+          <p className="text-sm text-destructive text-center">
+            Selecione pelo menos um serviço, informe o nome do cliente e garanta que o preço final seja maior que zero.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

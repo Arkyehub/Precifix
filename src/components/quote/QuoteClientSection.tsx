@@ -85,7 +85,10 @@ export const QuoteClientSection = ({
       if (!clientNameInput) {
         setRawPhoneNumber('');
         setAddress('');
-        setSelectedVehicleId(null); // Limpar veículo selecionado se cliente for deselecionado
+        // Chamada segura: verifica se setSelectedVehicleId é uma função antes de chamar
+        if (typeof setSelectedVehicleId === 'function') {
+          setSelectedVehicleId(null); // Limpar veículo selecionado se cliente for deselecionado
+        }
       }
     }
   }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps

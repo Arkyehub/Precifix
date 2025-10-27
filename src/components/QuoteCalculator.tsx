@@ -72,6 +72,9 @@ export const QuoteCalculator = () => {
   // Novo estado para o cliente
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
+  
+  // Novo estado para o veículo
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null); // Adicionado
 
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -184,6 +187,7 @@ export const QuoteCalculator = () => {
       setSelectedClient(clientDetails);
     } else {
       setSelectedClient(undefined);
+      setSelectedVehicleId(null); // Limpar veículo se o cliente for deselecionado
     }
   }, [selectedClientId, clientDetails]);
 
@@ -261,6 +265,7 @@ export const QuoteCalculator = () => {
           dilutionRatio: product.dilution_ratio,
           usagePerVehicle: product.usage_per_vehicle,
           type: product.type,
+          containerSize: product.container_size,
         };
         serviceProductCost += calculateProductCost(productForCalc);
       });
@@ -450,6 +455,8 @@ export const QuoteCalculator = () => {
           selectedClient={selectedClient} // Passar o cliente selecionado
           onClientSelect={handleClientSelect} // Passar o handler de seleção
           onClientSaved={handleClientSaved} // Passar o handler de salvamento
+          selectedVehicleId={selectedVehicleId} // Passando o estado do veículo
+          setSelectedVehicleId={setSelectedVehicleId} // Passando o setter do veículo
         />
       )}
 
