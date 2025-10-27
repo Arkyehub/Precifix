@@ -66,7 +66,7 @@ const QuoteViewPage = () => {
 
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, services_summary:services, products:products_summary') // Mapeamento para os campos JSONB
+        .select('*, services_summary, products_summary') // Selecionando as colunas reais
         .eq('id', quoteId)
         .single();
 
@@ -80,14 +80,13 @@ const QuoteViewPage = () => {
       // Ajustar a estrutura dos dados para corresponder à interface Quote
       const quoteData = data as unknown as Quote;
       
-      // Garantir que services_summary seja mapeado corretamente
-      if (data.services) {
-        quoteData.services_summary = data.services as QuotedService[];
+      // Mapeamento dos campos JSONB para as propriedades da interface
+      if (data.services_summary) {
+        quoteData.services_summary = data.services_summary as QuotedService[];
       } else {
         quoteData.services_summary = [];
       }
       
-      // Garantir que products seja mapeado corretamente (se houver)
       if (data.products_summary) {
         quoteData.products = data.products_summary as any[];
       } else {
