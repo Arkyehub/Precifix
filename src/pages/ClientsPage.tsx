@@ -38,7 +38,7 @@ const ClientsPage = () => {
       const clientsWithInfo = await Promise.all(clientsData.map(async (client) => {
         const { count: vehicleCount, error: vehiclesError } = await supabase
           .from('client_vehicles')
-          .select('COUNT(id)', { count: 'exact' })
+          .select('id', { count: 'exact', head: true })
           .eq('client_id', client.id);
         if (vehiclesError) {
           console.error('Erro ao contar veículos:', vehiclesError);
@@ -46,7 +46,7 @@ const ClientsPage = () => {
         }
 
         let firstVehicle = 'Nenhum';
-        if (vehicleCount > 0) {
+        if (vehicleCount && vehicleCount > 0) {
           const { data: vehiclesData } = await supabase
             .from('client_vehicles')
             .select('brand, model, plate, year')
@@ -59,7 +59,7 @@ const ClientsPage = () => {
           }
         }
 
-        return { client, vehicleCount, firstVehicle };
+        return { client, vehicleCount: vehicleCount || 0, firstVehicle };
       }));
 
       return clientsWithInfo;
@@ -72,8 +72,7 @@ const ClientsPage = () => {
       const { error } = await supabase
         .from('clients')
         .delete()
-        .eq('client_id', id)
-        .eq('user_id', user?.id);
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
