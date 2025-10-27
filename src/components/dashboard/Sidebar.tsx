@@ -4,15 +4,18 @@ import {
   X, // Para o botão de fechar em mobile
   Gauge, // Alterado de LayoutDashboard para Gauge
   FolderOpen, // Import FolderOpen icon
+  Menu, // Importar o ícone de menu
 } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button'; // Importar Button do shadcn/ui
 import { navigationLinks } from '@/lib/navigation'; // Importar os links de navegação
 import { cn } from '@/lib/utils'; // Import cn para conditional classNames
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 export const Sidebar = () => {
-  const { isMobileSidebarOpen, closeMobileSidebar, isDesktopSidebarCollapsed } = useSidebar(); // Usar os novos valores do contexto
+  const { isMobileSidebarOpen, closeMobileSidebar, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useSidebar(); // Usar os novos valores do contexto
   const location = useLocation();
+  const isMobile = useIsMobile(); // Determinar se está em dispositivo móvel
 
   return (
     <>
@@ -37,24 +40,43 @@ export const Sidebar = () => {
         )}
       >
         <div className="flex items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-3" onClick={closeMobileSidebar}>
-            <img 
-              src="/precifix-logo.png" 
-              alt="Precifix Logo" 
-              className={cn("h-10 w-auto transition-all duration-200", isDesktopSidebarCollapsed && "lg:h-8 lg:w-8")} // Ajustar tamanho do logo
-            />
-            {!isDesktopSidebarCollapsed && ( // Ocultar texto quando recolhido
-              <span className="text-xl font-bold text-sidebar-foreground whitespace-nowrap lg:block hidden">Precifix</span>
-            )}
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={closeMobileSidebar}
-            className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          {/* Botão de menu para desktop - visível apenas em desktop */}
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDesktopSidebar}
+              className="text-sidebar-foreground hover:bg-sidebar-accent"
+              aria-label="Recolher/Expandir menu"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+          )}
+
+          {/* Logo e texto - ocultar quando o menu lateral estiver recolhido no desktop */}
+          {!isDesktopSidebarCollapsed && (
+            <Link to="/" className="flex items-center gap-3 ml-4" onClick={closeMobileSidebar}>
+              <img
+                src="/precifix-logo.png"
+                alt="Precifix Logo"
+                className="h-10 w-auto transition-all duration-200"
+              />
+              <span className="text-xl font-bold text-sidebar-foreground whitespace-nowrap">Precifix</span>
+            </Link>
+          )}
+
+          {/* Botão de fechar para mobile (X) - visível apenas em mobile quando o menu está aberto */}
+          {isMobile && isMobileSidebarOpen && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeMobileSidebar}
+              className="text-sidebar-foreground hover:bg-sidebar-accent"
+              aria-label="Fechar menu"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-2"> {/* Ajustado px para 3 para o estado recolhido */}

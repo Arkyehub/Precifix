@@ -20,7 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 export const Header = () => {
   const { user } = useSession();
   const navigate = useNavigate();
-  const { toggleMobileSidebar, toggleDesktopSidebar } = useSidebar(); // Usar as novas funções de alternância
+  const { toggleMobileSidebar } = useSidebar(); // Usar apenas toggleMobileSidebar aqui
   const isMobile = useIsMobile(); // Determinar se está em dispositivo móvel
 
   const handleLogout = async () => {
@@ -47,27 +47,21 @@ export const Header = () => {
     ? `${headerAvatarUrl}?t=${new Date(avatarUpdatedAt).getTime()}`
     : headerAvatarUrl;
 
-  const handleMenuToggle = () => {
-    if (isMobile) {
-      toggleMobileSidebar();
-    } else {
-      toggleDesktopSidebar();
-    }
-  };
-
   return (
     <header className="z-40 py-4 bg-sidebar shadow-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-full px-6">
-        {/* Esquerda: Botão de menu para mobile e desktop */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleMenuToggle} // Usar a nova função de alternância inteligente
-          className="mr-4 text-foreground hover:bg-muted/50" // Removido lg:hidden, agora sempre visível
-          aria-label="Abrir/Fechar menu"
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
+        {/* Esquerda: Botão de menu para mobile */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMobileSidebar} // Este botão só controla o mobile
+            className="mr-4 text-foreground hover:bg-muted/50"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        )}
 
         {/* Direita: Avatar do Usuário e Dropdown */}
         <div className="flex items-center gap-4 ml-auto">
