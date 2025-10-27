@@ -140,6 +140,7 @@ export const QuoteGenerator = ({
     clientId: selectedClient?.id,
     // Novos dados para veículo
     selectedVehicleId,
+    selectedClient, // Adicionado para resolver o erro TS2345
   };
 
   const isQuoteValid = selectedServices.length > 0 && clientNameInput.trim() !== '' && finalPrice > 0;

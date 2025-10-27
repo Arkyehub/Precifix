@@ -8,38 +8,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-// import { QuotedService } from '@/components/QuoteServiceFormDialog'; // Removido para definir localmente
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
 import { cn, formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
 
-// Definindo QuotedService localmente para garantir que 'duration_minutes' exista
+// Definindo QuotedService localmente para refletir a estrutura salva em services_summary
 interface QuotedService {
   name: string;
   price: number;
-  duration_minutes: number;
-  // Outras propriedades necessárias podem ser adicionadas aqui
+  execution_time_minutes: number; // Corrigido para o nome do campo salvo
 }
 
 interface Quote {
   id: string;
   user_id: string;
-  client_id: string;
+  client_id: string | null;
   client_name: string;
-  client_document: string;
-  client_phone: string;
-  client_email: string;
-  client_address: string;
-  client_city: string;
-  client_state: string;
-  client_zip_code: string;
-  vehicle_id: string;
-  vehicle_plate: string;
-  vehicle_brand: string;
-  vehicle_model: string;
-  vehicle_year: number;
-  services: QuotedService[];
-  products: any[];
-  total_cost: number;
+  client_document: string | null; // Adicionado
+  client_phone: string | null; // Adicionado
+  client_email: string | null; // Adicionado
+  client_address: string | null; // Adicionado
+  client_city: string | null; // Adicionado
+  client_state: string | null; // Adicionado
+  client_zip_code: string | null; // Adicionado
+  vehicle_id: string | null;
+  vehicle: string; // Campo de texto simples para o veículo
+  services_summary: QuotedService[]; // Corrigido para services_summary
+  products: any[]; // Mantido como any[] por enquanto
   total_price: number;
   status: 'pending' | 'accepted' | 'rejected';
   valid_until: string;
@@ -62,7 +56,7 @@ interface Profile {
 const QuoteViewPage = () => {
   const { quoteId } = useParams<{ quoteId: string }>();
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // Mantido para acesso ao contexto
+  const queryClient = useQueryClient();
 
   // 1. Query para buscar o orçamento (acesso público)
   const { data: quote, isLoading: isLoadingQuote, error: quoteError } = useQuery<Quote>({
@@ -70,21 +64,37 @@ const QuoteViewPage = () => {
     queryFn: async () => {
       if (!quoteId) throw new Error("ID do orçamento não fornecido.");
 
-      // Buscando apenas os dados do orçamento, sem join aninhado para evitar RLS complexo
       const { data, error } = await supabase
         .from('quotes')
-        .select('*')
+        .select('*, services_summary:services, products:products_summary') // Mapeamento para os campos JSONB
         .eq('id', quoteId)
         .single();
 
       if (error) {
-        // Se o erro for RLS ou Not Found, tratamos como 'Não Encontrado'
-        if (error.code === 'PGRST116' || error.code === '42501') { // PGRST116: No rows found, 42501: RLS
+        if (error.code === 'PGRST116' || error.code === '42501') {
           throw new Error("Orçamento Não Encontrado.");
         }
         throw error;
       }
-      return data as Quote;
+      
+      // Ajustar a estrutura dos dados para corresponder à interface Quote
+      const quoteData = data as unknown as Quote;
+      
+      // Garantir que services_summary seja mapeado corretamente
+      if (data.services) {
+        quoteData.services_summary = data.services as QuotedService[];
+      } else {
+        quoteData.services_summary = [];
+      }
+      
+      // Garantir que products seja mapeado corretamente (se houver)
+      if (data.products_summary) {
+        quoteData.products = data.products_summary as any[];
+      } else {
+        quoteData.products = [];
+      }
+
+      return quoteData;
     },
     enabled: !!quoteId,
     retry: false,
@@ -96,7 +106,6 @@ const QuoteViewPage = () => {
     queryFn: async () => {
       if (!quote?.user_id) return null;
 
-      // Busca o perfil do usuário que criou o orçamento
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, company_name, phone_number, email, address, city, state, zip_code')
@@ -105,16 +114,13 @@ const QuoteViewPage = () => {
 
       if (error) {
         console.error("Erro ao buscar perfil:", error);
-        // Não lançamos erro fatal aqui, apenas retornamos null para que o orçamento ainda seja exibido
         return null;
       }
       return data as Profile;
     },
-    enabled: !!quote?.user_id, // Só executa se o orçamento e o user_id existirem
+    enabled: !!quote?.user_id,
     retry: false,
   });
-
-  const isLoading = isLoadingQuote || isLoadingProfile;
 
   if (isLoadingQuote) {
     return (
@@ -157,9 +163,9 @@ const QuoteViewPage = () => {
   };
 
   const currentStatus = statusMap[quote.status] || statusMap.pending;
-  const totalServicesPrice = quote.services.reduce((sum, s) => sum + s.price, 0);
+  const totalServicesPrice = quote.services_summary.reduce((sum, s) => sum + s.price, 0);
   const totalProductsPrice = quote.products.reduce((sum, p) => sum + p.price, 0);
-  const totalQuotePrice = totalServicesPrice + totalProductsPrice;
+  const totalQuotePrice = quote.total_price; // Usar o total_price salvo
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -238,9 +244,8 @@ const QuoteViewPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2 text-sm">
-              <p><strong>Placa:</strong> {quote.vehicle_plate || 'N/A'}</p>
-              <p><strong>Marca/Modelo:</strong> {quote.vehicle_brand} / {quote.vehicle_model}</p>
-              <p><strong>Ano:</strong> {quote.vehicle_year}</p>
+              <p><strong>Veículo:</strong> {quote.vehicle || 'N/A'}</p>
+              {/* Removido campos específicos de veículo que não estão sendo salvos */}
             </CardContent>
           </Card>
         </div>
@@ -266,12 +271,12 @@ const QuoteViewPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {quote.services.map((item, index) => (
+                  {quote.services_summary.map((item, index) => (
                     <tr key={`service-${index}`}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Serviço</td>
                       <td className="px-4 py-3 text-sm text-gray-500">{item.name}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
-                        {formatMinutesToHHMM(item.duration_minutes)}
+                        {formatMinutesToHHMM(item.execution_time_minutes)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
                         R$ {item.price.toFixed(2).replace('.', ',')}
@@ -281,6 +286,7 @@ const QuoteViewPage = () => {
                       </td>
                     </tr>
                   ))}
+                  {/* Produtos não estão sendo salvos atualmente, mas mantemos a estrutura se forem adicionados */}
                   {quote.products.map((item, index) => (
                     <tr key={`product-${index}`}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Produto</td>

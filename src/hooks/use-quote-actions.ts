@@ -6,6 +6,8 @@ import jsPDF from "jspdf";
 import { QuotedService } from "@/components/QuoteServiceFormDialog";
 import { PaymentMethod } from "@/components/PaymentMethodFormDialog";
 import { formatPhoneNumber } from '@/lib/utils';
+import { addDays } from 'date-fns'; // Adicionar importação
+import { Client } from '@/types/clients'; // Adicionado importação do tipo Client
 
 interface Profile {
   id: string;
@@ -34,6 +36,7 @@ interface QuoteData {
   clientDetails: { phoneNumber: string | null; address: string | null };
   clientId?: string;
   selectedVehicleId?: string; // Adicionado
+  selectedClient: Client | undefined; // Adicionado para resolver erros TS
 }
 
 // Função auxiliar para obter a URL da imagem como Data URL (base64)
@@ -260,7 +263,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       pdf_url?: string;
       client_id?: string;
       vehicle_id?: string;
-      status?: 'pending' | 'confirmed' | 'rejected'; // Adicionado status
+      status?: 'pending' | 'confirmed' | 'rejected';
+      client_document?: string; // Adicionado
+      client_phone?: string; // Adicionado
+      client_email?: string; // Adicionado
+      client_address?: string; // Adicionado
+      client_city?: string; // Adicionado
+      client_state?: string; // Adicionado
+      client_zip_code?: string; // Adicionado
+      notes?: string; // Adicionado
+      valid_until: string; // Adicionado
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -276,7 +288,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           pdf_url: quoteData.pdf_url,
           client_id: quoteData.client_id,
           vehicle_id: quoteData.vehicle_id,
-          status: quoteData.status || 'pending', // Definir status inicial
+          status: quoteData.status || 'pending',
+          client_document: quoteData.client_document,
+          client_phone: quoteData.client_phone,
+          client_email: quoteData.client_email,
+          client_address: quoteData.client_address,
+          client_city: quoteData.client_city,
+          client_state: quoteData.client_state,
+          client_zip_code: quoteData.client_zip_code,
+          notes: quoteData.notes,
+          valid_until: quoteData.valid_until,
         })
         .select()
         .single();
@@ -331,6 +352,11 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
       const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
       
+      // Calcular valid_until (7 dias após a data do orçamento)
+      const quoteDateObj = new Date(quoteData.quote_date);
+      const validUntilDate = addDays(quoteDateObj, 7);
+      const validUntilString = validUntilDate.toISOString().split('T')[0];
+
       // Salvar orçamento no banco de dados (sem URL do PDF por enquanto)
       await saveQuoteMutation.mutateAsync({
         client_name: quoteData.client_name,
@@ -340,7 +366,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
         client_id: quoteData.clientId,
         vehicle_id: quoteData.selectedVehicleId,
-        status: 'pending', // Definir status
+        status: 'pending',
+        client_document: quoteData.selectedClient?.document_number,
+        client_phone: quoteData.selectedClient?.phone_number,
+        client_email: quoteData.selectedClient?.email,
+        client_address: quoteData.selectedClient?.address,
+        client_city: quoteData.selectedClient?.city,
+        client_state: quoteData.selectedClient?.state,
+        client_zip_code: quoteData.selectedClient?.zip_code,
+        notes: quoteData.observations,
+        valid_until: validUntilString,
       });
 
       // Download do PDF
@@ -378,6 +413,11 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
 
     try {
+      // Calcular valid_until (7 dias após a data do orçamento)
+      const quoteDateObj = new Date(quoteData.quote_date);
+      const validUntilDate = addDays(quoteDateObj, 7);
+      const validUntilString = validUntilDate.toISOString().split('T')[0];
+
       // 1. Salvar o orçamento no banco de dados para obter o ID
       const savedQuote = await saveQuoteMutation.mutateAsync({
         client_name: quoteData.client_name,
@@ -387,7 +427,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
         client_id: quoteData.clientId,
         vehicle_id: quoteData.selectedVehicleId,
-        status: 'pending', // Definir status
+        status: 'pending',
+        client_document: quoteData.selectedClient?.document_number,
+        client_phone: quoteData.selectedClient?.phone_number,
+        client_email: quoteData.selectedClient?.email,
+        client_address: quoteData.selectedClient?.address,
+        client_city: quoteData.selectedClient?.city,
+        client_state: quoteData.selectedClient?.state,
+        client_zip_code: quoteData.selectedClient?.zip_code,
+        notes: quoteData.observations,
+        valid_until: validUntilString,
       });
 
       // 2. Gerar o link de visualização
@@ -416,7 +465,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const isGeneratingOrSaving = saveQuoteMutation.isPending;
-  const isSendingWhatsApp = saveQuoteMutation.isPending; // Agora depende apenas do saveQuoteMutation
+  const isSendingWhatsApp = saveQuoteMutation.isPending;
 
   return {
     handleGenerateAndDownloadPDF,

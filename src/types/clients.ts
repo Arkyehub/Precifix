@@ -8,5 +8,6 @@ export interface Client {
   address: string | null;
   city: string | null;
   state: string | null;
+  zip_code: string | null; // Adicionado zip_code
   created_at: string;
 }
