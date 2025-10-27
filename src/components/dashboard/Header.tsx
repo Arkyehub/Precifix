@@ -49,7 +49,7 @@ export const Header = () => {
 
   return (
     <header className="z-40 py-4 bg-sidebar shadow-md border-b border-border/50">
-      <div className="container mx-auto flex items-center justify-between h-full px-6">
+      <div className="flex items-center justify-between h-full px-6"> {/* Removido container mx-auto */}
         {/* Esquerda: Botão de menu para mobile */}
         {isMobile && (
           <Button

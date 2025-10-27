@@ -55,13 +55,13 @@ export const Sidebar = () => {
 
           {/* Logo e texto - ocultar quando o menu lateral estiver recolhido no desktop */}
           {!isDesktopSidebarCollapsed && (
-            <Link to="/" className="flex items-center gap-3 ml-4" onClick={closeMobileSidebar}>
+            <Link to="/" className="flex items-center gap-3 ml-0" onClick={closeMobileSidebar}> {/* Ajustado ml-0 */}
               <img
                 src="/precifix-logo.png"
                 alt="Precifix Logo"
                 className="h-10 w-auto transition-all duration-200"
               />
-              <span className="text-xl font-bold text-sidebar-foreground whitespace-nowrap">Precifix</span>
+              {/* Removido o span com o texto "Precifix" */}
             </Link>
           )}
 
