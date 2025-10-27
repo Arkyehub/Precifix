@@ -1,37 +1,104 @@
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Gauge } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc'; // Importando o ícone oficial do Google
+import { Eye, EyeOff, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-const REDIRECT_URL = 'https://precifix.app.br'; // URL de redirecionamento fixo
+const Login = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-function Login() {
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: REDIRECT_URL,
-        },
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      if (error) throw error;
+
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login realizado!",
+          description: "Bem-vindo ao Precifix.",
+        });
+        navigate('/');
+      }
     } catch (error: any) {
-      console.error('Erro ao fazer login com Google:', error.message);
+      toast({
+        title: "Erro inesperado",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "E-mail necessário",
+        description: "Digite seu e-mail para redefinir a senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+
+      if (error) {
+        toast({
+          title: "Erro ao enviar e-mail",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "E-mail enviado!",
+          description: "Verifique sua caixa de entrada para redefinir a senha.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro inesperado",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignUp = () => {
+    navigate('/signup'); // Assumindo que há uma rota /signup; ajuste conforme necessário
   };
 
   return (
     <div 
       className="flex min-h-screen items-center justify-center p-4 bg-cover bg-center relative"
-      style={{ backgroundImage: `url('/login-background.jpg')` }}
+      style={{ backgroundImage: `url('/login-background.jpg')` }} // Mantenha a imagem de fundo se existir
     >
-      {/* Overlay escuro para garantir contraste */}
+      {/* Overlay escuro para contraste */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div> 
       
-      <Card className="w-full max-w-md bg-black/80 text-white border-gray-800 z-10"> {/* Adicionado z-10 para ficar acima do overlay */}
+      <Card className="w-full max-w-md bg-black/80 text-white border-gray-800 z-10 relative"> {/* z-10 para ficar acima do overlay */}
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
@@ -40,115 +107,90 @@ function Login() {
               className="h-24 w-auto"
             />
           </div>
-          <CardTitle className="text-3xl font-bold text-white">Bem-vindo de volta!</CardTitle>
-          <CardDescription className="text-gray-400">
-            Faça login ou crie uma conta para continuar.
+          <CardTitle className="text-3xl font-bold text-white">Bem-vindo ao Precifix</CardTitle>
+          <CardDescription className="text-gray-300">
+            Sistema de gestão facilitada para estética automotiva. Gerencie seus orçamentos e custos de forma simples e eficiente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Auth
-            supabaseClient={supabase}
-            providers={[]}
-            appearance={{
-              theme: ThemeSupa,
-              variables: {
-                default: {
-                  colors: {
-                    // Cores para o tema escuro
-                    brand: 'hsl(var(--primary))',
-                    brandAccent: 'hsl(var(--primary-glow))',
-                    inputBackground: 'hsl(0 0% 10%)', // Fundo do input preto
-                    inputBorder: 'hsl(0 0% 20%)',
-                    inputBorderHover: 'hsl(var(--primary))',
-                    inputBorderFocus: 'hsl(var(--primary))',
-                    inputText: 'hsl(0 0% 90%)', // Texto do input claro
-                    defaultButtonBackground: 'hsl(var(--primary))', // Cor de fundo do botão primário
-                    defaultButtonBackgroundHover: 'hsl(var(--primary-glow))', // Cor de fundo do botão primário ao passar o mouse
-                    defaultButtonBorder: 'hsl(var(--primary))',
-                    defaultButtonText: 'hsl(0 0% 0%)', // Texto do botão primário preto
-                    dividerBackground: 'hsl(0 0% 20%)',
-                    messageText: 'hsl(0 0% 90%)', // Texto de mensagens
-                    anchorTextColor: 'hsl(var(--primary))', // Links
-                  },
-                },
-              },
-            }}
-            theme="dark" // Força o tema escuro
-            localization={{
-              variables: {
-                sign_in: {
-                  email_label: 'Seu e-mail',
-                  password_label: 'Sua senha',
-                  email_input_placeholder: 'email@exemplo.com',
-                  password_input_placeholder: '••••••••',
-                  button_label: 'Entrar',
-                  social_provider_text: 'Ou continue com',
-                  link_text: 'Já tem uma conta? Entrar',
-                },
-                sign_up: {
-                  email_label: 'Seu e-mail',
-                  password_label: 'Crie uma senha',
-                  email_input_placeholder: 'email@exemplo.com',
-                  password_input_placeholder: '••••••••',
-                  button_label: 'Criar conta',
-                  social_provider_text: 'Ou continue com',
-                  link_text: 'Não tem uma conta? Cadastre-se',
-                },
-                forgotten_password: {
-                  email_label: 'Seu e-mail',
-                  email_input_placeholder: 'email@exemplo.com',
-                  button_label: 'Enviar instruções de recuperação',
-                  link_text: 'Esqueceu sua senha?',
-                },
-                update_password: {
-                  password_label: 'Nova senha',
-                  password_input_placeholder: '••••••••',
-                  button_label: 'Atualizar senha',
-                },
-                magic_link: {
-                  email_input_placeholder: 'email@exemplo.com',
-                  button_label: 'Enviar link mágico',
-                  link_text: 'Enviar link mágico',
-                },
-              },
-            }}
-            // Adicionando redirectTo para o Auth component também, caso ele seja usado
-            redirectTo={REDIRECT_URL}
-          />
-          <Button
-            onClick={handleGoogleLogin}
-            className="w-full bg-white border border-gray-300 text-foreground hover:bg-gray-50 transition-colors flex items-center justify-center"
-            variant="outline"
-          >
-            <FcGoogle className="mr-2 h-5 w-5" />
-            Logar com Google
-          </Button>
-          <style>{`
-            /* Sobrescreve estilos para garantir que o fundo do Auth UI seja preto */
-            .supabase-auth-ui_ui-card {
-              background-color: transparent !important; /* Tornar o fundo do Auth UI transparente */
-              box-shadow: none !important;
-              border: none !important;
-            }
-            .supabase-auth-ui_ui-button {
-              color: black !important;
-            }
-            .supabase-auth-ui_ui-anchor {
-              color: hsl(var(--primary)) !important;
-            }
-            .supabase-auth-ui_ui-button:not([data-provider]) {
-              background-color: hsl(var(--primary)) !important;
-              border-color: hsl(var(--primary)) !important;
-              color: hsl(var(--primary-foreground)) !important;
-            }
-            .supabase-auth-ui_ui-button:not([data-provider]):hover {
-              background-color: hsl(var(--primary-glow)) !important;
-            }
-          `}</style>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-left text-sm font-medium text-gray-300">
+                Qual seu e-mail?
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-primary focus:ring-primary"
+                required
+              />
+            </div>
+            <div className="space-y-2 relative">
+              <Label htmlFor="password" className="text-left text-sm font-medium text-gray-300">
+                Qual sua senha?
+              </Label>
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 pr-10 focus:border-primary focus:ring-primary"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-9 h-6 w-6 p-0 text-gray-400 hover:text-white"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'ENTRAR NA PLATAFORMA'
+              )}
+            </Button>
+          </form>
+
+          {/* Links abaixo do botão */}
+          <div className="flex flex-col space-y-3 pt-4">
+            <Button
+              variant="link"
+              onClick={handleForgotPassword}
+              className="text-gray-300 hover:text-white p-0 h-auto text-sm justify-start"
+              disabled={!email || isLoading}
+            >
+              <Mail className="h-4 w-4 mr-1 inline" />
+              Esqueceu sua senha?
+            </Button>
+            <Button
+              variant="link"
+              onClick={handleSignUp}
+              className="text-gray-300 hover:text-white p-0 h-auto text-sm justify-start"
+            >
+              <UserPlus className="h-4 w-4 mr-1 inline" />
+              Não tem uma conta? Crie uma
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
-}
+};
 
 export default Login;
