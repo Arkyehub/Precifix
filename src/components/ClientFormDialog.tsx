@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Client } from '@/types/clients';
-import { Vehicle } from '@/types/vehicles'; // Nova importação
+import { Vehicle } from '@/types/vehicles';
 import { formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
 import {
   Collapsible,
@@ -20,8 +20,8 @@ import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 interface ClientFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  client?: Client; // Opcional para edição
-  onClientSaved?: (client: Client) => void; // Callback após salvar
+  client?: Client;
+  onClientSaved?: (client: Client) => void;
 }
 
 interface NewVehicle {
@@ -36,45 +36,46 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [name, setName] = useState(client?.name || '');
-  const [rawDocumentNumber, setRawDocumentNumber] = useState(client?.document_number || '');
-  const [rawPhoneNumber, setRawPhoneNumber] = useState(client?.phone_number || '');
-  const [email, setEmail] = useState(client?.email || '');
-  const [address, setAddress] = useState(client?.address || '');
-  const [city, setCity] = useState(client?.city || '');
-  const [state, setState] = useState(client?.state || '');
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]); // Lista de veículos existentes
-  const [newVehicle, setNewVehicle] = useState<NewVehicle>({ brand: '', model: '', plate: '', year: new Date().getFullYear() }); // Novo veículo
-  const [showAddVehicle, setShowAddVehicle] = useState(false); // Toggle para mostrar formulário de adicionar veículo
+  const [name, setName] = useState('');
+  const [rawDocumentNumber, setRawDocumentNumber] = useState('');
+  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [newVehicle, setNewVehicle] = useState<NewVehicle>({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
 
   useEffect(() => {
-    if (client) {
-      setName(client.name);
-      setRawDocumentNumber(client.document_number || '');
-      setRawPhoneNumber(client.phone_number || '');
-      setEmail(client.email || '');
-      setAddress(client.address || '');
-      setCity(client.city || '');
-      setState(client.state || '');
-      // Fetch veículos do cliente se editando
-      if (client.id) {
-        fetchClientVehicles(client.id);
+    if (isOpen) {
+      if (client) {
+        setName(client.name);
+        setRawDocumentNumber(client.document_number || '');
+        setRawPhoneNumber(client.phone_number || '');
+        setEmail(client.email || '');
+        setAddress(client.address || '');
+        setCity(client.city || '');
+        setState(client.state || '');
+        if (client.id) {
+          fetchClientVehicles(client.id);
+        }
+      } else {
+        // Reset form for new client
+        setName('');
+        setRawDocumentNumber('');
+        setRawPhoneNumber('');
+        setEmail('');
+        setAddress('');
+        setCity('');
+        setState('');
+        setVehicles([]);
+        setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
+        setShowAddVehicle(false);
       }
-    } else {
-      setName('');
-      setRawDocumentNumber('');
-      setRawPhoneNumber('');
-      setEmail('');
-      setAddress('');
-      setCity('');
-      setState('');
-      setVehicles([]); // Limpar veículos para novo cliente
-      setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
-      setShowAddVehicle(false);
     }
   }, [client, isOpen]);
 
-  // Fetch veículos do cliente
   const fetchClientVehicles = async (clientId: string) => {
     const { data, error } = await supabase
       .from('client_vehicles')
@@ -83,28 +84,26 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Erro ao buscar veículos:', error);
+      toast({ title: "Erro", description: "Não foi possível carregar os veículos do cliente.", variant: "destructive" });
     } else {
       setVehicles(data || []);
     }
   };
 
   const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setRawDocumentNumber(value);
+    setRawDocumentNumber(e.target.value.replace(/\D/g, ''));
   };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setRawPhoneNumber(value);
+    setRawPhoneNumber(e.target.value.replace(/\D/g, ''));
   };
 
-  // Handlers para novo veículo
   const handleAddVehicleChange = (field: keyof NewVehicle, value: string | number) => {
     setNewVehicle(prev => ({ ...prev, [field]: value }));
   };
 
   const addVehicleToList = () => {
-    if (!newVehicle.brand || !newVehicle.model || !newVehicle.year || newVehicle.year < 1900 || newVehicle.year > new Date().getFullYear() + 1) {
+    if (!newVehicle.brand || !newVehicle.model || newVehicle.year < 1900 || newVehicle.year > new Date().getFullYear() + 1) {
       toast({
         title: "Dados inválidos",
         description: "Preencha marca, modelo e ano válido (1900 a atual +1).",
@@ -112,16 +111,16 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       });
       return;
     }
-    const vehicleWithId = {
+    const vehicleWithId: Vehicle = {
       ...newVehicle,
-      id: `temp-${Date.now()}`, // ID temporário para UI
-      client_id: client?.id || '', // Será sobrescrito no save
+      id: `temp-${Date.now()}`,
+      client_id: client?.id || '',
       created_at: new Date().toISOString(),
-    } as Vehicle;
-    setVehicles(prev => [...prev, vehicleWithId]);
+    };
+    setVehicles(prev => [vehicleWithId, ...prev]);
     setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
     setShowAddVehicle(false);
-    toast({ title: "Veículo adicionado!", description: `${newVehicle.brand} ${newVehicle.model} foi adicionado.` });
+    toast({ title: "Veículo adicionado!", description: `${newVehicle.brand} ${newVehicle.model} foi adicionado à lista.` });
   };
 
   const removeVehicleFromList = (id: string) => {
@@ -129,65 +128,72 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   };
 
   const upsertClientMutation = useMutation({
-    mutationFn: async (newClient: Omit<Client, 'created_at'> & { id?: string; vehicles?: Vehicle[] }) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      const clientDataToSave = {
-        user_id: user.id,
-        name: newClient.name,
-        document_number: newClient.document_number || null,
-        phone_number: newClient.phone_number || null,
-        email: newClient.email || null,
-        address: newClient.address || null,
-        city: newClient.city || null,
-        state: newClient.state || null,
-      };
-
-      let savedClient;
-      if (newClient.id) {
-        // Update existing client
-        const { data, error } = await supabase
-          .from('clients')
-          .update(clientDataToSave)
-          .eq('id', newClient.id)
-          .eq('user_id', user.id)
-          .select()
-        if (error) throw error;
-        if (data.length !== 1) {
-          throw new Error(`Unexpected number of rows updated: ${data.length}`);
-        }
-        savedClient = data[0];
-      } else {
-        // Insert new client
-        const { data, error } = await supabase
-          .from('clients')
-          .insert(clientDataToSave)
-          .select()
-        if (error) throw error;
-        if (data.length !== 1) {
-          throw new Error(`Unexpected number of rows inserted: ${data.length}`);
-        }
-        savedClient = data[0];
+    mutationFn: async (clientPayload: {
+      id?: string;
+      name: string;
+      document_number: string;
+      phone_number: string;
+      email: string;
+      address: string;
+      city: string;
+      state: string;
+      vehicles: Vehicle[];
+    }) => {
+      if (!user || !user.id) {
+        throw new Error("Usuário não autenticado ou ID do usuário ausente.");
       }
 
-      // Salvar/Atualizar veículos se fornecidos
-      if (newClient.vehicles && newClient.vehicles.length > 0 && savedClient) {
-        // Deletar veículos antigos se editando
-        if (newClient.id) {
-          const { error: vehiclesDeleteError } = await supabase.from('client_vehicles').delete().eq('client_id', newClient.id);
-          if (vehiclesDeleteError) throw vehiclesDeleteError;
-        }
+      const { vehicles: clientVehicles, ...clientDetails } = clientPayload;
 
-        // Inserir novos veículos
-        const vehiclesToInsert = newClient.vehicles.map(v => ({
+      const clientDataToUpsert = {
+        ...clientDetails,
+        user_id: user.id,
+        document_number: clientDetails.document_number || null,
+        phone_number: clientDetails.phone_number || null,
+        email: clientDetails.email || null,
+        address: clientDetails.address || null,
+        city: clientDetails.city || null,
+        state: clientDetails.state || null,
+      };
+
+      const { data: savedClient, error: clientError } = await supabase
+        .from('clients')
+        .upsert(clientDataToUpsert)
+        .select()
+        .single();
+
+      if (clientError) {
+        console.error("Supabase client upsert error:", clientError);
+        throw new Error(`Erro ao salvar cliente: ${clientError.message}`);
+      }
+
+      const { error: vehiclesDeleteError } = await supabase
+        .from('client_vehicles')
+        .delete()
+        .eq('client_id', savedClient.id);
+
+      if (vehiclesDeleteError) {
+        console.error("Supabase vehicle delete error:", vehiclesDeleteError);
+        throw new Error(`Erro ao limpar veículos antigos: ${vehiclesDeleteError.message}`);
+      }
+
+      if (clientVehicles && clientVehicles.length > 0) {
+        const vehiclesToInsert = clientVehicles.map(v => ({
           client_id: savedClient.id,
           brand: v.brand,
           model: v.model,
           plate: v.plate || null,
           year: v.year,
         }));
-        const { error: vehiclesError } = await supabase.from('client_vehicles').insert(vehiclesToInsert);
-        if (vehiclesError) throw vehiclesError;
+
+        const { error: vehiclesInsertError } = await supabase
+          .from('client_vehicles')
+          .insert(vehiclesToInsert);
+
+        if (vehiclesInsertError) {
+          console.error("Supabase vehicle insert error:", vehiclesInsertError);
+          throw new Error(`Erro ao salvar veículos: ${vehiclesInsertError.message}`);
+        }
       }
 
       return savedClient;
@@ -201,7 +207,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       onClose();
       onClientSaved?.(data);
     },
-    onError: (err) => {
+    onError: (err: Error) => {
       toast({
         title: client ? "Erro ao atualizar cliente" : "Erro ao adicionar cliente",
         description: err.message,
@@ -222,7 +228,6 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
 
     upsertClientMutation.mutate({
       id: client?.id,
-      user_id: user!.id,
       name,
       document_number: rawDocumentNumber,
       phone_number: rawPhoneNumber,
@@ -230,17 +235,17 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       address,
       city,
       state,
-      vehicles: vehicles, // Passar veículos para salvar
+      vehicles: vehicles,
     });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-card"> {/* Aumentado para caber veículos */}
+      <DialogContent className="sm:max-w-[600px] bg-card">
         <DialogHeader>
           <DialogTitle>{client ? 'Editar Cliente' : 'Adicionar Novo Cliente'}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-2">
           <div className="space-y-2">
             <Label htmlFor="name">Nome/Razão Social *</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-background" />
@@ -282,20 +287,19 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
             </div>
             <div className="space-y-2">
               <Label htmlFor="state">Estado (UF)</Label>
-              <Input id="state" value={state} onChange={(e) => setState(e.target.value)} className="bg-background" maxLength={2} />
+              <Input id="state" value={state} onChange={(e) => setState(e.target.value.toUpperCase())} className="bg-background" maxLength={2} />
             </div>
           </div>
 
-          {/* Nova Seção: Veículos */}
           <Collapsible className="space-y-2">
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
                 Veículos Cadastrados ({vehicles.length})
-                <ChevronDown className={`h-4 w-4 transition-transform ${showAddVehicle ? 'rotate-180' : ''}`} />
+                <ChevronDown className="h-4 w-4 transition-transform" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              {vehicles.length > 0 ? (
+            <CollapsibleContent className="pt-2">
+              {vehicles.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {vehicles.map((vehicle) => (
                     <div key={vehicle.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
@@ -307,17 +311,14 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                         variant="ghost"
                         size="icon"
                         onClick={() => removeVehicleFromList(vehicle.id)}
-                        className="text-destructive"
+                        className="text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Nenhum veículo cadastrado.</p>
               )}
-              {/* Formulário para adicionar novo veículo */}
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
                 <Button
                   variant="ghost"
@@ -325,58 +326,28 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                   className="w-full justify-start h-auto p-2"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  {showAddVehicle ? 'Cancelar Adicionar Veículo' : 'Adicionar Novo Veículo'}
+                  {showAddVehicle ? 'Cancelar' : 'Adicionar Novo Veículo'}
                 </Button>
                 {showAddVehicle && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-brand">Marca *</Label>
-                      <Input
-                        id="vehicle-brand"
-                        value={newVehicle.brand}
-                        onChange={(e) => handleAddVehicleChange('brand', e.target.value)}
-                        placeholder="Ex: Honda"
-                        className="bg-background"
-                      />
+                      <Input id="vehicle-brand" value={newVehicle.brand} onChange={(e) => handleAddVehicleChange('brand', e.target.value)} placeholder="Ex: Honda" className="bg-background" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-model">Modelo *</Label>
-                      <Input
-                        id="vehicle-model"
-                        value={newVehicle.model}
-                        onChange={(e) => handleAddVehicleChange('model', e.target.value)}
-                        placeholder="Ex: Civic"
-                        className="bg-background"
-                      />
+                      <Input id="vehicle-model" value={newVehicle.model} onChange={(e) => handleAddVehicleChange('model', e.target.value)} placeholder="Ex: Civic" className="bg-background" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-plate">Placa</Label>
-                      <Input
-                        id="vehicle-plate"
-                        value={newVehicle.plate}
-                        onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())}
-                        placeholder="Ex: ABC-1234"
-                        maxLength={8}
-                        className="bg-background"
-                      />
+                      <Input id="vehicle-plate" value={newVehicle.plate} onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())} placeholder="Ex: ABC1D23" maxLength={7} className="bg-background" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-year">Ano *</Label>
-                      <Input
-                        id="vehicle-year"
-                        type="number"
-                        value={newVehicle.year}
-                        onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)}
-                        min={1900}
-                        max={new Date().getFullYear() + 1}
-                        className="bg-background"
-                      />
+                      <Input id="vehicle-year" type="number" value={newVehicle.year} onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)} min={1900} max={new Date().getFullYear() + 1} className="bg-background" />
                     </div>
-                    <Button
-                      onClick={addVehicleToList}
-                      className="md:col-span-4 bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      Adicionar Veículo
+                    <Button onClick={addVehicleToList} className="md:col-span-4">
+                      Adicionar Veículo à Lista
                     </Button>
                   </div>
                 )}
@@ -387,7 +358,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={upsertClientMutation.isPending}>
-            {upsertClientMutation.isPending ? (client ? "Salvando..." : "Adicionando...") : (client ? "Salvar Alterações" : "Adicionar Cliente")}
+            {upsertClientMutation.isPending ? "Salvando..." : (client ? "Salvar Alterações" : "Adicionar Cliente")}
           </Button>
         </DialogFooter>
       </DialogContent>
