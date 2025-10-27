@@ -152,25 +152,30 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           .eq('id', newClient.id)
           .eq('user_id', user.id)
           .select()
-          .single();
         if (error) throw error;
-        savedClient = data;
+        if (data.length !== 1) {
+          throw new Error(`Unexpected number of rows updated: ${data.length}`);
+        }
+        savedClient = data[0];
       } else {
         // Insert new client
         const { data, error } = await supabase
           .from('clients')
           .insert(clientDataToSave)
           .select()
-          .single();
         if (error) throw error;
-        savedClient = data;
+        if (data.length !== 1) {
+          throw new Error(`Unexpected number of rows inserted: ${data.length}`);
+        }
+        savedClient = data[0];
       }
 
       // Salvar/Atualizar veículos se fornecidos
       if (newClient.vehicles && newClient.vehicles.length > 0 && savedClient) {
         // Deletar veículos antigos se editando
         if (newClient.id) {
-          await supabase.from('client_vehicles').delete().eq('client_id', newClient.id);
+          const { error: vehiclesDeleteError } = await supabase.from('client_vehicles').delete().eq('client_id', newClient.id);
+          if (vehiclesDeleteError) throw vehiclesDeleteError;
         }
 
         // Inserir novos veículos
