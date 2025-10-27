@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Gauge } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc'; // Importando o ícone oficial do Google
 
+const REDIRECT_URL = 'https://precifix.app.br'; // URL de redirecionamento fixo
+
 function Login() {
   const handleGoogleLogin = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: REDIRECT_URL,
         },
       });
       if (error) throw error;
@@ -111,7 +113,7 @@ function Login() {
               },
             }}
             // Adicionando redirectTo para o Auth component também, caso ele seja usado
-            redirectTo={window.location.origin}
+            redirectTo={REDIRECT_URL}
           />
           <Button
             onClick={handleGoogleLogin}

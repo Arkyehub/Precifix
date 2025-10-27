@@ -9,6 +9,7 @@ import { PaymentMethod } from "./PaymentMethodFormDialog";
 import { Client } from '@/types/clients';
 import { QuoteClientSection } from '@/components/quote/QuoteClientSection';
 import { useQuoteActions } from '@/hooks/use-quote-actions';
+import { supabase } from "@/integrations/supabase/client"; // Importar supabase
 
 // Interface para os dados do perfil, para uso interno neste componente
 interface Profile {

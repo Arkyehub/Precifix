@@ -58,20 +58,21 @@ export const ClientAutocomplete = ({
       
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, phone_number, address, city, state, document_number, email')
+        .select('*') // Alterado para selecionar todos os campos para satisfazer o tipo Client
         .eq('user_id', user.id)
         .ilike('name', searchTerm) // Busca por nome
         .limit(10);
         
       if (error) throw error;
-      return data;
+      return data as Client[]; // Garantir que o retorno é Client[]
     },
     enabled: !!user && debouncedSearchTerm.length >= 2,
   });
 
   // Efeito para controlar a abertura do Popover
   useEffect(() => {
-    const shouldOpen = debouncedSearchTerm.length >= 2 && (clients?.length > 0 || isLoadingClients);
+    // Usar Array.isArray(clients) para garantir que 'clients' é um array antes de acessar .length
+    const shouldOpen = debouncedSearchTerm.length >= 2 && (Array.isArray(clients) && clients.length > 0 || isLoadingClients);
     setOpen(shouldOpen);
   }, [debouncedSearchTerm, clients, isLoadingClients]);
 
@@ -142,7 +143,7 @@ export const ClientAutocomplete = ({
                     Buscando clientes...
                   </CommandEmpty>
                 )}
-                {!isLoadingClients && clients && clients.length > 0 ? (
+                {!isLoadingClients && Array.isArray(clients) && clients.length > 0 ? (
                   <CommandGroup>
                     {clients.map((client) => (
                       <CommandItem
