@@ -196,7 +196,6 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           throw new Error(`Erro ao adicionar cliente: ${clientError.message}`);
         }
         savedClient = data;
-        // No need to delete vehicles for a new client.
       }
 
       // --- INSERT vehicles for both new and updated clients ---
@@ -209,13 +208,18 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           year: v.year,
         }));
 
-        const { error: vehiclesInsertError } = await supabase
-          .from('client_vehicles')
-          .insert(vehiclesToInsert);
+        // Insert one by one to avoid potential bulk insert issues with RLS
+        for (const vehicle of vehiclesToInsert) {
+          const { error: vehiclesInsertError } = await supabase
+            .from('client_vehicles')
+            .insert(vehicle);
 
-        if (vehiclesInsertError) {
-          console.error("Supabase vehicle insert error:", vehiclesInsertError);
-          throw new Error(`Erro ao salvar veículos: ${vehiclesInsertError.message}`);
+          if (vehiclesInsertError) {
+            console.error("Supabase vehicle insert error:", vehiclesInsertError);
+            // If a vehicle fails, we should ideally roll back the client creation,
+            // but for now, we'll throw an error to notify the user.
+            throw new Error(`Erro ao salvar o veículo ${vehicle.brand} ${vehicle.model}: ${vehiclesInsertError.message}`);
+          }
         }
       }
 
