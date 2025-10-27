@@ -16,6 +16,7 @@ import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import StorageTestPage from "./pages/StorageTestPage";
 import BillingPage from "./pages/BillingPage";
 import ClientsPage from "./pages/ClientsPage"; // Importar a nova página
+import QuoteViewPage from "./pages/QuoteViewPage"; // Importar a nova página de visualização
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -27,101 +28,102 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <SessionContextProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route 
-              path="/" 
-              element={
-                <DashboardLayout>
-                  <Dashboard />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/manage-costs"
-              element={
-                <DashboardLayout>
-                  <ManageCostsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/products"
-              element={
-                <DashboardLayout>
-                  <ProductCatalogPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/services" 
-              element={
-                <DashboardLayout>
-                  <ServicesPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/payment-methods" 
-              element={
-                <DashboardLayout>
-                  <PaymentMethodsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/clients" // Nova rota para ClientsPage
-              element={
-                <DashboardLayout>
-                  <ClientsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/generate-quote" 
-              element={
-                <DashboardLayout>
-                  <QuoteGenerationPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/profile"
-              element={
-                <DashboardLayout>
-                  <ProfilePage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/settings"
-              element={
-                <DashboardLayout>
-                  <SettingsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/storage-test"
-              element={
-                <DashboardLayout>
-                  <StorageTestPage />
-                </DashboardLayout>
-              }
-            />
-            <Route 
-              path="/billing"
-              element={
-                <DashboardLayout>
-                  <BillingPage />
-                </DashboardLayout>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </SessionContextProvider>
+        <Routes>
+          {/* Rota Pública para Visualização de Orçamento */}
+          <Route path="/quote/view/:quoteId" element={<QuoteViewPage />} />
+          
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/" 
+            element={
+              <DashboardLayout>
+                <Dashboard />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/manage-costs"
+            element={
+              <DashboardLayout>
+                <ManageCostsPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/products"
+            element={
+              <DashboardLayout>
+                <ProductCatalogPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/services" 
+            element={
+              <DashboardLayout>
+                <ServicesPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/payment-methods" 
+            element={
+              <DashboardLayout>
+                <PaymentMethodsPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/clients" // Nova rota para ClientsPage
+            element={
+              <DashboardLayout>
+                <ClientsPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/generate-quote" 
+            element={
+              <DashboardLayout>
+                <QuoteGenerationPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/profile"
+            element={
+              <DashboardLayout>
+                <ProfilePage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/settings"
+            element={
+              <DashboardLayout>
+                <SettingsPage />
+              </DashboardLayout>
+            } 
+          />
+          <Route 
+            path="/storage-test"
+            element={
+              <DashboardLayout>
+                <StorageTestPage />
+              </DashboardLayout>
+            }
+          />
+          <Route 
+            path="/billing"
+            element={
+              <DashboardLayout>
+                <BillingPage />
+              </DashboardLayout>
+            }
+          />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

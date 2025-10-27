@@ -259,7 +259,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       services_summary: any[];
       pdf_url?: string;
       client_id?: string;
-      vehicle_id?: string; // Adicionado
+      vehicle_id?: string;
+      status?: 'pending' | 'confirmed' | 'rejected'; // Adicionado status
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -274,7 +275,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           services_summary: quoteData.services_summary,
           pdf_url: quoteData.pdf_url,
           client_id: quoteData.client_id,
-          vehicle_id: quoteData.vehicle_id, // Adicionado
+          vehicle_id: quoteData.vehicle_id,
+          status: quoteData.status || 'pending', // Definir status inicial
         })
         .select()
         .single();
@@ -337,7 +339,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
         quote_date: quoteData.quote_date,
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
         client_id: quoteData.clientId,
-        vehicle_id: quoteData.selectedVehicleId, // Adicionado
+        vehicle_id: quoteData.selectedVehicleId,
+        status: 'pending', // Definir status
       });
 
       // Download do PDF
@@ -375,34 +378,32 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
 
     try {
-      const pdfBlob = await createQuotePdfBlob(quoteData);
-
-      const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
-      const pdfUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName });
-
-      // Salvar orçamento no banco de dados com a URL do PDF
-      await saveQuoteMutation.mutateAsync({
+      // 1. Salvar o orçamento no banco de dados para obter o ID
+      const savedQuote = await saveQuoteMutation.mutateAsync({
         client_name: quoteData.client_name,
         vehicle: quoteData.vehicle,
         total_price: quoteData.finalPrice,
         quote_date: quoteData.quote_date,
         services_summary: getServicesSummaryForDb(quoteData.selectedServices),
-        pdf_url: pdfUrl,
         client_id: quoteData.clientId,
-        vehicle_id: quoteData.selectedVehicleId, // Adicionado
+        vehicle_id: quoteData.selectedVehicleId,
+        status: 'pending', // Definir status
       });
+
+      // 2. Gerar o link de visualização
+      const quoteViewLink = `${window.location.origin}/quote/view/${savedQuote.id}`;
 
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
-        `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${pdfUrl}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
+        `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${quoteViewLink}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
       );
       const whatsappLink = `https://wa.me/55${quoteData.clientDetails.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`;
       
       window.open(whatsappLink, '_blank');
 
       toast({
-        title: "Orçamento enviado via WhatsApp!",
-        description: "O link do PDF foi enviado para o cliente.",
+        title: "Link de Orçamento enviado via WhatsApp!",
+        description: "O link de visualização foi enviado para o cliente.",
       });
     } catch (error: any) {
       console.error("Erro ao enviar via WhatsApp:", error);
@@ -415,7 +416,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const isGeneratingOrSaving = saveQuoteMutation.isPending;
-  const isSendingWhatsApp = uploadPdfMutation.isPending || isGeneratingOrSaving;
+  const isSendingWhatsApp = saveQuoteMutation.isPending; // Agora depende apenas do saveQuoteMutation
 
   return {
     handleGenerateAndDownloadPDF,
