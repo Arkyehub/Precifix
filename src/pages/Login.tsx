@@ -124,7 +124,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@exemplo.com"
-                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-primary focus:ring-primary"
+                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary focus:ring-offset-0"
                 required
               />
             </div>
@@ -138,7 +138,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 pr-10 focus:border-primary focus:ring-primary"
+                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 pr-10 focus:border-primary focus:ring-1 focus:ring-primary focus:ring-offset-0"
                 required
               />
               <Button
@@ -153,7 +153,7 @@ const Login = () => {
             </div>
             <Button
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
+              className="w-full bg-primary hover:bg-primary-glow text-primary-foreground font-semibold py-3 rounded-lg transition-colors"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -168,11 +168,11 @@ const Login = () => {
           </form>
 
           {/* Links abaixo do botão */}
-          <div className="flex flex-col space-y-3 pt-4">
+          <div className="flex flex-col space-y-3 pt-4 items-center justify-center">
             <Button
               variant="link"
               onClick={handleForgotPassword}
-              className="text-gray-300 hover:text-white p-0 h-auto text-sm justify-start"
+              className="text-gray-300 hover:text-white p-0 h-auto text-sm"
               disabled={!email || isLoading}
             >
               <Mail className="h-4 w-4 mr-1 inline" />
@@ -181,7 +181,7 @@ const Login = () => {
             <Button
               variant="link"
               onClick={handleSignUp}
-              className="text-gray-300 hover:text-white p-0 h-auto text-sm justify-start"
+              className="text-gray-300 hover:text-white p-0 h-auto text-sm"
             >
               <UserPlus className="h-4 w-4 mr-1 inline" />
               Não tem uma conta? Crie uma
