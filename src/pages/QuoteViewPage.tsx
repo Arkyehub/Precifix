@@ -23,15 +23,15 @@ interface Quote {
   user_id: string;
   client_id: string | null;
   client_name: string;
-  client_document: string | null; // Adicionado
-  client_phone: string | null; // Adicionado
-  client_email: string | null; // Adicionado
-  client_address: string | null; // Adicionado
-  client_city: string | null; // Adicionado
-  client_state: string | null; // Adicionado
-  client_zip_code: string | null; // Adicionado
+  client_document: string | null; // Novo campo
+  client_phone: string | null; // Novo campo
+  client_email: string | null; // Novo campo
+  client_address: string | null; // Novo campo
+  client_city: string | null; // Novo campo
+  client_state: string | null; // Novo campo
+  client_zip_code: string | null; // Novo campo
   vehicle_id: string | null;
-  vehicle: string; // Campo de texto simples para o veículo
+  vehicle: string; // Campo de texto simples para o veículo (Marca Modelo (Placa))
   services_summary: QuotedService[]; // Corrigido para services_summary
   products: any[]; // Mantido como any[] por enquanto
   total_price: number;
@@ -245,7 +245,6 @@ const QuoteViewPage = () => {
             </CardHeader>
             <CardContent className="p-4 space-y-2 text-sm">
               <p><strong>Veículo:</strong> {quote.vehicle || 'N/A'}</p>
-              {/* Removido campos específicos de veículo que não estão sendo salvos */}
             </CardContent>
           </Card>
         </div>
@@ -286,7 +285,6 @@ const QuoteViewPage = () => {
                       </td>
                     </tr>
                   ))}
-                  {/* Produtos não estão sendo salvos atualmente, mas mantemos a estrutura se forem adicionados */}
                   {quote.products.map((item, index) => (
                     <tr key={`product-${index}`}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Produto</td>
