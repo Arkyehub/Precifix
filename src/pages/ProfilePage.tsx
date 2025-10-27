@@ -401,7 +401,7 @@ const ProfilePage = () => {
   if (!user) return <p>Por favor, faça login para ver seu perfil.</p>;
 
   return (
-    <div className="px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
           <div className="flex items-center gap-3">

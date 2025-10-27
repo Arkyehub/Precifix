@@ -1,39 +1,26 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 
 interface SidebarContextType {
-  isMobileSidebarOpen: boolean;
-  toggleMobileSidebar: () => void;
-  closeMobileSidebar: () => void;
-  isDesktopSidebarCollapsed: boolean;
-  toggleDesktopSidebar: () => void;
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
+  closeSidebar: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export const SidebarProvider = ({ children }: { children: ReactNode }) => {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false); // Novo estado para o recolhimento no desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const toggleMobileSidebar = () => {
-    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const closeMobileSidebar = () => {
-    setIsMobileSidebarOpen(false);
-  };
-
-  const toggleDesktopSidebar = () => {
-    setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed);
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
   };
 
   return (
-    <SidebarContext.Provider value={{ 
-      isMobileSidebarOpen, 
-      toggleMobileSidebar, 
-      closeMobileSidebar,
-      isDesktopSidebarCollapsed,
-      toggleDesktopSidebar,
-    }}>
+    <SidebarContext.Provider value={{ isSidebarOpen, toggleSidebar, closeSidebar }}>
       {children}
     </SidebarContext.Provider>
   );

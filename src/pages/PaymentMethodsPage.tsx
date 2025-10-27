@@ -233,7 +233,7 @@ const PaymentMethodsPage = () => {
   if (error) return <p>Erro ao carregar formas de pagamento: {error.message}</p>;
 
   return (
-    <div className="px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
         <CardHeader>
           <div className="flex items-center justify-between">
