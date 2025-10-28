@@ -48,7 +48,7 @@ interface Profile {
   company_name: string | null;
   document_number: string | null; // Adicionado
   phone_number: string | null;
-  email: string; // Email vem do auth, mas é bom ter aqui
+  email: string | null; // Alterado para permitir null
   address: string | null;
   address_number: string | null; // Adicionado
   zip_code: string | null; // Adicionado
@@ -105,7 +105,7 @@ const QuoteViewPage = () => {
     queryFn: async () => {
       if (!quote?.user_id) return null;
 
-      // Buscar os campos corretos da tabela profiles
+      // Buscar os campos necessários da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code')
@@ -114,20 +114,16 @@ const QuoteViewPage = () => {
 
       if (error) {
         console.error("Erro ao buscar perfil:", error);
+        // Se a busca falhar (ex: RLS), retornamos null para o perfil, mas não lançamos erro
         return null;
       }
       
-      // Adicionar o email do usuário do auth (se necessário, mas o perfil deve ter os dados de contato)
-      const { data: userData } = await supabase.auth.admin.getUserById(quote.user_id);
-      const userEmail = userData.user?.email || null;
-
-      // Adicionar campos de cidade/estado/cep/número que não estão no perfil, mas são úteis
-      // Nota: O perfil do usuário só tem address, address_number e zip_code. Cidade e Estado não são salvos lá.
-      // Vamos usar o que temos e formatar o endereço.
+      // Nota: O email não está na tabela profiles por padrão, mas podemos adicioná-lo se for salvo lá.
+      // Se não estiver, ele será null.
       return { 
         ...data, 
-        email: userEmail,
-        city: null, // Não temos cidade/estado no perfil
+        email: null, // Não podemos buscar o email do auth.admin aqui.
+        city: null, 
         state: null,
       } as Profile;
     },
@@ -182,13 +178,13 @@ const QuoteViewPage = () => {
   const companyName = profile?.company_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Empresa Não Informada';
   const companyDocument = profile?.document_number ? formatCpfCnpj(profile.document_number) : 'N/A';
   const companyPhone = profile?.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A';
-  const companyEmail = profile?.email || 'N/A';
+  const companyEmail = profile?.email || 'N/A'; // Agora será null se não estiver no profiles
   
   let companyAddress = 'Endereço Não Informado';
   if (profile?.address) {
     companyAddress = profile.address;
     if (profile.address_number) companyAddress += `, ${profile.address_number}`;
-    if (profile.zip_code) companyAddress += ` (CEP: ${profile.zip_code})`;
+    if (profile.zip_code) companyAddress += ` (CEP: ${formatCpfCnpj(profile.zip_code)})`; // Usar formatCpfCnpj para formatar CEP
   }
 
   return (
