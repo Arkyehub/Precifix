@@ -144,7 +144,14 @@ export const QuoteGenerator = ({
     selectedClient, // Adicionado para resolver o erro TS2345
   };
 
-  const isQuoteValid = selectedServices.length > 0 && clientNameInput.trim() !== '' && finalPrice > 0;
+  // 1. Validação principal: Serviços, Cliente, Preço FINAL e VEÍCULO
+  const isQuoteValid = selectedServices.length > 0 
+    && clientNameInput.trim() !== '' 
+    && finalPrice > 0
+    && !!selectedVehicleId; // Requer que o veículo esteja selecionado
+
+  // 2. Validação específica para WhatsApp: Telefone preenchido (além da validade geral)
+  const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
@@ -211,7 +218,7 @@ export const QuoteGenerator = ({
 
           <Button
             onClick={() => handleSendViaWhatsApp(quoteData)}
-            disabled={!isQuoteValid || isSendingWhatsApp || !rawPhoneNumber}
+            disabled={isWhatsAppDisabled}
             className="flex-1 bg-green-500 hover:bg-green-600 text-white"
           >
             {isSendingWhatsApp ? (
@@ -224,7 +231,7 @@ export const QuoteGenerator = ({
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
-            Selecione pelo menos um serviço, informe o nome do cliente e garanta que o preço final seja maior que zero.
+            Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo** e garanta que o preço final seja maior que zero.
           </p>
         )}
       </CardContent>
