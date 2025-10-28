@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, FileText, Clock, DollarSign, Tag, Car, Users, MapPin, Mail, Phone } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, FileText, Clock, DollarSign, Tag, Car, Users, MapPin, Mail, Phone, Calendar } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,11 +12,10 @@ import { formatMinutesToHHMM } from '@/lib/cost-calculations';
 import { cn, formatCpfCnpj, formatPhoneNumber, formatCep } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// Definindo QuotedService localmente para refletir a estrutura salva em services_summary
 interface QuotedService {
   name: string;
   price: number;
-  execution_time_minutes: number; // Corrigido para o nome do campo salvo
+  execution_time_minutes: number;
 }
 
 interface Quote {
@@ -24,35 +23,37 @@ interface Quote {
   user_id: string;
   client_id: string | null;
   client_name: string;
-  client_document: string | null; // Novo campo
-  client_phone: string | null; // Novo campo
-  client_email: string | null; // Novo campo
-  client_address: string | null; // Novo campo
-  client_city: string | null; // Novo campo
-  client_state: string | null; // Novo campo
-  client_zip_code: string | null; // Novo campo
+  client_document: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  client_address: string | null;
+  client_city: string | null;
+  client_state: string | null;
+  client_zip_code: string | null;
   vehicle_id: string | null;
-  vehicle: string; // Campo de texto simples para o veículo (Marca Modelo (Placa))
-  services_summary: QuotedService[]; // Corrigido para services_summary
-  products: any[]; // Mantido como any[] por enquanto
+  vehicle: string;
+  services_summary: QuotedService[];
+  products: any[];
   total_price: number;
   status: 'pending' | 'accepted' | 'rejected';
   valid_until: string;
   created_at: string;
   notes: string;
+  service_date: string | null;
+  service_time: string | null;
 }
 
 interface Profile {
   id: string;
-  first_name: string | null; // Usar first_name
-  last_name: string | null; // Usar last_name
+  first_name: string | null;
+  last_name: string | null;
   company_name: string | null;
-  document_number: string | null; // Adicionado
+  document_number: string | null;
   phone_number: string | null;
-  email: string | null; // Alterado para permitir null
+  email: string | null;
   address: string | null;
-  address_number: string | null; // Adicionado
-  zip_code: string | null; // Adicionado
+  address_number: string | null;
+  zip_code: string | null;
   city: string | null;
   state: string | null;
   avatar_url: string | null;
@@ -63,72 +64,48 @@ const QuoteViewPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 1. Query para buscar o orçamento (acesso público)
   const { data: quote, isLoading: isLoadingQuote, error: quoteError } = useQuery<Quote>({
     queryKey: ['publicQuote', quoteId],
     queryFn: async () => {
       if (!quoteId) throw new Error("ID do orçamento não fornecido.");
-
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, services_summary')
+        .select('*, services_summary, service_date, service_time')
         .eq('id', quoteId)
         .single();
-
       if (error) {
         if (error.code === 'PGRST116' || error.code === '42501') {
           throw new Error("Orçamento Não Encontrado.");
         }
         throw error;
       }
-      
-      // Ajustar a estrutura dos dados para corresponder à interface Quote
       const quoteData = data as unknown as Quote;
-      
-      // Mapeamento dos campos JSONB para as propriedades da interface
       if (data.services_summary) {
         quoteData.services_summary = data.services_summary as QuotedService[];
       } else {
         quoteData.services_summary = [];
       }
-      
-      // Inicializar products como array vazio, já que não estamos buscando products_summary
       quoteData.products = [];
-
       return quoteData;
     },
     enabled: !!quoteId,
     retry: false,
   });
 
-  // 2. Query para buscar o perfil do usuário (depende do quote.user_id)
   const { data: profile, isLoading: isLoadingProfile, error: profileError } = useQuery<Profile>({
     queryKey: ['publicProfile', quote?.user_id],
     queryFn: async () => {
       if (!quote?.user_id) return null;
-
-      // Buscar os campos necessários da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('*') // SIMPLIFIED: Fetch all columns for diagnostics
+        .select('*')
         .eq('id', quote.user_id)
         .single();
-
       if (error) {
         console.error("Erro ao buscar perfil:", error);
-        // Se a busca falhar (ex: RLS), retornamos null para o perfil, mas não lançamos erro
         return null;
       }
-      
-      // Log para depuração
-      console.log("PROFILE DATA FETCHED:", data);
-
-      // Nota: O email não está na tabela profiles por padrão, mas podemos adicioná-lo se for salvo lá.
-      // Se não estiver, ele será null.
-      return { 
-        ...data, 
-        email: null, // Não podemos buscar o email do auth.admin aqui.
-      } as Profile;
+      return { ...data, email: null } as Profile;
     },
     enabled: !!quote?.user_id,
     retry: false,
@@ -175,9 +152,8 @@ const QuoteViewPage = () => {
   };
 
   const currentStatus = statusMap[quote.status] || statusMap.pending;
-  const totalQuotePrice = quote.total_price; // Usar o total_price salvo
+  const totalQuotePrice = quote.total_price;
 
-  // Dados da Empresa para exibição
   const companyName = profile?.company_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Empresa Não Informada';
   const companyDocument = profile?.document_number ? formatCpfCnpj(profile.document_number) : 'N/A';
   const companyPhone = profile?.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A';
@@ -213,7 +189,6 @@ const QuoteViewPage = () => {
           </div>
         </header>
 
-        {/* Informações da Empresa (Perfil) */}
         <Card className="mb-6 shadow-lg">
           <CardHeader className="border-b p-4">
             <CardTitle className="text-lg flex items-center text-primary">
@@ -253,7 +228,6 @@ const QuoteViewPage = () => {
           </CardContent>
         </Card>
 
-        {/* Informações do Cliente e Veículo */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card className="shadow-lg">
             <CardHeader className="border-b p-4">
@@ -271,23 +245,35 @@ const QuoteViewPage = () => {
                 <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
                 {quote.client_address || 'N/A'}
               </p>
+              <div className="pt-2 mt-2 border-t">
+                <p className="flex items-center font-medium">
+                  <Car className="h-4 w-4 mr-1 text-muted-foreground" />
+                  <strong>Veículo:</strong> {quote.vehicle || 'N/A'}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-lg">
             <CardHeader className="border-b p-4">
               <CardTitle className="text-lg flex items-center text-primary">
-                <Car className="h-5 w-5 mr-2" />
-                Informações do Veículo
+                <Calendar className="h-5 w-5 mr-2" />
+                Agendamento do Serviço
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2 text-sm">
-              <p><strong>Veículo:</strong> {quote.vehicle || 'N/A'}</p>
+              {quote.service_date ? (
+                <>
+                  <p><strong>Data:</strong> {format(new Date(quote.service_date), 'PPP', { locale: ptBR })}</p>
+                  <p><strong>Hora:</strong> {quote.service_time || 'A combinar'}</p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">Data e hora a combinar.</p>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Detalhes do Orçamento (Serviços e Produtos) */}
         <Card className="mb-6 shadow-lg">
           <CardHeader className="border-b p-4">
             <CardTitle className="text-lg flex items-center text-primary">
@@ -339,7 +325,6 @@ const QuoteViewPage = () => {
           </CardContent>
         </Card>
 
-        {/* Notas */}
         {quote.notes && (
           <Card className="mb-6 shadow-lg">
             <CardHeader className="border-b p-4">
@@ -354,7 +339,6 @@ const QuoteViewPage = () => {
           </Card>
         )}
 
-        {/* Ações do Cliente (Aceitar/Rejeitar) */}
         {quote.status === 'pending' && (
           <div className="flex justify-end gap-4 mt-8">
             <Button variant="destructive" className="px-6 py-3 text-lg">

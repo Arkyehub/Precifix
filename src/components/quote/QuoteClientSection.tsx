@@ -3,16 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Car, Loader2 } from "lucide-react"; // Adicionado Loader2
+import { Plus, Users, Car, Loader2, Calendar, Clock } from "lucide-react"; // Adicionado Calendar e Clock
 import { Client } from '@/types/clients';
-import { Vehicle } from '@/types/vehicles'; // Nova importação
+import { Vehicle } from '@/types/vehicles';
 import { ClientFormDialog } from '../ClientFormDialog';
 import { formatPhoneNumber } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ClientAutocomplete } from './ClientAutocomplete';
-import { useSession } from '@/components/SessionContextProvider'; // Import adicionado
+import { useSession } from '@/components/SessionContextProvider';
+import { Checkbox } from '@/components/ui/checkbox'; // Adicionado Checkbox
 
 interface QuoteClientSectionProps {
   selectedClient: Client | undefined;
@@ -28,9 +29,15 @@ interface QuoteClientSectionProps {
   setAddress: (address: string) => void;
   observations: string;
   setObservations: (obs: string) => void;
-  // Novos props para veículos
   selectedVehicleId: string | null;
   setSelectedVehicleId: (id: string | null) => void;
+  // Novos props para agendamento
+  serviceDate: string;
+  setServiceDate: (date: string) => void;
+  isTimeDefined: boolean;
+  setIsTimeDefined: (defined: boolean) => void;
+  serviceTime: string;
+  setServiceTime: (time: string) => void;
 }
 
 export const QuoteClientSection = ({
@@ -47,15 +54,20 @@ export const QuoteClientSection = ({
   setAddress,
   observations,
   setObservations,
-  // Novos
   selectedVehicleId,
   setSelectedVehicleId,
+  // Novos
+  serviceDate,
+  setServiceDate,
+  isTimeDefined,
+  setIsTimeDefined,
+  serviceTime,
+  setServiceTime,
 }: QuoteClientSectionProps) => {
-  const { user } = useSession(); // Import adicionado
+  const { user } = useSession();
   const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
-  const [showVehicleDetails, setShowVehicleDetails] = useState(false); // Toggle para mostrar/esconder detalhes do veículo
+  const [showVehicleDetails, setShowVehicleDetails] = useState(false);
 
-  // Fetch veículos do cliente selecionado
   const { data: clientVehicles, isLoading: isLoadingVehicles } = useQuery<Vehicle[]>({
     queryKey: ['clientVehicles', selectedClient?.id],
     queryFn: async () => {
@@ -74,24 +86,21 @@ export const QuoteClientSection = ({
     enabled: !!selectedClient?.id && !!user,
   });
 
-  // Efeito para sincronizar campos de input com o cliente selecionado
   useEffect(() => {
     if (selectedClient) {
       setClientNameInput(selectedClient.name);
       setRawPhoneNumber(selectedClient.phone_number || '');
       setAddress(selectedClient.address || '');
-      // Não limpamos selectedVehicleId aqui, pois é independente
     } else {
       if (!clientNameInput) {
         setRawPhoneNumber('');
         setAddress('');
-        // Chamada segura: verifica se setSelectedVehicleId é uma função antes de chamar
         if (typeof setSelectedVehicleId === 'function') {
-          setSelectedVehicleId(null); // Limpar veículo selecionado se cliente for deselecionado
+          setSelectedVehicleId(null);
         }
       }
     }
-  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedClient]);
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
@@ -99,28 +108,23 @@ export const QuoteClientSection = ({
   };
 
   const handleClientSelectFromAutocomplete = (client: Client) => {
-    onClientSelect(client.id); // Seleciona o ID no componente pai
+    onClientSelect(client.id);
   };
 
   const handleClientDeselect = () => {
-    onClientSelect(null); // Desseleciona o ID no componente pai
-    setSelectedVehicleId(null); // Limpa veículo selecionado
+    onClientSelect(null);
+    setSelectedVehicleId(null);
   };
 
   const handleVehicleSelect = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
-    const vehicle = clientVehicles?.find(v => v.id === vehicleId);
-    if (vehicle) {
-      // Preencher campos manuais se necessário, mas como é seletor, os detalhes são mostrados abaixo
-      setShowVehicleDetails(true);
-    }
+    setShowVehicleDetails(true);
   };
 
   const handleAddClientClick = () => {
     setIsClientFormDialogOpen(true);
   };
 
-  // Formatar placa para exibição (ex: ABC-1A23)
   const formatPlate = (plate: string | null) => plate ? plate.toUpperCase() : 'N/A';
 
   return (
@@ -154,9 +158,37 @@ export const QuoteClientSection = ({
         />
       </div>
 
-      {/* Novo Seletor de Veículo */}
+      <div className="space-y-2">
+        <Label htmlFor="phoneNumber">Telefone</Label>
+        <Input 
+          id="phoneNumber" 
+          value={formatPhoneNumber(rawPhoneNumber)}
+          onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ''))} 
+          placeholder="(XX) XXXXX-XXXX"
+          maxLength={15}
+          className="bg-background/50 placeholder:text-gray-300" 
+        />
+      </div>
+
       <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="vehicle-select">Selecionar Veículo do Cliente</Label>
+        <Label htmlFor="address">Endereço</Label>
+        <Input
+          id="address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Rua, Número, Cidade"
+          className="bg-background/50"
+        />
+      </div>
+
+      <div className="md:col-span-2 pt-4 border-t border-border/50">
+        <div className="flex items-center gap-2 mb-2">
+          <Car className="h-4 w-4 text-primary" />
+          <Label className="text-sm font-medium">Veículo do Cliente</Label>
+        </div>
+      </div>
+
+      <div className="space-y-2 md:col-span-2">
         {selectedClient ? (
           <Select value={selectedVehicleId || ''} onValueChange={handleVehicleSelect} disabled={isLoadingVehicles || clientVehicles?.length === 0}>
             <SelectTrigger className="bg-background/50">
@@ -183,58 +215,49 @@ export const QuoteClientSection = ({
           </Select>
         ) : (
           <Input
-            id="vehicle-select"
             placeholder="Selecione um cliente primeiro para ver veículos"
             className="bg-background/50"
             disabled
           />
         )}
-        {/* Caixa de Informações do Veículo Selecionado */}
-        {selectedVehicleId && selectedClient && (
-          <div className="mt-2 p-3 bg-primary/10 rounded-md border border-primary/30">
-            <p className="text-sm font-medium text-foreground">Detalhes do Veículo:</p>
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Marca:</span> {clientVehicles?.find(v => v.id === selectedVehicleId)?.brand || 'N/A'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Modelo:</span> {clientVehicles?.find(v => v.id === selectedVehicleId)?.model || 'N/A'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Placa:</span> {formatPlate(clientVehicles?.find(v => v.id === selectedVehicleId)?.plate)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Ano:</span> {clientVehicles?.find(v => v.id === selectedVehicleId)?.year || 'N/A'}
-            </p>
-          </div>
-        )}
-        {!selectedClient && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Selecione um cliente para escolher um veículo cadastrado, ou adicione veículos no perfil do cliente.
-          </p>
-        )}
+      </div>
+
+      <div className="md:col-span-2 pt-4 border-t border-border/50">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <Label className="text-sm font-medium">Agendamento do Serviço</Label>
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phoneNumber">Telefone</Label>
-        <Input 
-          id="phoneNumber" 
-          value={formatPhoneNumber(rawPhoneNumber)}
-          onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ''))} 
-          placeholder="(XX) XXXXX-XXXX"
-          maxLength={15}
-          className="bg-background/50 placeholder:text-gray-300" 
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="address">Endereço</Label>
+        <Label htmlFor="serviceDate">Data do Serviço</Label>
         <Input
-          id="address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Rua, Número, Cidade"
+          id="serviceDate"
+          type="date"
+          value={serviceDate}
+          onChange={(e) => setServiceDate(e.target.value)}
           className="bg-background/50"
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="serviceTime">Hora do Serviço</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="define-time"
+            checked={isTimeDefined}
+            onCheckedChange={(checked) => setIsTimeDefined(checked as boolean)}
+          />
+          <Label htmlFor="define-time" className="text-sm text-muted-foreground">Definir hora</Label>
+          <Input
+            id="serviceTime"
+            type="time"
+            value={serviceTime}
+            onChange={(e) => setServiceTime(e.target.value)}
+            className="bg-background/50"
+            disabled={!isTimeDefined}
+          />
+        </div>
       </div>
 
       <div className="space-y-2 md:col-span-2">

@@ -6,8 +6,8 @@ import jsPDF from "jspdf";
 import { QuotedService } from "@/components/QuoteServiceFormDialog";
 import { PaymentMethod } from "@/components/PaymentMethodFormDialog";
 import { formatPhoneNumber } from '@/lib/utils';
-import { addDays } from 'date-fns'; // Adicionar importação
-import { Client } from '@/types/clients'; // Adicionado importação do tipo Client
+import { addDays } from 'date-fns';
+import { Client } from '@/types/clients';
 
 interface Profile {
   id: string;
@@ -35,11 +35,13 @@ interface QuoteData {
   profile: Profile | undefined;
   clientDetails: { phoneNumber: string | null; address: string | null };
   clientId?: string;
-  selectedVehicleId?: string; // Adicionado
-  selectedClient: Client | undefined; // Adicionado para resolver erros TS
+  selectedVehicleId?: string;
+  selectedClient: Client | undefined;
+  // Novos campos de agendamento
+  serviceDate: string;
+  serviceTime: string;
 }
 
-// Função auxiliar para obter a URL da imagem como Data URL (base64)
 const getImageDataUrl = async (url: string | null): Promise<string | null> => {
   if (!url) return null;
   try {
@@ -57,7 +59,6 @@ const getImageDataUrl = async (url: string | null): Promise<string | null> => {
   }
 };
 
-// Função para gerar o PDF como um Blob
 const createQuotePdfBlob = async ({
   client_name,
   vehicle,
@@ -70,24 +71,24 @@ const createQuotePdfBlob = async ({
   observations,
   profile,
   clientDetails,
+  serviceDate,
+  serviceTime,
 }: QuoteData): Promise<Blob> => {
   const doc = new jsPDF();
   let yPosition = 20;
 
-  // Cabeçalho
-  doc.setFillColor(255, 204, 0); // Amarelo dourado
+  doc.setFillColor(255, 204, 0);
   doc.rect(0, 0, 210, 40, 'F');
   
-  // Imagem de perfil do usuário (avatar)
   const avatarDataUrl = await getImageDataUrl(profile?.avatar_url);
   if (avatarDataUrl) {
     const imgWidth = 25;
     const imgHeight = 25;
-    const x = 210 - 15 - imgWidth; // 15mm da direita
+    const x = 210 - 15 - imgWidth;
     doc.addImage(avatarDataUrl, 'JPEG', x, 10, imgWidth, imgHeight);
   }
   
-  doc.setTextColor(0, 0, 0); // Definir cor do texto para preto
+  doc.setTextColor(0, 0, 0);
   doc.setFontSize(24);
   doc.text("ORÇAMENTO", 15, 25);
   
@@ -96,7 +97,6 @@ const createQuotePdfBlob = async ({
   const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
   doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
 
-  // Nome da Empresa
   if (profile?.company_name) {
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
@@ -106,7 +106,6 @@ const createQuotePdfBlob = async ({
   yPosition = 55;
   doc.setTextColor(0, 0, 0);
 
-  // Dados do Cliente
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.text("Dados do Cliente", 15, yPosition);
@@ -129,9 +128,28 @@ const createQuotePdfBlob = async ({
     yPosition += 6;
   }
 
+  // Nova seção de Agendamento no PDF
+  if (serviceDate) {
+    yPosition += 6;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text("Agendamento do Serviço", 15, yPosition);
+    yPosition += 8;
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    const [sYear, sMonth, sDay] = serviceDate.split('-');
+    const displayServiceDate = new Date(parseInt(sYear), parseInt(sMonth) - 1, parseInt(sDay));
+    doc.text(`Data: ${displayServiceDate.toLocaleDateString('pt-BR')}`, 15, yPosition);
+    if (serviceTime) {
+      doc.text(`Hora: ${serviceTime}`, 60, yPosition);
+    } else {
+      doc.text(`Hora: A combinar`, 60, yPosition);
+    }
+    yPosition += 6;
+  }
+
   yPosition += 6;
 
-  // Serviços Selecionados
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.text("Serviços Contratados", 15, yPosition);
@@ -140,7 +158,6 @@ const createQuotePdfBlob = async ({
   doc.setFontSize(11);
   doc.setFont(undefined, 'normal');
   
-  // Cabeçalho da tabela
   doc.setFillColor(240, 240, 240);
   doc.rect(15, yPosition - 5, 180, 8, 'F');
   doc.text("Serviço", 20, yPosition);
@@ -175,7 +192,6 @@ const createQuotePdfBlob = async ({
 
   yPosition += 8;
 
-  // Seção de Desconto
   if (calculatedDiscount > 0) {
     if (yPosition > 270) { doc.addPage(); yPosition = 20; }
     doc.setFontSize(12);
@@ -186,7 +202,6 @@ const createQuotePdfBlob = async ({
     yPosition += 10;
   }
 
-  // Seção de Forma de Pagamento
   if (currentPaymentMethod) {
     if (yPosition > 270) { doc.addPage(); yPosition = 20; }
     doc.setFontSize(12);
@@ -208,7 +223,6 @@ const createQuotePdfBlob = async ({
     yPosition += 10;
   }
 
-  // Total
   doc.setFillColor(255, 204, 0);
   doc.rect(15, yPosition - 5, 180, 12, 'F');
   doc.setTextColor(0, 0, 0);
@@ -219,7 +233,6 @@ const createQuotePdfBlob = async ({
   doc.setFont(undefined, 'normal');
   yPosition += 20;
 
-  // Observações
   if (observations) {
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
@@ -233,7 +246,6 @@ const createQuotePdfBlob = async ({
     yPosition += splitObs.length * 5 + 10;
   }
 
-  // Rodapé
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   const footerY = 280;
@@ -247,13 +259,10 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Determina o domínio base para links públicos
   const getBaseUrl = () => {
-    // Em ambientes de desenvolvimento (localhost), use a variável de ambiente VITE_PUBLIC_URL
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return import.meta.env.VITE_PUBLIC_URL || window.location.origin;
     }
-    // Em produção, use o domínio atual
     return window.location.origin;
   };
 
@@ -274,15 +283,18 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_id?: string;
       vehicle_id?: string;
       status?: 'pending' | 'confirmed' | 'rejected';
-      client_document?: string; // Adicionado
-      client_phone?: string; // Adicionado
-      client_email?: string; // Adicionado
-      client_address?: string; // Adicionado
-      client_city?: string; // Adicionado
-      client_state?: string; // Adicionado
-      client_zip_code?: string; // Adicionado
-      notes?: string; // Adicionado
-      valid_until: string; // Adicionado
+      client_document?: string;
+      client_phone?: string;
+      client_email?: string;
+      client_address?: string;
+      client_city?: string;
+      client_state?: string;
+      client_zip_code?: string;
+      notes?: string;
+      valid_until: string;
+      // Novos campos
+      service_date?: string | null;
+      service_time?: string | null;
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -308,6 +320,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           client_zip_code: quoteData.client_zip_code,
           notes: quoteData.notes,
           valid_until: quoteData.valid_until,
+          service_date: quoteData.service_date || null,
+          service_time: quoteData.service_time || null,
         })
         .select()
         .single();
@@ -357,7 +371,6 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   });
 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
-    // Calcular valid_until (7 dias após a data do orçamento)
     const quoteDateObj = new Date(quoteData.quote_date);
     const validUntilDate = addDays(quoteDateObj, 7);
     const validUntilString = validUntilDate.toISOString().split('T')[0];
@@ -380,19 +393,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code: quoteData.selectedClient?.zip_code,
       notes: quoteData.observations,
       valid_until: validUntilString,
+      service_date: quoteData.serviceDate,
+      service_time: quoteData.serviceTime,
     });
   };
 
   const handleGenerateAndDownloadPDF = async (quoteData: QuoteData) => {
     try {
       const pdfBlob = await createQuotePdfBlob(quoteData);
-
       const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
-      
-      // Salvar orçamento no banco de dados (sem URL do PDF por enquanto)
       await saveQuoteAndGetId(quoteData);
-
-      // Download do PDF
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -401,7 +411,6 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
       toast({
         title: "PDF gerado e salvo!",
         description: "O orçamento foi baixado para seu dispositivo e salvo no sistema.",
@@ -427,21 +436,15 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
 
     try {
-      // 1. Salvar o orçamento no banco de dados para obter o ID
       const savedQuote = await saveQuoteAndGetId(quoteData);
-
-      // 2. Gerar o link de visualização usando o domínio base correto
       const baseUrl = getBaseUrl();
       const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
-
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${quoteViewLink}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
       );
       const whatsappLink = `https://wa.me/55${quoteData.clientDetails.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`;
-      
       window.open(whatsappLink, '_blank');
-
       toast({
         title: "Link de Orçamento enviado via WhatsApp!",
         description: "O link de visualização foi enviado para o cliente.",
@@ -458,19 +461,11 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
   const handleGenerateLink = async (quoteData: QuoteData) => {
     try {
-      // 1. Salvar o orçamento no banco de dados para obter o ID
       const savedQuote = await saveQuoteAndGetId(quoteData);
-
-      // 2. Gerar o link de visualização usando o domínio base correto
       const baseUrl = getBaseUrl();
       const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
-
-      // 3. Copiar para a área de transferência
       await navigator.clipboard.writeText(quoteViewLink);
-
-      // 4. Abrir em nova aba
       window.open(quoteViewLink, '_blank');
-
       toast({
         title: "Link gerado e copiado!",
         description: "O link de visualização foi copiado para a área de transferência e aberto em uma nova aba.",
@@ -493,7 +488,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   return {
     handleGenerateAndDownloadPDF,
     handleSendViaWhatsApp,
-    handleGenerateLink, // Exportar a nova função
+    handleGenerateLink,
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };

@@ -7,12 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
 import { PaymentMethod } from "./PaymentMethodFormDialog";
 import { Client } from '@/types/clients';
-import { Vehicle } from '@/types/vehicles'; // Nova importação
+import { Vehicle } from '@/types/vehicles';
 import { QuoteClientSection } from '@/components/quote/QuoteClientSection';
 import { useQuoteActions } from '@/hooks/use-quote-actions';
 import { supabase } from "@/integrations/supabase/client";
-
-// ... (interfaces existentes)
 
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
@@ -25,9 +23,11 @@ interface QuoteGeneratorProps {
   selectedClient: Client | undefined;
   onClientSelect: (clientId: string | null) => void;
   onClientSaved: (client: Client) => void;
-  // Novos props para veículos (agora obrigatórios)
   selectedVehicleId: string | null;
   setSelectedVehicleId: (id: string | null) => void;
+  // Novos props para agendamento
+  serviceDate: string;
+  serviceTime: string;
 }
 
 const getTodayDateString = () => {
@@ -49,13 +49,14 @@ export const QuoteGenerator = ({
   selectedClient,
   onClientSelect,
   onClientSaved,
-  // Novos
   selectedVehicleId,
   setSelectedVehicleId,
+  // Novos
+  serviceDate,
+  serviceTime,
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
 
-  // Fetch profile
   const { data: profile } = useQuery({
     queryKey: ['userProfile', user?.id],
     queryFn: async () => {
@@ -73,35 +74,38 @@ export const QuoteGenerator = ({
 
   const [clientNameInput, setClientNameInput] = useState(selectedClient?.name || "");
   const [quoteDate, setQuoteDate] = useState(getTodayDateString());
-  const [vehicle, setVehicle] = useState(""); // Pode ser usado como fallback se não houver selectedVehicleId
+  const [vehicle, setVehicle] = useState("");
   const [observations, setObservations] = useState("");
   const [rawPhoneNumber, setRawPhoneNumber] = useState(selectedClient?.phone_number || '');
   const [address, setAddress] = useState(selectedClient?.address || '');
+  
+  // Estados para agendamento movidos para o componente pai (QuoteCalculator)
+  // mas precisamos de um estado local para o checkbox
+  const [isTimeDefined, setIsTimeDefined] = useState(!!serviceTime);
+  const [localServiceDate, setLocalServiceDate] = useState(serviceDate);
+  const [localServiceTime, setLocalServiceTime] = useState(serviceTime);
 
-  // Efeito para sincronizar o nome do cliente e detalhes de contato quando selectedClient muda
   useEffect(() => {
     if (selectedClient) {
       setClientNameInput(selectedClient.name);
       setRawPhoneNumber(selectedClient.phone_number || '');
       setAddress(selectedClient.address || '');
     } else {
-      // Se o cliente for deselecionado, mas o input de nome não estiver vazio, não limpe
       if (!clientNameInput) {
         setRawPhoneNumber('');
         setAddress('');
       }
     }
-  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedClient]);
 
   const { 
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
-    handleGenerateLink, // Nova função
+    handleGenerateLink,
     isGeneratingOrSaving, 
     isSendingWhatsApp 
   } = useQuoteActions(profile);
 
-  // Fetch vehicle details if selectedVehicleId is set
   const { data: vehicleDetails } = useQuery<Vehicle | null>({
     queryKey: ['vehicleDetails', selectedVehicleId],
     queryFn: async () => {
@@ -117,7 +121,6 @@ export const QuoteGenerator = ({
     enabled: !!selectedVehicleId,
   });
 
-  // Atualiza o campo 'vehicle' com o modelo do veículo selecionado
   useEffect(() => {
     if (vehicleDetails) {
       setVehicle(`${vehicleDetails.brand} ${vehicleDetails.model} (${vehicleDetails.plate || 'N/A'})`);
@@ -139,18 +142,17 @@ export const QuoteGenerator = ({
     profile,
     clientDetails: { phoneNumber: rawPhoneNumber, address: address },
     clientId: selectedClient?.id,
-    // Novos dados para veículo
     selectedVehicleId,
-    selectedClient, // Adicionado para resolver o erro TS2345
+    selectedClient,
+    serviceDate: localServiceDate,
+    serviceTime: isTimeDefined ? localServiceTime : '',
   };
 
-  // 1. Validação principal: Serviços, Cliente, Preço FINAL e VEÍCULO
   const isQuoteValid = selectedServices.length > 0 
     && clientNameInput.trim() !== '' 
     && finalPrice > 0
-    && !!selectedVehicleId; // Requer que o veículo esteja selecionado
+    && !!selectedVehicleId;
 
-  // 2. Validação específica para WhatsApp: Telefone preenchido (além da validade geral)
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8;
 
   return (
@@ -183,9 +185,15 @@ export const QuoteGenerator = ({
           setAddress={setAddress}
           observations={observations}
           setObservations={setObservations}
-          // Novos props
           selectedVehicleId={selectedVehicleId}
           setSelectedVehicleId={setSelectedVehicleId}
+          // Passando os novos estados e setters
+          serviceDate={localServiceDate}
+          setServiceDate={setLocalServiceDate}
+          isTimeDefined={isTimeDefined}
+          setIsTimeDefined={setIsTimeDefined}
+          serviceTime={localServiceTime}
+          setServiceTime={setLocalServiceTime}
         />
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">

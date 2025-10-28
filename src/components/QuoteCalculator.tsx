@@ -54,14 +54,13 @@ export const QuoteCalculator = () => {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]);
   const [otherCostsGlobal, setOtherCostsGlobal] = useState(0);
-  const [profitMargin, setProfitMargin] = useState(40); // Esta será a margem de lucro DESEJADA
+  const [profitMargin, setProfitMargin] = useState(40);
   const [displayProfitMargin, setDisplayProfitMargin] = useState('40,00');
 
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
   const [selectedInstallments, setSelectedInstallments] = useState<number | null>(null);
   const [paymentFee, setPaymentFee] = useState(0);
 
-  // Estados para o desconto
   const [discountValueInput, setDiscountValueInput] = useState('0,00');
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
   const [calculatedDiscount, setCalculatedDiscount] = useState(0);
@@ -69,12 +68,15 @@ export const QuoteCalculator = () => {
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
   const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
 
-  // Novo estado para o cliente
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
   
-  // Novo estado para o veículo
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null); // Adicionado
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+
+  // Novos estados para agendamento
+  const [serviceDate, setServiceDate] = useState('');
+  const [isTimeDefined, setIsTimeDefined] = useState(false);
+  const [serviceTime, setServiceTime] = useState('');
 
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -181,22 +183,19 @@ export const QuoteCalculator = () => {
     enabled: !!selectedClientId && !!user,
   });
 
-  // Efeito para sincronizar selectedClient
   useEffect(() => {
     if (selectedClientId && clientDetails) {
       setSelectedClient(clientDetails);
     } else {
       setSelectedClient(undefined);
-      setSelectedVehicleId(null); // Limpar veículo se o cliente for deselecionado
+      setSelectedVehicleId(null);
     }
   }, [selectedClientId, clientDetails]);
 
-  // Efeito para sincronizar selectedServiceIds com quotedServices
   useEffect(() => {
     if (!allServices) return;
 
     const newQuotedServices: QuotedService[] = [];
-    // Usar um Set para rastrear IDs de serviços já adicionados, evitando duplicatas
     const currentQuotedServiceIds = new Set(quotedServices.map(s => s.id));
 
     selectedServiceIds.forEach(id => {
@@ -206,29 +205,25 @@ export const QuoteCalculator = () => {
       } else {
         const serviceFromAll = allServices.find(s => s.id === id);
         if (serviceFromAll) {
-          newQuotedServices.push({ ...serviceFromAll }); // Adiciona uma cópia para permitir overrides
+          newQuotedServices.push({ ...serviceFromAll });
         }
       }
     });
 
-    // Remover serviços que foram desmarcados
     const filteredQuotedServices = newQuotedServices.filter(qs => selectedServiceIds.includes(qs.id));
 
     setQuotedServices(filteredQuotedServices);
-  }, [selectedServiceIds, allServices]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedServiceIds, allServices]);
 
-  // Efeito para manter displayProfitMargin sincronizado com profitMargin
   useEffect(() => {
     setDisplayProfitMargin(profitMargin.toFixed(2).replace('.', ','));
   }, [profitMargin]);
 
-  // Função para abrir o diálogo de edição de serviço
   const handleEditServiceForQuote = (service: QuotedService) => {
     setServiceToEditInDialog(service);
     setIsServiceFormDialogOpen(true);
   };
 
-  // Função para salvar as alterações de um serviço no orçamento
   const handleSaveQuotedService = (updatedService: QuotedService) => {
     setQuotedServices(prev => 
       prev.map(s => (s.id === updatedService.id ? updatedService : s))
@@ -239,21 +234,17 @@ export const QuoteCalculator = () => {
     });
   };
 
-  // Função para lidar com a seleção de cliente
   const handleClientSelect = (clientId: string | null) => {
     setSelectedClientId(clientId);
   };
 
-  // Função para lidar com o cliente salvo (usado no ClientFormDialog)
   const handleClientSaved = (client: Client) => {
     setSelectedClientId(client.id);
   };
 
-  // Calculate total execution time
   const totalExecutionTime = quotedServices.reduce((sum, service) => 
     sum + (service.quote_execution_time_minutes ?? service.execution_time_minutes), 0);
 
-  // Calculate total products cost
   const totalProductsCost = quotedServices.reduce((sum, service) => {
     let serviceProductCost = 0;
     if (productCostCalculationMethod === 'per-service') {
@@ -261,7 +252,7 @@ export const QuoteCalculator = () => {
       productsToUse?.forEach(product => {
         const productForCalc = {
           gallonPrice: product.price,
-          gallonVolume: product.size * 1000, // Convert liters to ml
+          gallonVolume: product.size * 1000,
           dilutionRatio: product.dilution_ratio,
           usagePerVehicle: product.usage_per_vehicle,
           type: product.type,
@@ -273,42 +264,34 @@ export const QuoteCalculator = () => {
     return sum + serviceProductCost;
   }, 0);
 
-  // Calculate total labor cost across all selected services
   const totalLaborCost = quotedServices.reduce((sum, service) => {
     const laborCostPerHour = service.quote_labor_cost_per_hour ?? service.labor_cost_per_hour;
     const executionTimeMinutes = service.quote_execution_time_minutes ?? service.execution_time_minutes;
     return sum + (executionTimeMinutes / 60) * laborCostPerHour;
   }, 0);
 
-  // Calculate total other costs across all selected services
   const totalOtherCosts = quotedServices.reduce((sum, service) => 
     sum + (service.quote_other_costs ?? service.other_costs), 0);
 
-  // Calculate total cost (soma de todos os custos operacionais e de produtos)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
 
-  // Calcular o Valor do Serviço (soma dos preços de venda dos serviços)
   const totalServiceValue = quotedServices.reduce((sum, service) => 
     sum + (service.quote_price ?? service.price), 0);
 
-  // Efeito para calcular o desconto
   useEffect(() => {
     const parsedDiscountValue = parseFloat(discountValueInput.replace(',', '.')) || 0;
     let newCalculatedDiscount = 0;
 
     if (discountType === 'amount') {
       newCalculatedDiscount = parsedDiscountValue;
-    } else { // percentage
+    } else {
       newCalculatedDiscount = totalServiceValue * (parsedDiscountValue / 100);
     }
-    // Garantir que o desconto não seja maior que o valor total
     setCalculatedDiscount(Math.min(newCalculatedDiscount, totalServiceValue));
   }, [discountValueInput, discountType, totalServiceValue]);
 
-  // Valor após o desconto ser aplicado
   const valueAfterDiscount = totalServiceValue - calculatedDiscount;
 
-  // Effect to calculate payment fee
   useEffect(() => {
     if (!selectedPaymentMethodId || !paymentMethods || valueAfterDiscount <= 0) {
       setPaymentFee(0);
@@ -329,26 +312,17 @@ export const QuoteCalculator = () => {
     } else if (method.type === 'credit_card') {
       const rateToApply = selectedInstallments 
         ? method.installments?.find(inst => inst.installments === selectedInstallments)?.rate || 0
-        : method.installments?.find(inst => inst.installments === 1)?.rate || 0; // Default to 1x if no installments selected
+        : method.installments?.find(inst => inst.installments === 1)?.rate || 0;
       calculatedFee = valueAfterDiscount * (rateToApply / 100);
     }
     setPaymentFee(calculatedFee);
   }, [valueAfterDiscount, selectedPaymentMethodId, selectedInstallments, paymentMethods]);
 
-  // Preço Final com Taxa (Valor a Receber) - AGORA SUBTRAI A TAXA
-  const finalPriceWithFee = valueAfterDiscount - paymentFee; // Este é o Valor a Receber (receita)
-
-  // Calcular o Lucro Líquido
+  const finalPriceWithFee = valueAfterDiscount - paymentFee;
   const netProfit = finalPriceWithFee - totalCost;
-
-  // Calcular a Margem de Lucro Real (baseada no Lucro Líquido e no Valor a Receber (final))
   const currentProfitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
-
-  // Calcular o Preço Sugerido com base na Margem de Lucro Desejada
   const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
-
   const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
-
   const currentPaymentMethod = paymentMethods?.find(pm => pm.id === selectedPaymentMethodId);
 
   if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods) {
@@ -436,9 +410,9 @@ export const QuoteCalculator = () => {
             suggestedPriceBasedOnDesiredMargin={suggestedPriceBasedOnDesiredMargin}
             selectedPaymentMethodId={selectedPaymentMethodId}
             paymentFee={paymentFee}
-            finalPriceWithFee={finalPriceWithFee} // Passando a receita final
+            finalPriceWithFee={finalPriceWithFee}
             valueAfterDiscount={valueAfterDiscount}
-            netProfit={netProfit} // Passando o lucro líquido
+            netProfit={netProfit}
           />
         </CardContent>
       </Card>
@@ -447,16 +421,18 @@ export const QuoteCalculator = () => {
         <QuoteGenerator
           selectedServices={quotedServices}
           totalCost={totalCost}
-          finalPrice={valueAfterDiscount} // Passar o valor após o desconto para o PDF
+          finalPrice={valueAfterDiscount}
           executionTime={totalExecutionTime}
-          calculatedDiscount={calculatedDiscount} // Passar o desconto calculado
-          currentPaymentMethod={currentPaymentMethod} // Passar a forma de pagamento selecionada
-          selectedInstallments={selectedInstallments} // Passar as parcelas selecionadas
-          selectedClient={selectedClient} // Passar o cliente selecionado
-          onClientSelect={handleClientSelect} // Passar o handler de seleção
-          onClientSaved={handleClientSaved} // Passar o handler de salvamento
-          selectedVehicleId={selectedVehicleId} // Passando o estado do veículo
-          setSelectedVehicleId={setSelectedVehicleId} // Passando o setter do veículo
+          calculatedDiscount={calculatedDiscount}
+          currentPaymentMethod={currentPaymentMethod}
+          selectedInstallments={selectedInstallments}
+          selectedClient={selectedClient}
+          onClientSelect={handleClientSelect}
+          onClientSaved={handleClientSaved}
+          selectedVehicleId={selectedVehicleId}
+          setSelectedVehicleId={setSelectedVehicleId}
+          serviceDate={serviceDate}
+          serviceTime={isTimeDefined ? serviceTime : ''}
         />
       )}
 
