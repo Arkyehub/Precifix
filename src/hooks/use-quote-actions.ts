@@ -346,37 +346,41 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     },
   });
 
+  const saveQuoteAndGetId = async (quoteData: QuoteData) => {
+    // Calcular valid_until (7 dias após a data do orçamento)
+    const quoteDateObj = new Date(quoteData.quote_date);
+    const validUntilDate = addDays(quoteDateObj, 7);
+    const validUntilString = validUntilDate.toISOString().split('T')[0];
+
+    return await saveQuoteMutation.mutateAsync({
+      client_name: quoteData.client_name,
+      vehicle: quoteData.vehicle,
+      total_price: quoteData.finalPrice,
+      quote_date: quoteData.quote_date,
+      services_summary: getServicesSummaryForDb(quoteData.selectedServices),
+      client_id: quoteData.clientId,
+      vehicle_id: quoteData.selectedVehicleId,
+      status: 'pending',
+      client_document: quoteData.selectedClient?.document_number,
+      client_phone: quoteData.selectedClient?.phone_number,
+      client_email: quoteData.selectedClient?.email,
+      client_address: quoteData.selectedClient?.address,
+      client_city: quoteData.selectedClient?.city,
+      client_state: quoteData.selectedClient?.state,
+      client_zip_code: quoteData.selectedClient?.zip_code,
+      notes: quoteData.observations,
+      valid_until: validUntilString,
+    });
+  };
+
   const handleGenerateAndDownloadPDF = async (quoteData: QuoteData) => {
     try {
       const pdfBlob = await createQuotePdfBlob(quoteData);
 
       const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
       
-      // Calcular valid_until (7 dias após a data do orçamento)
-      const quoteDateObj = new Date(quoteData.quote_date);
-      const validUntilDate = addDays(quoteDateObj, 7);
-      const validUntilString = validUntilDate.toISOString().split('T')[0];
-
       // Salvar orçamento no banco de dados (sem URL do PDF por enquanto)
-      await saveQuoteMutation.mutateAsync({
-        client_name: quoteData.client_name,
-        vehicle: quoteData.vehicle,
-        total_price: quoteData.finalPrice,
-        quote_date: quoteData.quote_date,
-        services_summary: getServicesSummaryForDb(quoteData.selectedServices),
-        client_id: quoteData.clientId,
-        vehicle_id: quoteData.selectedVehicleId,
-        status: 'pending',
-        client_document: quoteData.selectedClient?.document_number,
-        client_phone: quoteData.selectedClient?.phone_number,
-        client_email: quoteData.selectedClient?.email,
-        client_address: quoteData.selectedClient?.address,
-        client_city: quoteData.selectedClient?.city,
-        client_state: quoteData.selectedClient?.state,
-        client_zip_code: quoteData.selectedClient?.zip_code,
-        notes: quoteData.observations,
-        valid_until: validUntilString,
-      });
+      await saveQuoteAndGetId(quoteData);
 
       // Download do PDF
       const url = URL.createObjectURL(pdfBlob);
@@ -413,31 +417,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
 
     try {
-      // Calcular valid_until (7 dias após a data do orçamento)
-      const quoteDateObj = new Date(quoteData.quote_date);
-      const validUntilDate = addDays(quoteDateObj, 7);
-      const validUntilString = validUntilDate.toISOString().split('T')[0];
-
       // 1. Salvar o orçamento no banco de dados para obter o ID
-      const savedQuote = await saveQuoteMutation.mutateAsync({
-        client_name: quoteData.client_name,
-        vehicle: quoteData.vehicle,
-        total_price: quoteData.finalPrice,
-        quote_date: quoteData.quote_date,
-        services_summary: getServicesSummaryForDb(quoteData.selectedServices),
-        client_id: quoteData.clientId,
-        vehicle_id: quoteData.selectedVehicleId,
-        status: 'pending',
-        client_document: quoteData.selectedClient?.document_number,
-        client_phone: quoteData.selectedClient?.phone_number,
-        client_email: quoteData.selectedClient?.email,
-        client_address: quoteData.selectedClient?.address,
-        client_city: quoteData.selectedClient?.city,
-        client_state: quoteData.selectedClient?.state,
-        client_zip_code: quoteData.selectedClient?.zip_code,
-        notes: quoteData.observations,
-        valid_until: validUntilString,
-      });
+      const savedQuote = await saveQuoteAndGetId(quoteData);
 
       // 2. Gerar o link de visualização
       const quoteViewLink = `${window.location.origin}/quote/view/${savedQuote.id}`;
@@ -464,12 +445,43 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
   };
 
+  const handleGenerateLink = async (quoteData: QuoteData) => {
+    try {
+      // 1. Salvar o orçamento no banco de dados para obter o ID
+      const savedQuote = await saveQuoteAndGetId(quoteData);
+
+      // 2. Gerar o link de visualização
+      const quoteViewLink = `${window.location.origin}/quote/view/${savedQuote.id}`;
+
+      // 3. Copiar para a área de transferência
+      await navigator.clipboard.writeText(quoteViewLink);
+
+      // 4. Abrir em nova aba
+      window.open(quoteViewLink, '_blank');
+
+      toast({
+        title: "Link gerado e copiado!",
+        description: "O link de visualização foi copiado para a área de transferência e aberto em uma nova aba.",
+      });
+      return quoteViewLink;
+    } catch (error: any) {
+      console.error("Erro ao gerar link:", error);
+      toast({
+        title: "Erro ao gerar link",
+        description: error.message || "Não foi possível gerar o link de visualização.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const isGeneratingOrSaving = saveQuoteMutation.isPending;
   const isSendingWhatsApp = saveQuoteMutation.isPending;
 
   return {
     handleGenerateAndDownloadPDF,
     handleSendViaWhatsApp,
+    handleGenerateLink, // Exportar a nova função
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };

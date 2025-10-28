@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2, Send } from "lucide-react";
+import { FileText, Download, Loader2, Send, Link as LinkIcon } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
@@ -96,6 +96,7 @@ export const QuoteGenerator = ({
   const { 
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
+    handleGenerateLink, // Nova função
     isGeneratingOrSaving, 
     isSendingWhatsApp 
   } = useQuoteActions(profile);
@@ -193,6 +194,21 @@ export const QuoteGenerator = ({
             )}
             Gerar e Baixar PDF
           </Button>
+          
+          <Button
+            onClick={() => handleGenerateLink(quoteData)}
+            disabled={!isQuoteValid || isGeneratingOrSaving}
+            variant="outline"
+            className="flex-1 border-primary/30 hover:bg-primary/10 hover:border-primary"
+          >
+            {isGeneratingOrSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LinkIcon className="mr-2 h-4 w-4" />
+            )}
+            Link do Orçamento
+          </Button>
+
           <Button
             onClick={() => handleSendViaWhatsApp(quoteData)}
             disabled={!isQuoteValid || isSendingWhatsApp || !rawPhoneNumber}
