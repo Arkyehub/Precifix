@@ -46,7 +46,8 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [newVehicle, setNewVehicle] = useState<NewVehicle>({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null); // Novo estado para edição
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [initialVehicles, setInitialVehicles] = useState<Vehicle[]>([]); // Para rastrear veículos originais
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +72,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         setCity('');
         setState('');
         setVehicles([]);
+        setInitialVehicles([]);
       }
       // Reset vehicle form states
       setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
@@ -90,6 +92,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       toast({ title: "Erro", description: "Não foi possível carregar os veículos do cliente.", variant: "destructive" });
     } else {
       setVehicles(data || []);
+      setInitialVehicles(data || []); // Salva a lista inicial
     }
   };
 
@@ -135,7 +138,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       // Add new vehicle
       const vehicleWithId: Vehicle = {
         ...newVehicle,
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}`, // ID temporário para novos veículos
         client_id: client?.id || '',
         created_at: new Date().toISOString(),
       };
@@ -172,7 +175,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      const { vehicles: clientVehicles, ...clientDetails } = clientPayload;
+      const { vehicles: currentVehicles, ...clientDetails } = clientPayload;
       const clientData = {
         name: clientDetails.name,
         user_id: user.id,
@@ -197,26 +200,62 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         savedClient = data;
       }
 
-      // Step 2: Delete all existing vehicles for this client to ensure a clean sync.
-      // This runs for both new and existing clients. For new clients, it does nothing.
-      const { error: deleteError } = await supabase.from('client_vehicles').delete().eq('client_id', savedClient.id);
-      if (deleteError) {
-        throw new Error(`Erro ao limpar veículos antigos: ${deleteError.message}`);
-      }
-
-      // Step 3: Insert the new list of vehicles one by one.
-      if (clientVehicles && clientVehicles.length > 0) {
-        const vehiclesToInsert = clientVehicles.map(vehicle => ({
+      // Step 2: Handle Vehicle Synchronization
+      const vehiclesToUpsert = currentVehicles
+        .filter(v => !v.id.startsWith('temp-')) // Apenas veículos com ID real ou que serão inseridos
+        .map(vehicle => ({
+          id: vehicle.id.startsWith('temp-') ? undefined : vehicle.id, // Usar undefined para novos inserts
           client_id: savedClient.id,
           brand: vehicle.brand,
           model: vehicle.model,
           plate: vehicle.plate || null,
           year: vehicle.year,
         }));
-        
-        const { error: insertError } = await supabase.from('client_vehicles').insert(vehiclesToInsert);
-        if (insertError) {
-          throw new Error(`Erro ao salvar veículos: ${insertError.message}`);
+
+      const vehiclesToInsert = currentVehicles
+        .filter(v => v.id.startsWith('temp-')) // Apenas novos veículos (com ID temporário)
+        .map(vehicle => ({
+          client_id: savedClient.id,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          plate: vehicle.plate || null,
+          year: vehicle.year,
+        }));
+
+      // Upsert existing/updated vehicles
+      if (vehiclesToUpsert.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('client_vehicles')
+          .upsert(vehiclesToUpsert, { onConflict: 'id' });
+        if (upsertError) throw new Error(`Erro ao atualizar veículos: ${upsertError.message}`);
+      }
+
+      // Insert new vehicles
+      if (vehiclesToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('client_vehicles')
+          .insert(vehiclesToInsert);
+        if (insertError) throw new Error(`Erro ao inserir novos veículos: ${insertError.message}`);
+      }
+
+      // Identify vehicles to delete (those in initialVehicles but not in currentVehicles, and have a real ID)
+      const currentRealIds = new Set(currentVehicles.filter(v => !v.id.startsWith('temp-')).map(v => v.id));
+      const idsToDelete = initialVehicles
+        .filter(v => !currentRealIds.has(v.id))
+        .map(v => v.id);
+
+      if (idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('client_vehicles')
+          .delete()
+          .in('id', idsToDelete);
+        // O erro de chave estrangeira deve ser mitigado pela política ON DELETE SET NULL no DB
+        if (deleteError) {
+          // Se o erro for de chave estrangeira, o DB deve ter definido quotes.vehicle_id como NULL.
+          // Se for outro erro, lançamos.
+          if (deleteError.code !== '23503') { // 23503 é o código para foreign key violation
+            throw new Error(`Erro ao limpar veículos antigos: ${deleteError.message}`);
+          }
         }
       }
 
@@ -225,7 +264,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['clientsWithVehicles', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['clientVehicles', data.id] }); // Invalida a query de veículos para o cliente salvo
+      queryClient.invalidateQueries({ queryKey: ['clientVehicles', data.id] });
       toast({
         title: client ? "Cliente atualizado!" : "Cliente adicionado!",
         description: `${data.name} foi ${client ? 'atualizado' : 'adicionado'} com sucesso.`,
@@ -266,7 +305,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   };
 
   const currentVehicleData = editingVehicle || newVehicle;
-  const isEditing = !!editingVehicle;
+  const isEditingVehicle = !!editingVehicle;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -364,7 +403,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    if (isEditing) {
+                    if (isEditingVehicle) {
                       resetVehicleForm();
                     } else {
                       setShowAddVehicle(!showAddVehicle);
@@ -372,7 +411,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                   }}
                   className="w-full justify-start h-auto p-2"
                 >
-                  {isEditing ? (
+                  {isEditingVehicle ? (
                     <>
                       <Trash2 className="h-4 w-4 mr-2 text-destructive" />
                       Cancelar Edição
@@ -384,7 +423,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                     </>
                   )}
                 </Button>
-                {(showAddVehicle || isEditing) && (
+                {(showAddVehicle || isEditingVehicle) && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-brand">Marca *</Label>
@@ -430,7 +469,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                       />
                     </div>
                     <Button onClick={addVehicleToList} className="md:col-span-4">
-                      {isEditing ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
+                      {isEditingVehicle ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
                     </Button>
                   </div>
                 )}
