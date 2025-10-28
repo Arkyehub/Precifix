@@ -46,12 +46,14 @@ interface Profile {
   first_name: string | null; // Usar first_name
   last_name: string | null; // Usar last_name
   company_name: string | null;
+  document_number: string | null; // Adicionado
   phone_number: string | null;
   email: string; // Email vem do auth, mas é bom ter aqui
   address: string | null;
+  address_number: string | null; // Adicionado
+  zip_code: string | null; // Adicionado
   city: string | null;
   state: string | null;
-  zip_code: string | null;
 }
 
 const QuoteViewPage = () => {
@@ -106,7 +108,7 @@ const QuoteViewPage = () => {
       // Buscar os campos corretos da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, company_name, phone_number, address, city, state, zip_code')
+        .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code')
         .eq('id', quote.user_id)
         .single();
 
@@ -116,11 +118,18 @@ const QuoteViewPage = () => {
       }
       
       // Adicionar o email do usuário do auth (se necessário, mas o perfil deve ter os dados de contato)
-      // Para simplificar, vamos buscar o email do auth se o perfil não tiver um campo de email
       const { data: userData } = await supabase.auth.admin.getUserById(quote.user_id);
       const userEmail = userData.user?.email || null;
 
-      return { ...data, email: userEmail } as Profile;
+      // Adicionar campos de cidade/estado/cep/número que não estão no perfil, mas são úteis
+      // Nota: O perfil do usuário só tem address, address_number e zip_code. Cidade e Estado não são salvos lá.
+      // Vamos usar o que temos e formatar o endereço.
+      return { 
+        ...data, 
+        email: userEmail,
+        city: null, // Não temos cidade/estado no perfil
+        state: null,
+      } as Profile;
     },
     enabled: !!quote?.user_id,
     retry: false,
@@ -171,11 +180,16 @@ const QuoteViewPage = () => {
 
   // Dados da Empresa para exibição
   const companyName = profile?.company_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Empresa Não Informada';
+  const companyDocument = profile?.document_number ? formatCpfCnpj(profile.document_number) : 'N/A';
   const companyPhone = profile?.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A';
   const companyEmail = profile?.email || 'N/A';
-  const companyAddress = profile?.address && profile?.city && profile?.state 
-    ? `${profile.address}, ${profile.city} - ${profile.state}` 
-    : 'Endereço Não Informado';
+  
+  let companyAddress = 'Endereço Não Informado';
+  if (profile?.address) {
+    companyAddress = profile.address;
+    if (profile.address_number) companyAddress += `, ${profile.address_number}`;
+    if (profile.zip_code) companyAddress += ` (CEP: ${profile.zip_code})`;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -215,11 +229,12 @@ const QuoteViewPage = () => {
             ) : profile ? (
               <>
                 <p className="md:col-span-2"><strong>Empresa:</strong> {companyName}</p>
+                <p><strong>CPF/CNPJ:</strong> {companyDocument}</p>
                 <p className="flex items-center">
                   <Phone className="h-4 w-4 mr-1 text-muted-foreground" />
                   <strong>Telefone:</strong> {companyPhone}
                 </p>
-                <p className="flex items-center">
+                <p className="flex items-center md:col-span-2">
                   <Mail className="h-4 w-4 mr-1 text-muted-foreground" />
                   <strong>E-mail:</strong> {companyEmail}
                 </p>
@@ -250,7 +265,7 @@ const QuoteViewPage = () => {
               <p><strong>E-mail:</strong> {quote.client_email || 'N/A'}</p>
               <p className="flex items-center">
                 <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                {quote.client_address}, {quote.client_city} - {quote.client_state}
+                {quote.client_address || 'N/A'}
               </p>
             </CardContent>
           </Card>
