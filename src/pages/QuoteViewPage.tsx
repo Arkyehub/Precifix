@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
-import { cn, formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
+import { cn, formatCpfCnpj, formatPhoneNumber, formatCep } from '@/lib/utils';
 
 // Definindo QuotedService localmente para refletir a estrutura salva em services_summary
 interface QuotedService {
@@ -108,7 +108,7 @@ const QuoteViewPage = () => {
       // Buscar os campos necessários da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code')
+        .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code, city, state')
         .eq('id', quote.user_id)
         .single();
 
@@ -123,8 +123,6 @@ const QuoteViewPage = () => {
       return { 
         ...data, 
         email: null, // Não podemos buscar o email do auth.admin aqui.
-        city: null, 
-        state: null,
       } as Profile;
     },
     enabled: !!quote?.user_id,
@@ -184,7 +182,9 @@ const QuoteViewPage = () => {
   if (profile?.address) {
     companyAddress = profile.address;
     if (profile.address_number) companyAddress += `, ${profile.address_number}`;
-    if (profile.zip_code) companyAddress += ` (CEP: ${formatCpfCnpj(profile.zip_code)})`; // Usar formatCpfCnpj para formatar CEP
+    if (profile.city) companyAddress += ` - ${profile.city}`;
+    if (profile.state) companyAddress += `/${profile.state}`;
+    if (profile.zip_code) companyAddress += ` (CEP: ${formatCep(profile.zip_code)})`;
   }
 
   return (
