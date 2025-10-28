@@ -66,7 +66,7 @@ const QuoteViewPage = () => {
 
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, services_summary, products_summary') // Selecionando as colunas reais
+        .select('*, services_summary') // products_summary removido
         .eq('id', quoteId)
         .single();
 
@@ -87,11 +87,8 @@ const QuoteViewPage = () => {
         quoteData.services_summary = [];
       }
       
-      if (data.products_summary) {
-        quoteData.products = data.products_summary as any[];
-      } else {
-        quoteData.products = [];
-      }
+      // Inicializar products como array vazio, já que não estamos buscando products_summary
+      quoteData.products = [];
 
       return quoteData;
     },
@@ -284,21 +281,7 @@ const QuoteViewPage = () => {
                       </td>
                     </tr>
                   ))}
-                  {quote.products.map((item, index) => (
-                    <tr key={`product-${index}`}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Produto</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{item.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
-                        {item.quantity}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500">
-                        R$ {(item.price / item.quantity).toFixed(2).replace('.', ',')}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                        R$ {item.price.toFixed(2).replace('.', ',')}
-                      </td>
-                    </tr>
-                  ))}
+                  {/* Removido a iteração sobre quote.products, pois não estamos mais buscando essa coluna */}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
