@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
 import { cn, formatCpfCnpj, formatPhoneNumber, formatCep } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Definindo QuotedService localmente para refletir a estrutura salva em services_summary
 interface QuotedService {
@@ -54,6 +55,7 @@ interface Profile {
   zip_code: string | null; // Adicionado
   city: string | null;
   state: string | null;
+  avatar_url: string | null;
 }
 
 const QuoteViewPage = () => {
@@ -176,7 +178,6 @@ const QuoteViewPage = () => {
   const companyName = profile?.company_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Empresa Não Informada';
   const companyDocument = profile?.document_number ? formatCpfCnpj(profile.document_number) : 'N/A';
   const companyPhone = profile?.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A';
-  const companyEmail = profile?.email || 'N/A'; // Agora será null se não estiver no profiles
   
   let companyAddress = 'Endereço Não Informado';
   if (profile?.address) {
@@ -217,27 +218,31 @@ const QuoteViewPage = () => {
               Informações da Empresa
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <CardContent className="p-4 flex items-start gap-4 text-sm">
             {isLoadingProfile ? (
               <div className="col-span-2 flex items-center text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando perfil...
               </div>
             ) : profile ? (
               <>
-                <p className="md:col-span-2"><strong>Empresa:</strong> {companyName}</p>
-                <p><strong>CPF/CNPJ:</strong> {companyDocument}</p>
-                <p className="flex items-center">
-                  <Phone className="h-4 w-4 mr-1 text-muted-foreground" />
-                  <strong>Telefone:</strong> {companyPhone}
-                </p>
-                <p className="flex items-center md:col-span-2">
-                  <Mail className="h-4 w-4 mr-1 text-muted-foreground" />
-                  <strong>E-mail:</strong> {companyEmail}
-                </p>
-                <p className="md:col-span-2 flex items-center">
-                  <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                  <strong>Endereço:</strong> {companyAddress}
-                </p>
+                <Avatar className="h-16 w-16 border">
+                  <AvatarImage src={profile.avatar_url || ''} alt={companyName} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                    {companyName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <p className="text-base"><strong>Empresa:</strong> {companyName}</p>
+                  <p><strong>CPF/CNPJ:</strong> {companyDocument}</p>
+                  <p className="flex items-center">
+                    <Phone className="h-4 w-4 mr-1 text-muted-foreground" />
+                    <strong>Telefone:</strong> {companyPhone}
+                  </p>
+                  <p className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+                    <strong>Endereço:</strong> {companyAddress}
+                  </p>
+                </div>
               </>
             ) : (
               <p className="col-span-2 text-destructive">Não foi possível carregar as informações da empresa.</p>
