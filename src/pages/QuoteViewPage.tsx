@@ -120,6 +120,9 @@ const QuoteViewPage = () => {
         return null;
       }
       
+      // Log para depuração
+      console.log("PROFILE DATA FETCHED:", data);
+
       // Nota: O email não está na tabela profiles por padrão, mas podemos adicioná-lo se for salvo lá.
       // Se não estiver, ele será null.
       return { 
@@ -215,7 +218,7 @@ const QuoteViewPage = () => {
           <CardHeader className="border-b p-4">
             <CardTitle className="text-lg flex items-center text-primary">
               <Users className="h-5 w-5 mr-2" />
-              Informações da Empresa
+              Informações da Empresa (v2)
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex items-start gap-4 text-sm">
