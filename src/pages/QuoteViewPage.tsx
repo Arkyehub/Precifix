@@ -108,7 +108,7 @@ const QuoteViewPage = () => {
       // Buscar os campos necessários da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code, city, state')
+        .select('*') // SIMPLIFIED: Fetch all columns for diagnostics
         .eq('id', quote.user_id)
         .single();
 
