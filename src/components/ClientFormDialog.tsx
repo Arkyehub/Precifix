@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Pencil } from 'lucide-react'; // Importar Pencil
 
 interface ClientFormDialogProps {
   isOpen: boolean;
@@ -46,6 +46,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [newVehicle, setNewVehicle] = useState<NewVehicle>({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
   const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null); // Novo estado para edição
 
   useEffect(() => {
     if (isOpen) {
@@ -70,9 +71,11 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         setCity('');
         setState('');
         setVehicles([]);
-        setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
-        setShowAddVehicle(false);
       }
+      // Reset vehicle form states
+      setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
+      setShowAddVehicle(false);
+      setEditingVehicle(null);
     }
   }, [client, isOpen]);
 
@@ -99,11 +102,23 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   };
 
   const handleAddVehicleChange = (field: keyof NewVehicle, value: string | number) => {
-    setNewVehicle(prev => ({ ...prev, [field]: value }));
+    if (editingVehicle) {
+      setEditingVehicle(prev => prev ? { ...prev, [field]: value } : null);
+    } else {
+      setNewVehicle(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const resetVehicleForm = () => {
+    setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
+    setEditingVehicle(null);
+    setShowAddVehicle(false);
   };
 
   const addVehicleToList = () => {
-    if (!newVehicle.brand || !newVehicle.model || newVehicle.year < 1900 || newVehicle.year > new Date().getFullYear() + 1) {
+    const vehicleData = editingVehicle || newVehicle;
+    
+    if (!vehicleData.brand || !vehicleData.model || vehicleData.year < 1900 || vehicleData.year > new Date().getFullYear() + 1) {
       toast({
         title: "Dados inválidos",
         description: "Preencha marca, modelo e ano válido (1900 a atual +1).",
@@ -111,20 +126,36 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       });
       return;
     }
-    const vehicleWithId: Vehicle = {
-      ...newVehicle,
-      id: `temp-${Date.now()}`,
-      client_id: client?.id || '',
-      created_at: new Date().toISOString(),
-    };
-    setVehicles(prev => [vehicleWithId, ...prev]);
-    setNewVehicle({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
-    setShowAddVehicle(false);
-    toast({ title: "Veículo adicionado!", description: `${newVehicle.brand} ${newVehicle.model} foi adicionado à lista.` });
+
+    if (editingVehicle) {
+      // Save edited vehicle
+      setVehicles(prev => prev.map(v => v.id === editingVehicle.id ? editingVehicle : v));
+      toast({ title: "Veículo atualizado!", description: `${editingVehicle.brand} ${editingVehicle.model} foi atualizado.` });
+    } else {
+      // Add new vehicle
+      const vehicleWithId: Vehicle = {
+        ...newVehicle,
+        id: `temp-${Date.now()}`,
+        client_id: client?.id || '',
+        created_at: new Date().toISOString(),
+      };
+      setVehicles(prev => [vehicleWithId, ...prev]);
+      toast({ title: "Veículo adicionado!", description: `${newVehicle.brand} ${newVehicle.model} foi adicionado à lista.` });
+    }
+    
+    resetVehicleForm();
+  };
+
+  const startEditVehicle = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setShowAddVehicle(true);
   };
 
   const removeVehicleFromList = (id: string) => {
     setVehicles(prev => prev.filter(v => v.id !== id));
+    if (editingVehicle?.id === id) {
+      resetVehicleForm();
+    }
   };
 
   const upsertClientMutation = useMutation({
@@ -175,18 +206,17 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
 
       // Step 3: Insert the new list of vehicles one by one.
       if (clientVehicles && clientVehicles.length > 0) {
-        for (const vehicle of clientVehicles) {
-          const vehicleToInsert = {
-            client_id: savedClient.id,
-            brand: vehicle.brand,
-            model: vehicle.model,
-            plate: vehicle.plate || null,
-            year: vehicle.year,
-          };
-          const { error: insertError } = await supabase.from('client_vehicles').insert(vehicleToInsert);
-          if (insertError) {
-            throw new Error(`Erro ao salvar o veículo ${vehicle.brand} ${vehicle.model}: ${insertError.message}`);
-          }
+        const vehiclesToInsert = clientVehicles.map(vehicle => ({
+          client_id: savedClient.id,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          plate: vehicle.plate || null,
+          year: vehicle.year,
+        }));
+        
+        const { error: insertError } = await supabase.from('client_vehicles').insert(vehiclesToInsert);
+        if (insertError) {
+          throw new Error(`Erro ao salvar veículos: ${insertError.message}`);
         }
       }
 
@@ -195,6 +225,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clients', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['clientsWithVehicles', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['clientVehicles', data.id] }); // Invalida a query de veículos para o cliente salvo
       toast({
         title: client ? "Cliente atualizado!" : "Cliente adicionado!",
         description: `${data.name} foi ${client ? 'atualizado' : 'adicionado'} com sucesso.`,
@@ -233,6 +264,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       vehicles: vehicles,
     });
   };
+
+  const currentVehicleData = editingVehicle || newVehicle;
+  const isEditing = !!editingVehicle;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -286,7 +320,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
             </div>
           </div>
 
-          <Collapsible className="space-y-2">
+          <Collapsible open={showAddVehicle || vehicles.length > 0} onOpenChange={setShowAddVehicle} className="space-y-2">
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
                 Veículos Cadastrados ({vehicles.length})
@@ -302,14 +336,26 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                         <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
                         <p className="text-sm text-muted-foreground">Placa: {vehicle.plate || 'N/A'} | Ano: {vehicle.year}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeVehicleFromList(vehicle.id)}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEditVehicle(vehicle)}
+                          className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          title="Editar veículo"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeVehicleFromList(vehicle.id)}
+                          className="text-destructive hover:bg-destructive/10"
+                          title="Excluir veículo"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -317,32 +363,74 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
               <div className="space-y-2 p-3 border rounded-md bg-muted/50">
                 <Button
                   variant="ghost"
-                  onClick={() => setShowAddVehicle(!showAddVehicle)}
+                  onClick={() => {
+                    if (isEditing) {
+                      resetVehicleForm();
+                    } else {
+                      setShowAddVehicle(!showAddVehicle);
+                    }
+                  }}
                   className="w-full justify-start h-auto p-2"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {showAddVehicle ? 'Cancelar' : 'Adicionar Novo Veículo'}
+                  {isEditing ? (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                      Cancelar Edição
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Novo Veículo
+                    </>
+                  )}
                 </Button>
-                {showAddVehicle && (
+                {(showAddVehicle || isEditing) && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-brand">Marca *</Label>
-                      <Input id="vehicle-brand" value={newVehicle.brand} onChange={(e) => handleAddVehicleChange('brand', e.target.value)} placeholder="Ex: Honda" className="bg-background" />
+                      <Input 
+                        id="vehicle-brand" 
+                        value={currentVehicleData.brand} 
+                        onChange={(e) => handleAddVehicleChange('brand', e.target.value)} 
+                        placeholder="Ex: Honda" 
+                        className="bg-background" 
+                      />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-model">Modelo *</Label>
-                      <Input id="vehicle-model" value={newVehicle.model} onChange={(e) => handleAddVehicleChange('model', e.target.value)} placeholder="Ex: Civic" className="bg-background" />
+                      <Input 
+                        id="vehicle-model" 
+                        value={currentVehicleData.model} 
+                        onChange={(e) => handleAddVehicleChange('model', e.target.value)} 
+                        placeholder="Ex: Civic" 
+                        className="bg-background" 
+                      />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-plate">Placa</Label>
-                      <Input id="vehicle-plate" value={newVehicle.plate} onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())} placeholder="Ex: ABC1D23" maxLength={7} className="bg-background" />
+                      <Input 
+                        id="vehicle-plate" 
+                        value={currentVehicleData.plate} 
+                        onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())} 
+                        placeholder="Ex: ABC1D23" 
+                        maxLength={7} 
+                        className="bg-background" 
+                      />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-year">Ano *</Label>
-                      <Input id="vehicle-year" type="number" value={newVehicle.year} onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)} min={1900} max={new Date().getFullYear() + 1} className="bg-background" />
+                      <Input 
+                        id="vehicle-year" 
+                        type="number" 
+                        value={currentVehicleData.year} 
+                        onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)} 
+                        min={1900} 
+                        max={new Date().getFullYear() + 1} 
+                        className="bg-background" 
+                      />
                     </div>
                     <Button onClick={addVehicleToList} className="md:col-span-4">
-                      Adicionar Veículo à Lista
+                      {isEditing ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
                     </Button>
                   </div>
                 )}
