@@ -43,14 +43,15 @@ interface Quote {
 
 interface Profile {
   id: string;
-  full_name: string;
-  company_name: string;
-  phone_number: string;
-  email: string;
-  address: string;
-  city: string;
-  state: string;
-  zip_code: string;
+  first_name: string | null; // Usar first_name
+  last_name: string | null; // Usar last_name
+  company_name: string | null;
+  phone_number: string | null;
+  email: string; // Email vem do auth, mas é bom ter aqui
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
 }
 
 const QuoteViewPage = () => {
@@ -66,7 +67,7 @@ const QuoteViewPage = () => {
 
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, services_summary') // products_summary removido
+        .select('*, services_summary')
         .eq('id', quoteId)
         .single();
 
@@ -102,9 +103,10 @@ const QuoteViewPage = () => {
     queryFn: async () => {
       if (!quote?.user_id) return null;
 
+      // Buscar os campos corretos da tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, company_name, phone_number, email, address, city, state, zip_code')
+        .select('id, first_name, last_name, company_name, phone_number, address, city, state, zip_code')
         .eq('id', quote.user_id)
         .single();
 
@@ -112,7 +114,13 @@ const QuoteViewPage = () => {
         console.error("Erro ao buscar perfil:", error);
         return null;
       }
-      return data as Profile;
+      
+      // Adicionar o email do usuário do auth (se necessário, mas o perfil deve ter os dados de contato)
+      // Para simplificar, vamos buscar o email do auth se o perfil não tiver um campo de email
+      const { data: userData } = await supabase.auth.admin.getUserById(quote.user_id);
+      const userEmail = userData.user?.email || null;
+
+      return { ...data, email: userEmail } as Profile;
     },
     enabled: !!quote?.user_id,
     retry: false,
@@ -159,9 +167,15 @@ const QuoteViewPage = () => {
   };
 
   const currentStatus = statusMap[quote.status] || statusMap.pending;
-  const totalServicesPrice = quote.services_summary.reduce((sum, s) => sum + s.price, 0);
-  const totalProductsPrice = quote.products.reduce((sum, p) => sum + p.price, 0);
   const totalQuotePrice = quote.total_price; // Usar o total_price salvo
+
+  // Dados da Empresa para exibição
+  const companyName = profile?.company_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Empresa Não Informada';
+  const companyPhone = profile?.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A';
+  const companyEmail = profile?.email || 'N/A';
+  const companyAddress = profile?.address && profile?.city && profile?.state 
+    ? `${profile.address}, ${profile.city} - ${profile.state}` 
+    : 'Endereço Não Informado';
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -200,13 +214,22 @@ const QuoteViewPage = () => {
               </div>
             ) : profile ? (
               <>
-                <p><strong>Empresa:</strong> {profile.company_name || profile.full_name}</p>
-                <p><strong>Telefone:</strong> {profile.phone_number ? formatPhoneNumber(profile.phone_number) : 'N/A'}</p>
-                <p><strong>E-mail:</strong> {profile.email}</p>
-                <p><strong>Endereço:</strong> {profile.address}, {profile.city} - {profile.state}</p>
+                <p className="md:col-span-2"><strong>Empresa:</strong> {companyName}</p>
+                <p className="flex items-center">
+                  <Phone className="h-4 w-4 mr-1 text-muted-foreground" />
+                  <strong>Telefone:</strong> {companyPhone}
+                </p>
+                <p className="flex items-center">
+                  <Mail className="h-4 w-4 mr-1 text-muted-foreground" />
+                  <strong>E-mail:</strong> {companyEmail}
+                </p>
+                <p className="md:col-span-2 flex items-center">
+                  <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+                  <strong>Endereço:</strong> {companyAddress}
+                </p>
               </>
             ) : (
-              <p className="col-span-2 text-muted-foreground">Não foi possível carregar as informações da empresa.</p>
+              <p className="col-span-2 text-destructive">Não foi possível carregar as informações da empresa.</p>
             )}
           </CardContent>
         </Card>
@@ -281,7 +304,6 @@ const QuoteViewPage = () => {
                       </td>
                     </tr>
                   ))}
-                  {/* Removido a iteração sobre quote.products, pois não estamos mais buscando essa coluna */}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
