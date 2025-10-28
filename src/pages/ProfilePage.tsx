@@ -209,9 +209,6 @@ const ProfilePage = () => {
   const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');
     setZipCode(value);
-    if (value.length === 8) {
-      fetchAddressByZipCode(value);
-    }
   };
 
   const handleDocumentNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
