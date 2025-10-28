@@ -1,13 +1,12 @@
--- This policy allows anyone (including unauthenticated users) to read data from the 'profiles' table.
--- This is necessary for the public quote view page (/quote/view/:id) to display the
--- information of the company that generated the quote.
--- The information in the 'profiles' table is considered public in the context of a quote.
+-- This script resolves conflicting SELECT policies on the 'profiles' table.
+-- It ensures that public access for quote viewing works correctly.
 
--- Drop the policy if it already exists to ensure a clean update.
-DROP POLICY IF EXISTS "Enable public read access for all users" ON public.profiles;
+-- First, drop the two existing conflicting policies identified from user screenshots.
+DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public read of profiles by ID" ON public.profiles;
 
--- Create the policy for SELECT (read) operations.
--- The USING (true) clause means this policy applies to all rows for all users.
+-- Then, create a single, definitive policy that allows public read access.
+-- This is necessary for the public quote view page to display company information.
 CREATE POLICY "Enable public read access for all users"
 ON public.profiles
 FOR SELECT
