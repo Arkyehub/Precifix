@@ -45,21 +45,8 @@ const ClientsPage = () => {
           return { client, vehicleCount: 0 };
         }
 
-        let firstVehicle = 'Nenhum';
-        if (vehicleCount && vehicleCount > 0) {
-          const { data: vehiclesData } = await supabase
-            .from('client_vehicles')
-            .select('brand, model, plate, year')
-            .eq('client_id', client.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-          if (vehiclesData) {
-            firstVehicle = `${vehiclesData.brand} ${vehiclesData.model} - ${vehiclesData.plate || 'N/A'} (${vehiclesData.year})`;
-          }
-        }
-
-        return { client, vehicleCount: vehicleCount || 0, firstVehicle };
+        // Removendo a busca detalhada do primeiro veículo para simplificar
+        return { client, vehicleCount: vehicleCount || 0 };
       }));
 
       return clientsWithInfo;
@@ -175,7 +162,7 @@ const ClientsPage = () => {
               </TableHeader>
               <TableBody>
                 {filteredClients.length > 0 ? (
-                  filteredClients.map(({ client, vehicleCount, firstVehicle }, index) => (
+                  filteredClients.map(({ client, vehicleCount }, index) => (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium text-muted-foreground">
                         {clientsWithVehicles!.length - index}
@@ -186,20 +173,6 @@ const ClientsPage = () => {
                           <div className="flex items-center gap-1">
                             <Car className="h-4 w-4 text-primary" />
                             <span className="text-sm">{vehicleCount} veículo(s)</span>
-                            {firstVehicle && firstVehicle !== 'Nenhum' && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="text-xs text-primary underline cursor-pointer hover:opacity-80">
-                                      {firstVehicle}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-sm">Primeiro veículo: {firstVehicle}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Nenhum</span>
