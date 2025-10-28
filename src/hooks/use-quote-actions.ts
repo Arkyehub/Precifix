@@ -247,6 +247,16 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Determina o domínio base para links públicos
+  const getBaseUrl = () => {
+    // Em ambientes de desenvolvimento (localhost), use a variável de ambiente VITE_PUBLIC_URL
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+    }
+    // Em produção, use o domínio atual
+    return window.location.origin;
+  };
+
   const getServicesSummaryForDb = (selectedServices: QuotedService[]) => selectedServices.map(service => ({
     name: service.name,
     price: service.quote_price ?? service.price,
@@ -420,8 +430,9 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       // 1. Salvar o orçamento no banco de dados para obter o ID
       const savedQuote = await saveQuoteAndGetId(quoteData);
 
-      // 2. Gerar o link de visualização
-      const quoteViewLink = `${window.location.origin}/quote/view/${savedQuote.id}`;
+      // 2. Gerar o link de visualização usando o domínio base correto
+      const baseUrl = getBaseUrl();
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
 
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
@@ -450,8 +461,9 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       // 1. Salvar o orçamento no banco de dados para obter o ID
       const savedQuote = await saveQuoteAndGetId(quoteData);
 
-      // 2. Gerar o link de visualização
-      const quoteViewLink = `${window.location.origin}/quote/view/${savedQuote.id}`;
+      // 2. Gerar o link de visualização usando o domínio base correto
+      const baseUrl = getBaseUrl();
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
 
       // 3. Copiar para a área de transferência
       await navigator.clipboard.writeText(quoteViewLink);

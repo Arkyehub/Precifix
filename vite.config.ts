@@ -15,4 +15,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Adiciona a variável de ambiente VITE_PUBLIC_URL para ser usada no código
+  envPrefix: 'VITE_',
+  define: {
+    'import.meta.env.VITE_PUBLIC_URL': JSON.stringify(process.env.VITE_PUBLIC_URL || 'https://precifix.lovable.dev'), // Fallback para um domínio genérico se não estiver definido
+  },
 }));
