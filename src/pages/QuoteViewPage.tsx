@@ -218,7 +218,7 @@ const QuoteViewPage = () => {
           <CardHeader className="border-b p-4">
             <CardTitle className="text-lg flex items-center text-primary">
               <Users className="h-5 w-5 mr-2" />
-              Informações da Empresa (v2)
+              Informações da Empresa
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex items-start gap-4 text-sm">
