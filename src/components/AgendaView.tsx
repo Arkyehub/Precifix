@@ -43,6 +43,7 @@ export const AgendaView = () => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
+  const [quoteIdToDelete, setQuoteIdToDelete] = useState<string | null>(null); // Novo estado para rastrear o ID a ser excluído
 
   // Fetch all quotes that have a service_date defined
   const { data: quotes, isLoading, error } = useQuery<Quote[]>({
@@ -67,20 +68,15 @@ export const AgendaView = () => {
       console.log('Tentando excluir orçamento:', quoteId);
       if (!user) throw new Error("Usuário não autenticado.");
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('quotes')
         .delete()
         .eq('id', quoteId)
-        .eq('user_id', user.id)
-        .select(); // Adicionar select para ver o que foi deletado
-      
-      console.log('Resultado da exclusão:', { data, error });
+        .eq('user_id', user.id);
       
       if (error) throw error;
-      return data;
     },
-    onSuccess: (data) => {
-      console.log('Orçamento excluído com sucesso:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
@@ -88,6 +84,7 @@ export const AgendaView = () => {
         title: "Orçamento excluído!",
         description: "O orçamento e seu link foram removidos.",
       });
+      setQuoteIdToDelete(null); // Limpa o ID após sucesso
     },
     onError: (err) => {
       console.error("Erro ao excluir orçamento:", err);
@@ -96,6 +93,7 @@ export const AgendaView = () => {
         description: err.message,
         variant: "destructive",
       });
+      setQuoteIdToDelete(null); // Limpa o ID após erro
     },
   });
 
@@ -277,6 +275,8 @@ export const AgendaView = () => {
           <div className="space-y-3">
             {filteredQuotes.map(quote => {
               const status = statusColors[quote.status];
+              const isDeletingThisQuote = deleteQuoteMutation.isPending && quoteIdToDelete === quote.id;
+
               return (
                 <div 
                   key={quote.id} 
@@ -341,7 +341,8 @@ export const AgendaView = () => {
                                     size="icon" 
                                     className="text-destructive hover:bg-destructive/10"
                                     title="Excluir Orçamento"
-                                    disabled={deleteQuoteMutation.isPending}
+                                    onClick={() => setQuoteIdToDelete(quote.id)} // Define o ID antes de abrir o diálogo
+                                    disabled={deleteQuoteMutation.isPending} // Desabilita se qualquer exclusão estiver pendente
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -358,16 +359,18 @@ export const AgendaView = () => {
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogCancel disabled={isDeletingThisQuote}>Cancelar</AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={() => {
-                                  console.log('Clicou em excluir orçamento:', quote.id);
-                                  deleteQuoteMutation.mutate(quote.id);
+                                  // Chama a mutação usando o ID armazenado no estado
+                                  if (quoteIdToDelete) {
+                                    deleteQuoteMutation.mutate(quoteIdToDelete);
+                                  }
                                 }} 
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                disabled={deleteQuoteMutation.isPending}
+                                disabled={isDeletingThisQuote}
                               >
-                                {deleteQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+                                {isDeletingThisQuote ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
