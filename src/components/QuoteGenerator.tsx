@@ -102,6 +102,7 @@ export const QuoteGenerator = ({
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
     handleGenerateLink,
+    handleGenerateLocalLink, // Importar a nova função
     isGeneratingOrSaving, 
     isSendingWhatsApp 
   } = useQuoteActions(profile);
@@ -222,6 +223,20 @@ export const QuoteGenerator = ({
               <LinkIcon className="mr-2 h-4 w-4" />
             )}
             Link do Orçamento
+          </Button>
+
+          <Button
+            onClick={() => handleGenerateLocalLink(quoteData)} // Novo botão de link local
+            disabled={!isQuoteValid || isGeneratingOrSaving}
+            variant="outline"
+            className="flex-1 border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
+          >
+            {isGeneratingOrSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LinkIcon className="mr-2 h-4 w-4" />
+            )}
+            Link de Teste (Localhost)
           </Button>
 
           <Button

@@ -482,6 +482,29 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
   };
 
+  const handleGenerateLocalLink = async (quoteData: QuoteData) => {
+    try {
+      const savedQuote = await saveQuoteAndGetId(quoteData);
+      const baseUrl = window.location.origin; // Usa o domínio atual (localhost)
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
+      await navigator.clipboard.writeText(quoteViewLink);
+      window.open(quoteViewLink, '_blank');
+      toast({
+        title: "Link de Teste gerado e copiado!",
+        description: "O link de visualização (Localhost) foi copiado e aberto em uma nova aba.",
+      });
+      return quoteViewLink;
+    } catch (error: any) {
+      console.error("Erro ao gerar link de teste:", error);
+      toast({
+        title: "Erro ao gerar link de teste",
+        description: error.message || "Não foi possível gerar o link de visualização de teste.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const isGeneratingOrSaving = saveQuoteMutation.isPending;
   const isSendingWhatsApp = saveQuoteMutation.isPending;
 
@@ -489,6 +512,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     handleGenerateAndDownloadPDF,
     handleSendViaWhatsApp,
     handleGenerateLink,
+    handleGenerateLocalLink, // Exportar a nova função
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };
