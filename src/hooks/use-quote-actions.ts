@@ -15,10 +15,11 @@ interface Profile {
   last_name: string | null;
   company_name: string | null;
   document_number: string | null;
+  phone_number: string | null;
+  email: string | null;
   address: string | null;
   address_number: string | null;
   zip_code: string | null;
-  phone_number: string | null;
   avatar_url: string | null;
 }
 
@@ -292,9 +293,6 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code?: string;
       notes?: string;
       valid_until: string;
-      // Novos campos
-      service_date?: string | null;
-      service_time?: string | null;
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -320,8 +318,6 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           client_zip_code: quoteData.client_zip_code,
           notes: quoteData.notes,
           valid_until: quoteData.valid_until,
-          service_date: quoteData.service_date || null,
-          service_time: quoteData.service_time || null,
         })
         .select()
         .single();
@@ -393,8 +389,6 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code: quoteData.selectedClient?.zip_code,
       notes: quoteData.observations,
       valid_until: validUntilString,
-      service_date: quoteData.serviceDate,
-      service_time: quoteData.serviceTime,
     });
   };
 

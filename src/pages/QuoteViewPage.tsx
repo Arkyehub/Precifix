@@ -39,8 +39,6 @@ interface Quote {
   valid_until: string;
   created_at: string;
   notes: string;
-  service_date: string | null;
-  service_time: string | null;
 }
 
 interface Profile {
@@ -70,7 +68,7 @@ const QuoteViewPage = () => {
       if (!quoteId) throw new Error("ID do orçamento não fornecido.");
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, services_summary, service_date, service_time')
+        .select('*')
         .eq('id', quoteId)
         .single();
       if (error) {
@@ -262,14 +260,7 @@ const QuoteViewPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2 text-sm">
-              {quote.service_date ? (
-                <>
-                  <p><strong>Data:</strong> {format(new Date(quote.service_date), 'PPP', { locale: ptBR })}</p>
-                  <p><strong>Hora:</strong> {quote.service_time || 'A combinar'}</p>
-                </>
-              ) : (
-                <p className="text-muted-foreground">Data e hora a combinar.</p>
-              )}
+              <p className="text-muted-foreground">Data e hora a combinar.</p>
             </CardContent>
           </Card>
         </div>
