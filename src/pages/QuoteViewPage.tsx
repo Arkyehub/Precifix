@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, FileText, Clock, DollarSign, Tag, Car, Users, MapPin, Mail, Phone, Calendar } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -39,6 +39,8 @@ interface Quote {
   valid_until: string;
   created_at: string;
   notes: string;
+  service_date: string | null; // Adicionado
+  service_time: string | null; // Adicionado
 }
 
 interface Profile {
@@ -108,6 +110,43 @@ const QuoteViewPage = () => {
     enabled: !!quote?.user_id,
     retry: false,
   });
+
+  const updateQuoteStatusMutation = useMutation({
+    mutationFn: async (newStatus: 'accepted' | 'rejected') => {
+      const { error } = await supabase
+        .from('quotes')
+        .update({ status: newStatus })
+        .eq('id', quoteId);
+      if (error) throw error;
+    },
+    onSuccess: (data, newStatus) => {
+      toast({
+        title: newStatus === 'accepted' ? "Orçamento Aceito!" : "Orçamento Rejeitado!",
+        description: newStatus === 'accepted' ? "Obrigado pela aprovação. Entraremos em contato em breve." : "Obrigado pelo feedback.",
+      });
+      // Invalidar queries para atualizar o painel do usuário
+      queryClient.invalidateQueries({ queryKey: ['quotesCalendar'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingQuotesCount'] });
+      queryClient.invalidateQueries({ queryKey: ['acceptedQuotesCount'] });
+      // Recarregar a página ou redirecionar
+      window.location.reload();
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao atualizar orçamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAcceptQuote = () => {
+    updateQuoteStatusMutation.mutate('accepted');
+  };
+
+  const handleRejectQuote = () => {
+    updateQuoteStatusMutation.mutate('rejected');
+  };
 
   if (isLoadingQuote) {
     return (
@@ -260,7 +299,18 @@ const QuoteViewPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2 text-sm">
-              <p className="text-muted-foreground">Data e hora a combinar.</p>
+              {quote.service_date ? (
+                <>
+                  <p><strong>Data:</strong> {(() => {
+                    const [year, month, day] = quote.service_date.split('-');
+                    const displayServiceDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    return displayServiceDate.toLocaleDateString('pt-BR');
+                  })()}</p>
+                  {quote.service_time && <p><strong>Hora:</strong> {quote.service_time}</p>}
+                </>
+              ) : (
+                <p className="text-muted-foreground">Data e hora a combinar.</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -332,10 +382,21 @@ const QuoteViewPage = () => {
 
         {quote.status === 'pending' && (
           <div className="flex justify-end gap-4 mt-8">
-            <Button variant="destructive" className="px-6 py-3 text-lg">
+            <Button 
+              variant="destructive" 
+              className="px-6 py-3 text-lg"
+              onClick={handleRejectQuote}
+              disabled={updateQuoteStatusMutation.isPending}
+            >
+              {updateQuoteStatusMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Rejeitar Orçamento
             </Button>
-            <Button className="bg-green-600 hover:bg-green-700 px-6 py-3 text-lg">
+            <Button 
+              className="bg-green-600 hover:bg-green-700 px-6 py-3 text-lg"
+              onClick={handleAcceptQuote}
+              disabled={updateQuoteStatusMutation.isPending}
+            >
+              {updateQuoteStatusMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Aceitar Orçamento
             </Button>
           </div>
