@@ -148,17 +148,6 @@ export const QuoteClientSection = ({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="quoteDate">Data do Orçamento</Label>
-        <Input
-          id="quoteDate"
-          type="date"
-          value={quoteDate}
-          onChange={(e) => setQuoteDate(e.target.value)}
-          className="bg-background/50"
-        />
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="phoneNumber">Telefone</Label>
         <Input 
           id="phoneNumber" 

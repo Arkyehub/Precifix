@@ -17,6 +17,8 @@ interface Quote {
   vehicle: string;
   total_price: number;
   quote_date: string; // ISO date string
+  service_date: string | null; // Nova data do serviço
+  service_time: string | null; // Nova hora do serviço
   services_summary: any[]; // JSONB field
 }
 
@@ -32,7 +34,7 @@ export const QuotesCalendar = () => {
         .from('quotes')
         .select('*')
         .eq('user_id', user.id)
-        .order('quote_date', { ascending: false });
+        .order('service_date', { ascending: false }); // Ordenar por service_date
       if (error) throw error;
       return data;
     },
@@ -83,8 +85,11 @@ export const QuotesCalendar = () => {
   const quotesByDate = React.useMemo(() => {
     const map = new Map<string, Quote[]>();
     quotes?.forEach(quote => {
-      // Parse the date string as a local date to avoid timezone shifts
-      const [year, month, day] = quote.quote_date.split('-').map(Number);
+      // Usar service_date, com fallback para quote_date se service_date for null
+      const dateToUse = quote.service_date || quote.quote_date;
+      if (!dateToUse) return; // Não mostrar se não houver data
+
+      const [year, month, day] = dateToUse.split('-').map(Number);
       const localDate = new Date(year, month - 1, day); // Month is 0-indexed
       const dateKey = format(localDate, 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
@@ -152,7 +157,7 @@ export const QuotesCalendar = () => {
           <CardTitle className="text-foreground">Orçamentos</CardTitle>
         </div>
         <CardDescription>
-          Visualize os orçamentos gerados por data e estatísticas mensais.
+          Visualize os orçamentos gerados por data de serviço e estatísticas mensais.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -176,7 +181,7 @@ export const QuotesCalendar = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Orçamentos em {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Nenhuma data selecionada'}
+                  Serviços em {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Nenhuma data selecionada'}
                 </h3>
                 {selectedDayQuotes.length > 0 ? (
                   <ScrollArea className="h-[200px] w-full rounded-md border bg-background p-4">
@@ -186,6 +191,9 @@ export const QuotesCalendar = () => {
                           <p className="font-medium text-foreground">{quote.client_name}</p>
                           <p className="text-sm text-muted-foreground">Veículo: {quote.vehicle}</p>
                           <p className="text-sm text-primary font-bold">Total: R$ {quote.total_price.toFixed(2)}</p>
+                          {quote.service_time && (
+                            <p className="text-sm text-muted-foreground">Horário: {quote.service_time}</p>
+                          )}
                           {quote.services_summary && quote.services_summary.length > 0 && (
                             <Popover>
                               <PopoverTrigger className="text-xs text-blue-500 hover:underline mt-1">Ver Detalhes dos Serviços</PopoverTrigger>
@@ -204,7 +212,7 @@ export const QuotesCalendar = () => {
                     </div>
                   </ScrollArea>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">Nenhum orçamento para esta data.</p>
+                  <p className="text-sm text-muted-foreground italic">Nenhum serviço agendado para esta data.</p>
                 )}
               </div>
             </div>
