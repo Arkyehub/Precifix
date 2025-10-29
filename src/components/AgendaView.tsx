@@ -28,6 +28,13 @@ const statusColors = {
   rejected: { text: 'Rejeitado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
 };
 
+// Helper function to parse YYYY-MM-DD string into a local Date object
+const parseDateString = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  // Month is 0-indexed in Date constructor
+  return new Date(year, month - 1, day);
+};
+
 export const AgendaView = () => {
   const { user } = useSession();
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
@@ -56,7 +63,8 @@ export const AgendaView = () => {
 
     const dateFiltered = quotes.filter(quote => {
       if (!quote.service_date) return false;
-      const quoteServiceDate = startOfDay(new Date(quote.service_date));
+      // Usar a função de parse para garantir que a data seja tratada como local
+      const quoteServiceDate = startOfDay(parseDateString(quote.service_date));
       return isSameDay(quoteServiceDate, selectedDate);
     });
 

@@ -302,9 +302,10 @@ const QuoteViewPage = () => {
               {quote.service_date ? (
                 <>
                   <p><strong>Data:</strong> {(() => {
-                    const [year, month, day] = quote.service_date.split('-');
+                    const [year, month, day] = quote.service_date!.split('-').map(Number);
                     // Cria a data no fuso horário local para evitar problemas de offset
-                    const displayServiceDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    // Usamos month - 1 porque o mês é baseado em 0
+                    const displayServiceDate = new Date(year, month - 1, day);
                     return displayServiceDate.toLocaleDateString('pt-BR');
                   })()}</p>
                   {quote.service_time ? (

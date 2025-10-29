@@ -95,6 +95,7 @@ const createQuotePdfBlob = async ({
   
   doc.setFontSize(10);
   const [yearStr, monthStr, dayStr] = quote_date.split('-');
+  // CORREÇÃO: Criar data localmente
   const displayDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
   doc.text(`Data: ${displayDate.toLocaleDateString('pt-BR')}`, 15, 35);
 
@@ -139,6 +140,7 @@ const createQuotePdfBlob = async ({
     doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
     const [sYear, sMonth, sDay] = serviceDate.split('-');
+    // CORREÇÃO: Criar data localmente
     const displayServiceDate = new Date(parseInt(sYear), parseInt(sMonth) - 1, parseInt(sDay));
     doc.text(`Data: ${displayServiceDate.toLocaleDateString('pt-BR')}`, 15, yPosition);
     if (serviceTime) {
