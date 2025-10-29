@@ -17,6 +17,7 @@ import StorageTestPage from "./pages/StorageTestPage";
 import BillingPage from "./pages/BillingPage";
 import ClientsPage from "./pages/ClientsPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
+import AgendaPage from "./pages/AgendaPage"; // Importar AgendaPage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -79,6 +80,14 @@ const App = () => (
               element={
                 <DashboardLayout>
                   <ClientsPage />
+                </DashboardLayout>
+              } 
+            />
+            <Route 
+              path="/agenda" // Nova rota
+              element={
+                <DashboardLayout>
+                  <AgendaPage />
                 </DashboardLayout>
               } 
             />

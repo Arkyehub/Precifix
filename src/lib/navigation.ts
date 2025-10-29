@@ -9,7 +9,8 @@ import {
   Settings,
   FolderOpen,
   ReceiptText,
-  Users, // Importar Users
+  Users,
+  CalendarCheck, // Importar CalendarCheck
 } from 'lucide-react';
 
 export const navigationLinks = [
@@ -19,7 +20,8 @@ export const navigationLinks = [
   { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
   { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
   { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
-  { to: '/clients', icon: Users, label: 'Gerenciar Clientes' }, // Novo link
+  { to: '/clients', icon: Users, label: 'Gerenciar Clientes' },
+  { to: '/agenda', icon: CalendarCheck, label: 'Agenda' }, // Novo link
   { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
   { to: '/storage-test', icon: FolderOpen, label: 'Testar Storage' },
 ];
