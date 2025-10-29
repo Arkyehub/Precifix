@@ -102,7 +102,7 @@ export const QuoteGenerator = ({
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
     handleGenerateLink,
-    handleGenerateLocalLink, // Importar a nova função
+    handleGenerateLocalLink,
     isGeneratingOrSaving, 
     isSendingWhatsApp 
   } = useQuoteActions(profile);
@@ -142,7 +142,7 @@ export const QuoteGenerator = ({
     observations,
     profile,
     clientDetails: { phoneNumber: rawPhoneNumber, address: address },
-    clientId: selectedClient?.id,
+    clientId: selectedClient?.id, // Passando o ID do cliente
     selectedVehicleId,
     selectedClient,
     serviceDate: localServiceDate,
@@ -152,7 +152,9 @@ export const QuoteGenerator = ({
   const isQuoteValid = selectedServices.length > 0 
     && clientNameInput.trim() !== '' 
     && finalPrice > 0
-    && !!selectedVehicleId;
+    && !!selectedVehicleId
+    && !!selectedClient?.id // Cliente deve estar selecionado
+    && !!localServiceDate; // Data de serviço deve estar definida para a verificação de duplicidade
 
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8;
 
@@ -226,7 +228,7 @@ export const QuoteGenerator = ({
           </Button>
 
           <Button
-            onClick={() => handleGenerateLocalLink(quoteData)} // Novo botão de link local
+            onClick={() => handleGenerateLocalLink(quoteData)}
             disabled={!isQuoteValid || isGeneratingOrSaving}
             variant="outline"
             className="flex-1 border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
@@ -254,7 +256,7 @@ export const QuoteGenerator = ({
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
-            Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo** e garanta que o preço final seja maior que zero.
+            Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo**, **selecione o cliente**, **defina a data do serviço** e garanta que o preço final seja maior que zero.
           </p>
         )}
       </CardContent>

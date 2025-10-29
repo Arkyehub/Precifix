@@ -300,6 +300,47 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
+      // --- VERIFICAÇÃO DE DUPLICIDADE ---
+      if (quoteData.client_id && quoteData.service_date) {
+        let query = supabase
+          .from('quotes')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('client_id', quoteData.client_id)
+          .eq('service_date', quoteData.service_date);
+
+        // Se o tempo de serviço for definido, inclua-o na verificação
+        if (quoteData.service_time) {
+          query = query.eq('service_time', quoteData.service_time);
+        } else {
+          // Se o tempo não for definido, verifique se existe algum orçamento para a data sem tempo definido
+          query = query.is('service_time', null);
+        }
+
+        const { data: existingQuotes, error: checkError } = await query;
+
+        if (checkError) throw checkError;
+
+        if (existingQuotes && existingQuotes.length > 0) {
+          const existingStatus = existingQuotes[0].status;
+          let statusText = '';
+          if (existingStatus === 'accepted') {
+            statusText = 'aprovado';
+          } else if (existingStatus === 'rejected') {
+            statusText = 'rejeitado';
+          } else {
+            statusText = 'pendente';
+          }
+
+          const timeText = quoteData.service_time ? ` às ${quoteData.service_time}` : '';
+          
+          throw new Error(
+            `Já existe um orçamento ${statusText} para este cliente na data ${quoteData.service_date.split('-').reverse().join('/')}${timeText}.`
+          );
+        }
+      }
+      // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
+
       const { data, error } = await supabase
         .from('quotes')
         .insert({
@@ -333,6 +374,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] }); // Invalida a agenda
     },
     onError: (err) => {
       toast({
