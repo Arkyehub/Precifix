@@ -64,15 +64,23 @@ export const AgendaView = () => {
 
   const deleteQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
+      console.log('Tentando excluir orçamento:', quoteId);
       if (!user) throw new Error("Usuário não autenticado.");
-      const { error } = await supabase
+      
+      const { data, error } = await supabase
         .from('quotes')
         .delete()
         .eq('id', quoteId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select(); // Adicionar select para ver o que foi deletado
+      
+      console.log('Resultado da exclusão:', { data, error });
+      
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Orçamento excluído com sucesso:', data);
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
@@ -82,6 +90,7 @@ export const AgendaView = () => {
       });
     },
     onError: (err) => {
+      console.error("Erro ao excluir orçamento:", err);
       toast({
         title: "Erro ao excluir orçamento",
         description: err.message,
@@ -351,7 +360,10 @@ export const AgendaView = () => {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction 
-                                onClick={() => deleteQuoteMutation.mutate(quote.id)} 
+                                onClick={() => {
+                                  console.log('Clicou em excluir orçamento:', quote.id);
+                                  deleteQuoteMutation.mutate(quote.id);
+                                }} 
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 disabled={deleteQuoteMutation.isPending}
                               >
