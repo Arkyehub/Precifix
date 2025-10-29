@@ -2,14 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { format, subDays, addDays, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 interface Quote {
   id: string;
@@ -37,6 +39,8 @@ const parseDateString = (dateString: string): Date => {
 
 export const AgendaView = () => {
   const { user } = useSession();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -57,6 +61,54 @@ export const AgendaView = () => {
     },
     enabled: !!user,
   });
+
+  const deleteQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      const { error } = await supabase
+        .from('quotes')
+        .delete()
+        .eq('id', quoteId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
+      toast({
+        title: "Orçamento excluído!",
+        description: "O orçamento e seu link foram removidos.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao excluir orçamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyLink = (quoteId: string) => {
+    const baseUrl = window.location.origin;
+    const quoteViewLink = `${baseUrl}/quote/view/${quoteId}`;
+    navigator.clipboard.writeText(quoteViewLink)
+      .then(() => {
+        toast({
+          title: "Link copiado!",
+          description: "O link de visualização foi copiado para a área de transferência.",
+        });
+      })
+      .catch(err => {
+        console.error("Erro ao copiar link:", err);
+        toast({
+          title: "Erro ao copiar link",
+          description: "Não foi possível copiar o link. Tente novamente.",
+          variant: "destructive",
+        });
+      });
+  };
 
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
@@ -247,28 +299,93 @@ export const AgendaView = () => {
                         R$ {quote.total_price.toFixed(2)}
                       </p>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-background">
-                            <Info className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md max-w-xs">
-                          <p className="font-semibold mb-1">Detalhes do Orçamento</p>
-                          <p className="text-sm">ID: {quote.id.substring(0, 8)}</p>
-                          {quote.notes && <p className="text-sm mt-2">Obs: {quote.notes}</p>}
-                          <a 
-                            href={`/quote/view/${quote.id}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs text-primary hover:underline mt-2 block"
-                          >
-                            Ver Orçamento Completo
-                          </a>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="flex gap-1 items-center">
+                      {/* Botão de Copiar Link (Apenas para Pendente) */}
+                      {quote.status === 'pending' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleCopyLink(quote.id)}
+                                className="text-primary hover:bg-primary/10"
+                                title="Copiar Link do Orçamento"
+                              >
+                                <LinkIcon className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copiar Link</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+
+                      {/* Botão de Excluir (Apenas para Pendente) */}
+                      {quote.status === 'pending' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-destructive hover:bg-destructive/10"
+                                    title="Excluir Orçamento"
+                                    disabled={deleteQuoteMutation.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Excluir Orçamento</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-card">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação excluirá permanentemente o orçamento de "{quote.client_name}" e seu link de visualização.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteQuoteMutation.mutate(quote.id)} 
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                disabled={deleteQuoteMutation.isPending}
+                              >
+                                {deleteQuoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+
+                      {/* Botão de Info (para todos os status) */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-background">
+                              <Info className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md max-w-xs">
+                            <p className="font-semibold mb-1">Detalhes do Orçamento</p>
+                            <p className="text-sm">ID: {quote.id.substring(0, 8)}</p>
+                            {quote.notes && <p className="text-sm mt-2">Obs: {quote.notes}</p>}
+                            <a 
+                              href={`/quote/view/${quote.id}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-xs text-primary hover:underline mt-2 block"
+                            >
+                              Ver Orçamento Completo
+                            </a>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </div>
               );
