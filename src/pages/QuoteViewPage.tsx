@@ -303,10 +303,15 @@ const QuoteViewPage = () => {
                 <>
                   <p><strong>Data:</strong> {(() => {
                     const [year, month, day] = quote.service_date.split('-');
+                    // Cria a data no fuso horário local para evitar problemas de offset
                     const displayServiceDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                     return displayServiceDate.toLocaleDateString('pt-BR');
                   })()}</p>
-                  {quote.service_time && <p><strong>Hora:</strong> {quote.service_time}</p>}
+                  {quote.service_time ? (
+                    <p><strong>Hora:</strong> {quote.service_time}</p>
+                  ) : (
+                    <p className="text-muted-foreground">Hora a combinar.</p>
+                  )}
                 </>
               ) : (
                 <p className="text-muted-foreground">Data e hora a combinar.</p>

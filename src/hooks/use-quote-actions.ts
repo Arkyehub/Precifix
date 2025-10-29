@@ -293,6 +293,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code?: string;
       notes?: string;
       valid_until: string;
+      service_date: string; // Adicionado
+      service_time: string; // Adicionado
     }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
@@ -318,6 +320,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           client_zip_code: quoteData.client_zip_code,
           notes: quoteData.notes,
           valid_until: quoteData.valid_until,
+          service_date: quoteData.service_date || null, // Salvar data
+          service_time: quoteData.service_time || null, // Salvar hora
         })
         .select()
         .single();
@@ -389,6 +393,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code: quoteData.selectedClient?.zip_code,
       notes: quoteData.observations,
       valid_until: validUntilString,
+      service_date: quoteData.serviceDate, // Passando serviceDate
+      service_time: quoteData.serviceTime, // Passando serviceTime
     });
   };
 
