@@ -147,7 +147,8 @@ export const AgendaView = () => {
   }, [quotes, selectedDate, searchTerm]);
 
   const summary = useMemo(() => {
-    if (!quotes) return { total: 0, accepted: 0, pending: 0, rejected: 0, totalValue: 0, acceptedValue: 0, pendingValue: 0, rejectedValue: 0 };
+    // O resumo agora é calculado APENAS com base nos orçamentos filtrados para o dia
+    const quotesForSummary = filteredQuotes; 
 
     const result = {
       total: 0,
@@ -160,7 +161,7 @@ export const AgendaView = () => {
       rejectedValue: 0,
     };
 
-    quotes.forEach(quote => {
+    quotesForSummary.forEach(quote => {
       result.total++;
       result.totalValue += quote.total_price;
 
@@ -177,7 +178,7 @@ export const AgendaView = () => {
     });
 
     return result;
-  }, [quotes]);
+  }, [filteredQuotes]); // Depende apenas de filteredQuotes
 
   const handleDateChange = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
@@ -243,7 +244,7 @@ export const AgendaView = () => {
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-lg font-semibold text-foreground">Resumo da Agenda (Total)</h4>
+        <h4 className="text-lg font-semibold text-foreground">Resumo da Agenda (Dia)</h4> {/* Alterado o título */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <SummaryCard 
             title="Total" 
