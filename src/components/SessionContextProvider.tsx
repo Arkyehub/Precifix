@@ -11,11 +11,18 @@ interface SessionContextType {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
+// Lista de rotas públicas que não exigem autenticação
+const PUBLIC_ROUTES = ['/login', '/quote/view/'];
+
 export const SessionContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  const isPublicRoute = (pathname: string) => {
+    return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
@@ -31,8 +38,8 @@ export const SessionContextProvider = ({ children }: { children: React.ReactNode
       } else {
         setSession(null);
         setUser(null);
-        // Redirect unauthenticated users to login page
-        if (location.pathname !== '/login') {
+        // Redirect unauthenticated users to login page, unless they are on a public route
+        if (!isPublicRoute(location.pathname)) {
           navigate('/login');
         }
       }
@@ -48,7 +55,7 @@ export const SessionContextProvider = ({ children }: { children: React.ReactNode
           navigate('/');
         }
       } else {
-        if (location.pathname !== '/login') {
+        if (!isPublicRoute(location.pathname)) {
           navigate('/login');
         }
       }
