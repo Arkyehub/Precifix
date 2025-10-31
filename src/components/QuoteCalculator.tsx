@@ -72,7 +72,8 @@ export const QuoteCalculator = () => {
   const [searchParams] = useSearchParams();
   const quoteIdToEdit = searchParams.get('quoteId');
 
-  // serviceIdToAdd agora é apenas o ID do serviço que o usuário está prestes a adicionar
+  // serviceIdToAdd é o estado controlado do MultiSelect.
+  // Ele será limpo após a adição para evitar que as tags apareçam.
   const [serviceIdToAdd, setServiceIdToAdd] = useState<string[]>([]);
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]);
   const [otherCostsGlobal, setOtherCostsGlobal] = useState(0);
@@ -321,8 +322,16 @@ export const QuoteCalculator = () => {
     const addedIds = newSelectedIds.filter(id => !currentQuotedIds.includes(id));
     
     // 2. Identificar IDs a serem removidos (presentes em currentQuotedIds, mas não em newSelectedIds)
-    const removedIds = currentQuotedIds.filter(id => !newSelectedIds.includes(id));
-
+    // Esta lógica de remoção é o que estava causando problemas, pois o MultiSelect
+    // só mostra IDs que *não* estão em existingServiceIds.
+    // Se o usuário clica em um item, ele é adicionado ao newSelectedIds.
+    // Se ele clica em outro, newSelectedIds agora tem 2 IDs.
+    // Se ele clica em um terceiro, newSelectedIds tem 3 IDs.
+    // O problema é que o MultiSelect não está sendo usado para remover, mas sim para adicionar.
+    
+    // Vamos simplificar: se o ID está em newSelectedIds, ele foi adicionado.
+    // A remoção deve ser feita apenas através da lista de serviços cotados.
+    
     let newQuotedServices = [...quotedServices];
 
     // Adicionar novos serviços
@@ -338,24 +347,52 @@ export const QuoteCalculator = () => {
       }
     });
 
-    // Remover serviços
-    removedIds.forEach(removedId => {
-      newQuotedServices = newQuotedServices.filter(s => s.id !== removedId);
-      toast({
-        title: "Serviço removido!",
-        description: `O serviço foi removido do orçamento.`,
-      });
+    // Se o MultiSelect for usado para remover (o que não deveria acontecer se ele só mostra opções não selecionadas),
+    // a lógica de remoção abaixo é a que estava falhando.
+    // Vamos reintroduzir a lógica de remoção, mas baseada no estado anterior do MultiSelect (serviceIdToAdd)
+    // e no novo estado (newSelectedIds).
+    
+    // Se o MultiSelect está sendo usado apenas para adicionar, newSelectedIds deve conter apenas IDs que
+    // acabaram de ser selecionados.
+    
+    // Se o MultiSelect está sendo usado para remover, ele retorna a lista de IDs que *devem* permanecer.
+    // Como filtramos as opções para não mostrar os já adicionados, o MultiSelect só pode adicionar.
+    // Se newSelectedIds for menor que serviceIdToAdd, algo foi removido.
+    
+    // Vamos manter a lógica de adição e forçar o MultiSelect a limpar seu estado interno.
+    
+    // Se o usuário desmarcar um item no MultiSelect, ele não deveria estar lá de qualquer forma,
+    // pois ele só mostra itens que *não* estão em quotedServices.
+    
+    // A única forma de um ID aparecer em newSelectedIds é se ele foi clicado.
+    // A única forma de um ID sumir de newSelectedIds é se ele foi desmarcado.
+    
+    // Vamos assumir que o MultiSelect está sendo usado apenas para adicionar, e que a remoção
+    // só pode ocorrer se o usuário desmarcar um item que ele acabou de selecionar.
+    
+    // Para simplificar, vamos apenas adicionar os IDs que foram selecionados.
+    // A remoção será tratada pela lista de serviços cotados.
+    
+    // Se o MultiSelect permite seleção múltipla, newSelectedIds pode ter mais de um item.
+    // Vamos garantir que todos os IDs em newSelectedIds sejam adicionados, se ainda não estiverem lá.
+    
+    const newlyAddedIds = newSelectedIds.filter(id => !currentQuotedIds.includes(id));
+    
+    newlyAddedIds.forEach(addedId => {
+      const serviceFromAll = allServices?.find(s => s.id === addedId);
+      if (serviceFromAll) {
+        const newService: QuotedService = { ...serviceFromAll };
+        newQuotedServices.push(newService);
+        toast({
+          title: "Serviço adicionado!",
+          description: `${serviceFromAll.name} foi adicionado ao orçamento.`,
+        });
+      }
     });
-
+    
     setQuotedServices(newQuotedServices);
     
-    // Manter o MultiSelect vazio após a ação, mas garantir que ele não tente remover itens
-    // que já estão na lista de quotedServices (que é o que o MultiSelect faz por padrão).
-    // Como o MultiSelect está filtrando as opções para não mostrar os já adicionados,
-    // o newSelectedIds deve ser sempre vazio ou conter apenas o ID que acabou de ser adicionado.
-    // Se o MultiSelect for usado para remover, ele enviará uma lista sem o ID removido.
-    
-    // Para evitar que o MultiSelect exiba tags, mantemos serviceIdToAdd como vazio.
+    // Limpar o MultiSelect para que ele não exiba tags
     setServiceIdToAdd([]);
   };
 
