@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useSidebar } from './SidebarContext';
 import { userDropdownLinks } from '@/lib/navigation'; // Importar os links do dropdown do usuário
+import { NotificationBell } from './NotificationBell'; // Importar o novo componente
 
 export const Header = () => {
   const { user } = useSession();
@@ -61,6 +62,10 @@ export const Header = () => {
 
         {/* Right: User Avatar and Dropdown */}
         <div className="flex items-center gap-4 ml-auto">
+          
+          {/* Botão de Notificação */}
+          <NotificationBell />
+
           <div className="flex flex-col items-end mr-2">
             <p className="text-base font-bold text-foreground">Olá, {userName}</p>
           </div>
