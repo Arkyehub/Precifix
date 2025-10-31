@@ -6,7 +6,7 @@ interface QuoteServiceSelectionProps {
   serviceOptions: { label: string; value: string }[];
   selectedServiceIds: string[];
   onSelectChange: (ids: string[]) => void;
-  existingServiceIds: string[]; // Nova prop para IDs já selecionados
+  existingServiceIds: string[]; // Mantido, mas não usado para filtrar opções
 }
 
 export const QuoteServiceSelection = ({
@@ -16,14 +16,14 @@ export const QuoteServiceSelection = ({
   existingServiceIds,
 }: QuoteServiceSelectionProps) => {
   
-  // Filtra as opções para remover serviços que já estão no orçamento
-  const availableOptions = serviceOptions.filter(option => !existingServiceIds.includes(option.value));
+  // Usar todas as opções para permitir a duplicação
+  const availableOptions = serviceOptions;
 
   return (
     <div className="space-y-2">
       <Label htmlFor="select-services">Adicionar Serviços *</Label>
       <MultiSelect
-        options={availableOptions} // Usar apenas opções disponíveis
+        options={availableOptions} // Usar todas as opções
         selected={selectedServiceIds} // Deve ser vazio ou o ID que acabou de ser selecionado
         onSelectChange={onSelectChange}
         placeholder="Selecione os serviços para o orçamento"
