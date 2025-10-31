@@ -305,11 +305,13 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
   // Função de verificação de duplicidade (reutilizada)
   const checkDuplicity = async (payload: QuotePayload, excludeId?: string) => {
+    if (!user) throw new Error("Usuário não autenticado.");
+    
     if (payload.client_id && payload.service_date) {
       let query = supabase
         .from('quotes')
         .select('id, status')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .eq('client_id', payload.client_id)
         .eq('service_date', payload.service_date);
 
@@ -507,11 +509,13 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
+    if (!user) throw new Error("Usuário não autenticado.");
     const payload = prepareQuotePayload(quoteData);
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
   const handleUpdateQuote = async (quoteId: string, quoteData: QuoteData) => {
+    if (!user) throw new Error("Usuário não autenticado.");
     const payload = prepareQuotePayload(quoteData);
     try {
       await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
@@ -522,9 +526,12 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const handleGenerateAndDownloadPDF = async (quoteData: QuoteData) => {
+    if (!user) {
+      toast({ title: "Erro de autenticação", description: "Por favor, faça login novamente.", variant: "destructive" });
+      return;
+    }
     try {
       const pdfBlob = await createQuotePdfBlob(quoteData);
-      const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
       
       // 1. Salvar/Atualizar o orçamento no DB
       let savedQuoteId: string;
@@ -542,6 +549,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       }
 
       // 2. Fazer upload do PDF
+      const fileName = `orcamento_${savedQuoteId.substring(0, 8)}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
       const publicUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName: `${savedQuoteId}/${fileName}` });
 
       // 3. Atualizar o registro do orçamento com a URL do PDF (se for um novo save ou se a URL mudou)
@@ -575,6 +583,10 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const handleSendViaWhatsApp = async (quoteData: QuoteData) => {
+    if (!user) {
+      toast({ title: "Erro de autenticação", description: "Por favor, faça login novamente.", variant: "destructive" });
+      return;
+    }
     if (!quoteData.clientDetails.phoneNumber?.trim()) {
       toast({
         title: "Número de telefone ausente",
@@ -620,6 +632,10 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const handleGenerateLink = async (quoteData: QuoteData) => {
+    if (!user) {
+      toast({ title: "Erro de autenticação", description: "Por favor, faça login novamente.", variant: "destructive" });
+      return null;
+    }
     try {
       let savedQuoteId: string;
       const quoteIdFromParams = searchParams.get('quoteId');
@@ -654,6 +670,10 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   };
 
   const handleGenerateLocalLink = async (quoteData: QuoteData) => {
+    if (!user) {
+      toast({ title: "Erro de autenticação", description: "Por favor, faça login novamente.", variant: "destructive" });
+      return null;
+    }
     try {
       let savedQuoteId: string;
       const quoteIdFromParams = searchParams.get('quoteId');
