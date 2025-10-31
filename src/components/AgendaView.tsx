@@ -361,23 +361,16 @@ export const AgendaView = () => {
                       {quote.status === 'pending' && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-destructive hover:bg-destructive/10"
-                                    title="Excluir Orçamento"
-                                    onClick={() => setQuoteIdToDelete(quote.id)}
-                                    disabled={deleteQuoteMutation.isPending}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Excluir Orçamento</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:bg-destructive/10"
+                              title="Excluir Orçamento"
+                              onClick={() => setQuoteIdToDelete(quote.id)}
+                              disabled={deleteQuoteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent className="bg-card">
                             <AlertDialogHeader>
