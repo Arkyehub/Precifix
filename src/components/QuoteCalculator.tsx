@@ -16,6 +16,7 @@ import { QuoteDiscountSection } from '@/components/quote/QuoteDiscountSection';
 import { QuotePaymentMethodSection } from '@/components/quote/QuotePaymentMethodSection';
 import { QuoteCalculationSummary } from '@/components/quote/QuoteCalculationSummary';
 import { Client } from '@/types/clients'; // Importar Client
+import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 
 interface Service {
   id: string;
@@ -53,9 +54,23 @@ interface ServiceQuoteCount {
   count: number;
 }
 
+interface QuoteDataForEdit {
+  id: string;
+  client_id: string | null;
+  client_name: string;
+  vehicle_id: string | null;
+  total_price: number;
+  services_summary: QuotedService[];
+  notes: string | null;
+  service_date: string | null;
+  service_time: string | null;
+}
+
 export const QuoteCalculator = () => {
   const { user } = useSession();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const quoteIdToEdit = searchParams.get('quoteId');
 
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]);
@@ -83,6 +98,72 @@ export const QuoteCalculator = () => {
   const [serviceDate, setServiceDate] = useState('');
   const [isTimeDefined, setIsTimeDefined] = useState(false);
   const [serviceTime, setServiceTime] = useState('');
+  const [observations, setObservations] = useState(''); // Adicionado estado de observações
+
+  // Query para buscar o orçamento para edição
+  const { data: quoteToEdit, isLoading: isLoadingQuoteToEdit } = useQuery<QuoteDataForEdit | null>({
+    queryKey: ['quoteToEdit', quoteIdToEdit],
+    queryFn: async () => {
+      if (!quoteIdToEdit || !user) return null;
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('id, client_id, client_name, vehicle_id, total_price, services_summary, notes, service_date, service_time')
+        .eq('id', quoteIdToEdit)
+        .eq('user_id', user.id)
+        .single();
+      if (error) {
+        if ((error as any).code !== 'PGRST116') console.error("Error fetching quote for edit:", error);
+        return null;
+      }
+      return data as QuoteDataForEdit;
+    },
+    enabled: !!quoteIdToEdit && !!user,
+  });
+
+  // Efeito para preencher o formulário quando o orçamento para edição é carregado
+  useEffect(() => {
+    if (quoteToEdit) {
+      // 1. Cliente e Veículo
+      setSelectedClientId(quoteToEdit.client_id);
+      setSelectedVehicleId(quoteToEdit.vehicle_id);
+      
+      // 2. Serviços
+      const servicesFromQuote = quoteToEdit.services_summary.map(s => ({
+        ...s,
+        id: s.id || `temp-${Math.random()}`, // Garante que cada serviço tenha um ID para o estado
+        price: s.price,
+        labor_cost_per_hour: 0, // Estes campos não são salvos no summary, então usamos 0 ou o valor padrão do catálogo se necessário
+        execution_time_minutes: s.execution_time_minutes,
+        other_costs: 0,
+        user_id: user!.id,
+        quote_price: s.price,
+        quote_execution_time_minutes: s.execution_time_minutes,
+        // Nota: Produtos e outros custos detalhados não são recuperados do summary, apenas os totais.
+        // Para edição completa, precisaríamos salvar mais detalhes no JSONB services_summary.
+        // Por enquanto, preenchemos o básico.
+      }));
+      setQuotedServices(servicesFromQuote);
+      setSelectedServiceIds(servicesFromQuote.map(s => s.id)); // Seleciona os IDs para o MultiSelect
+
+      // 3. Agendamento e Observações
+      setServiceDate(quoteToEdit.service_date || '');
+      setServiceTime(quoteToEdit.service_time || '');
+      setIsTimeDefined(!!quoteToEdit.service_time);
+      setObservations(quoteToEdit.notes || '');
+
+      // 4. Preço Final (para calcular desconto reverso, se necessário)
+      // Como o total_price é o valor final, e não temos o valor original,
+      // vamos assumir que o valor original do serviço é o total_price para fins de edição
+      // e o desconto é 0, a menos que o usuário o ajuste.
+      // Para simplificar, vamos apenas definir o valor final e deixar o usuário recalcular.
+      // setTotalServiceValue(quoteToEdit.total_price); // Não temos esse estado aqui, mas o summary recalcula.
+      
+      toast({
+        title: "Orçamento carregado para edição",
+        description: `Orçamento #${quoteIdToEdit.substring(0, 8)} carregado.`,
+      });
+    }
+  }, [quoteToEdit, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -386,7 +467,7 @@ export const QuoteCalculator = () => {
 
   const currentPaymentMethod = paymentMethods?.find(pm => pm.id === selectedPaymentMethodId);
 
-  if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods || isLoadingQuoteCounts) {
+  if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods || isLoadingQuoteCounts || isLoadingQuoteToEdit) {
     return <p className="text-center py-8">Carregando dados...</p>;
   }
 
@@ -399,7 +480,9 @@ export const QuoteCalculator = () => {
               <FileText className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <CardTitle className="text-foreground">Gerar Orçamento Detalhado</CardTitle>
+              <CardTitle className="text-foreground">
+                {quoteIdToEdit ? `Editar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento Detalhado'}
+              </CardTitle>
               <CardDescription>
                 Selecione os serviços, ajuste os custos e gere um orçamento profissional.
               </CardDescription>
@@ -494,6 +577,9 @@ export const QuoteCalculator = () => {
           setSelectedVehicleId={setSelectedVehicleId}
           serviceDate={serviceDate}
           serviceTime={isTimeDefined ? serviceTime : ''}
+          quoteIdToEdit={quoteIdToEdit} // Passar o ID para o gerador
+          observations={observations} // Passar observações
+          setObservations={setObservations} // Passar setter de observações
         />
       )}
 

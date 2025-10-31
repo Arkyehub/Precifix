@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2, Send, Link as LinkIcon } from "lucide-react";
+import { FileText, Download, Loader2, Send, Link as LinkIcon, Pencil } from "lucide-react"; // Adicionado Pencil
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
@@ -11,6 +11,7 @@ import { Vehicle } from '@/types/vehicles';
 import { QuoteClientSection } from '@/components/quote/QuoteClientSection';
 import { useQuoteActions } from '@/hooks/use-quote-actions';
 import { supabase } from "@/integrations/supabase/client";
+import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
@@ -28,6 +29,9 @@ interface QuoteGeneratorProps {
   // Novos props para agendamento
   serviceDate: string;
   serviceTime: string;
+  quoteIdToEdit: string | null; // Novo prop para ID de edição
+  observations: string; // Receber observações
+  setObservations: (obs: string) => void; // Receber setter de observações
 }
 
 const getTodayDateString = () => {
@@ -54,8 +58,12 @@ export const QuoteGenerator = ({
   // Novos
   serviceDate,
   serviceTime,
+  quoteIdToEdit, // Usar o novo prop
+  observations,
+  setObservations,
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
+  const [searchParams] = useSearchParams(); // Inicializar useSearchParams
 
   const { data: profile } = useQuery({
     queryKey: ['userProfile', user?.id],
@@ -75,7 +83,6 @@ export const QuoteGenerator = ({
   const [clientNameInput, setClientNameInput] = useState(selectedClient?.name || "");
   const [quoteDate, setQuoteDate] = useState(getTodayDateString());
   const [vehicle, setVehicle] = useState("");
-  const [observations, setObservations] = useState("");
   const [rawPhoneNumber, setRawPhoneNumber] = useState(selectedClient?.phone_number || '');
   const [address, setAddress] = useState(selectedClient?.address || '');
   
@@ -98,13 +105,20 @@ export const QuoteGenerator = ({
     }
   }, [selectedClient]);
 
+  useEffect(() => {
+    setLocalServiceDate(serviceDate);
+    setLocalServiceTime(serviceTime);
+    setIsTimeDefined(!!serviceTime);
+  }, [serviceDate, serviceTime]);
+
   const { 
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
     handleGenerateLink,
     handleGenerateLocalLink,
     isGeneratingOrSaving, 
-    isSendingWhatsApp 
+    isSendingWhatsApp,
+    handleUpdateQuote, // Adicionar a nova função de update
   } = useQuoteActions(profile);
 
   const { data: vehicleDetails } = useQuery<Vehicle | null>({
@@ -158,6 +172,18 @@ export const QuoteGenerator = ({
 
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8;
 
+  const handleSaveOrUpdate = () => {
+    if (!isQuoteValid) return;
+
+    if (quoteIdToEdit) {
+      handleUpdateQuote(quoteIdToEdit, quoteData);
+    } else {
+      // Para novos orçamentos, o fluxo continua o mesmo (gerar link/pdf salva implicitamente)
+      // Mas para o botão principal, vamos forçar a geração de link/pdf ou um save simples.
+      handleGenerateLink(quoteData);
+    }
+  };
+
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
       <CardHeader>
@@ -166,9 +192,11 @@ export const QuoteGenerator = ({
             <FileText className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-foreground">Gerar Orçamento para Cliente</CardTitle>
+            <CardTitle className="text-foreground">
+              {quoteIdToEdit ? 'Atualizar Orçamento' : 'Gerar Orçamento para Cliente'}
+            </CardTitle>
             <CardDescription>
-              Preencha os dados abaixo para gerar um orçamento profissional.
+              Preencha os dados abaixo para {quoteIdToEdit ? 'atualizar' : 'gerar'} um orçamento profissional.
             </CardDescription>
           </div>
         </div>
@@ -200,6 +228,21 @@ export const QuoteGenerator = ({
         />
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
+          {quoteIdToEdit && (
+            <Button
+              onClick={handleSaveOrUpdate}
+              disabled={!isQuoteValid || isGeneratingOrSaving}
+              className="flex-1 bg-success hover:bg-success/90"
+            >
+              {isGeneratingOrSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Pencil className="mr-2 h-4 w-4" />
+              )}
+              Salvar Alterações
+            </Button>
+          )}
+
           <Button
             onClick={() => handleGenerateAndDownloadPDF(quoteData)}
             disabled={!isQuoteValid || isGeneratingOrSaving}
@@ -225,20 +268,6 @@ export const QuoteGenerator = ({
               <LinkIcon className="mr-2 h-4 w-4" />
             )}
             Link do Orçamento
-          </Button>
-
-          <Button
-            onClick={() => handleGenerateLocalLink(quoteData)}
-            disabled={!isQuoteValid || isGeneratingOrSaving}
-            variant="outline"
-            className="flex-1 border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
-          >
-            {isGeneratingOrSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <LinkIcon className="mr-2 h-4 w-4" />
-            )}
-            Link de Teste (Localhost)
           </Button>
 
           <Button

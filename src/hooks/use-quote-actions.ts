@@ -8,6 +8,7 @@ import { PaymentMethod } from "@/components/PaymentMethodFormDialog";
 import { formatPhoneNumber } from '@/lib/utils';
 import { addDays } from 'date-fns';
 import { Client } from '@/types/clients';
+import { useNavigate, useSearchParams } from 'react-router-dom'; // Importar useNavigate e useSearchParams
 
 interface Profile {
   id: string;
@@ -261,6 +262,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate(); 
+  const [searchParams] = useSearchParams(); // Inicializar useSearchParams
 
   const getBaseUrl = () => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -273,72 +276,75 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     name: service.name,
     price: service.quote_price ?? service.price,
     execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
+    // Adicionar ID do serviço para rastreamento
+    id: service.id, 
   }));
 
+  interface QuotePayload {
+    client_name: string;
+    vehicle: string;
+    total_price: number;
+    quote_date: string;
+    services_summary: any[];
+    pdf_url?: string;
+    client_id?: string;
+    vehicle_id?: string;
+    status?: 'pending' | 'confirmed' | 'rejected';
+    client_document?: string;
+    client_phone?: string;
+    client_email?: string;
+    client_address?: string;
+    client_city?: string;
+    client_state?: string;
+    client_zip_code?: string;
+    notes?: string;
+    valid_until: string;
+    service_date: string;
+    service_time: string;
+  }
+
+  // Função de verificação de duplicidade (reutilizada)
+  const checkDuplicity = async (payload: QuotePayload, excludeId?: string) => {
+    if (payload.client_id && payload.service_date) {
+      let query = supabase
+        .from('quotes')
+        .select('id, status')
+        .eq('user_id', user!.id)
+        .eq('client_id', payload.client_id)
+        .eq('service_date', payload.service_date);
+
+      if (payload.service_time) {
+        query = query.eq('service_time', payload.service_time);
+      } else {
+        query = query.is('service_time', null);
+      }
+
+      if (excludeId) {
+        query = query.not('id', 'eq', excludeId);
+      }
+
+      const { data: existingQuotes, error: checkError } = await query;
+
+      if (checkError) throw checkError;
+
+      if (existingQuotes && existingQuotes.length > 0) {
+        const existingStatus = existingQuotes[0].status;
+        let statusText = existingStatus === 'accepted' ? 'aprovado' : existingStatus === 'rejected' ? 'rejeitado' : 'pendente';
+        const timeText = payload.service_time ? ` às ${payload.service_time}` : '';
+        
+        throw new Error(
+          `Já existe um orçamento ${statusText} para este cliente na data ${payload.service_date.split('-').reverse().join('/')}${timeText}.`
+        );
+      }
+    }
+  };
+
   const saveQuoteMutation = useMutation({
-    mutationFn: async (quoteData: {
-      client_name: string;
-      vehicle: string;
-      total_price: number;
-      quote_date: string;
-      services_summary: any[];
-      pdf_url?: string;
-      client_id?: string;
-      vehicle_id?: string;
-      status?: 'pending' | 'confirmed' | 'rejected';
-      client_document?: string;
-      client_phone?: string;
-      client_email?: string;
-      client_address?: string;
-      client_city?: string;
-      client_state?: string;
-      client_zip_code?: string;
-      notes?: string;
-      valid_until: string;
-      service_date: string; // Adicionado
-      service_time: string; // Adicionado
-    }) => {
+    mutationFn: async (quoteData: QuotePayload) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
-      if (quoteData.client_id && quoteData.service_date) {
-        let query = supabase
-          .from('quotes')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .eq('client_id', quoteData.client_id)
-          .eq('service_date', quoteData.service_date);
-
-        // Se o tempo de serviço for definido, inclua-o na verificação
-        if (quoteData.service_time) {
-          query = query.eq('service_time', quoteData.service_time);
-        } else {
-          // Se o tempo não for definido, verifique se existe algum orçamento para a data sem tempo definido
-          query = query.is('service_time', null);
-        }
-
-        const { data: existingQuotes, error: checkError } = await query;
-
-        if (checkError) throw checkError;
-
-        if (existingQuotes && existingQuotes.length > 0) {
-          const existingStatus = existingQuotes[0].status;
-          let statusText = '';
-          if (existingStatus === 'accepted') {
-            statusText = 'aprovado';
-          } else if (existingStatus === 'rejected') {
-            statusText = 'rejeitado';
-          } else {
-            statusText = 'pendente';
-          }
-
-          const timeText = quoteData.service_time ? ` às ${quoteData.service_time}` : '';
-          
-          throw new Error(
-            `Já existe um orçamento ${statusText} para este cliente na data ${quoteData.service_date.split('-').reverse().join('/')}${timeText}.`
-          );
-        }
-      }
+      await checkDuplicity(quoteData);
       // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
 
       const { data, error } = await supabase
@@ -363,8 +369,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
           client_zip_code: quoteData.client_zip_code,
           notes: quoteData.notes,
           valid_until: quoteData.valid_until,
-          service_date: quoteData.service_date || null, // Salvar data
-          service_time: quoteData.service_time || null, // Salvar hora
+          service_date: quoteData.service_date || null,
+          service_time: quoteData.service_time || null,
         })
         .select()
         .single();
@@ -374,11 +380,69 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] }); // Invalida a agenda
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
     },
     onError: (err) => {
       toast({
         title: "Erro ao salvar orçamento",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateQuoteMutation = useMutation({
+    mutationFn: async ({ quoteId, quoteData }: { quoteId: string; quoteData: QuotePayload }) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      // --- VERIFICAÇÃO DE DUPLICIDADE (excluindo o próprio orçamento) ---
+      await checkDuplicity(quoteData, quoteId);
+      // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({
+          client_name: quoteData.client_name,
+          vehicle: quoteData.vehicle,
+          total_price: quoteData.total_price,
+          quote_date: quoteData.quote_date,
+          services_summary: quoteData.services_summary,
+          client_id: quoteData.client_id,
+          vehicle_id: quoteData.vehicle_id,
+          client_document: quoteData.client_document,
+          client_phone: quoteData.client_phone,
+          client_email: quoteData.client_email,
+          client_address: quoteData.client_address,
+          client_city: quoteData.client_city,
+          client_state: quoteData.client_state,
+          client_zip_code: quoteData.client_zip_code,
+          notes: quoteData.notes,
+          valid_until: quoteData.valid_until,
+          service_date: quoteData.service_date || null,
+          service_time: quoteData.service_time || null,
+          // PDF URL não é atualizada automaticamente no update, a menos que seja gerado um novo PDF
+        })
+        .eq('id', quoteId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      toast({
+        title: "Orçamento atualizado!",
+        description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
+      });
+      // Redirecionar de volta para a agenda após o salvamento
+      navigate('/agenda');
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao atualizar orçamento",
         description: err.message,
         variant: "destructive",
       });
@@ -414,12 +478,12 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     },
   });
 
-  const saveQuoteAndGetId = async (quoteData: QuoteData) => {
+  const prepareQuotePayload = (quoteData: QuoteData): QuotePayload => {
     const quoteDateObj = new Date(quoteData.quote_date);
     const validUntilDate = addDays(quoteDateObj, 7);
     const validUntilString = validUntilDate.toISOString().split('T')[0];
 
-    return await saveQuoteMutation.mutateAsync({
+    return {
       client_name: quoteData.client_name,
       vehicle: quoteData.vehicle,
       total_price: quoteData.finalPrice,
@@ -437,16 +501,56 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       client_zip_code: quoteData.selectedClient?.zip_code,
       notes: quoteData.observations,
       valid_until: validUntilString,
-      service_date: quoteData.serviceDate, // Passando serviceDate
-      service_time: quoteData.serviceTime, // Passando serviceTime
-    });
+      service_date: quoteData.serviceDate,
+      service_time: quoteData.serviceTime,
+    };
+  };
+
+  const saveQuoteAndGetId = async (quoteData: QuoteData) => {
+    const payload = prepareQuotePayload(quoteData);
+    return await saveQuoteMutation.mutateAsync(payload);
+  };
+
+  const handleUpdateQuote = async (quoteId: string, quoteData: QuoteData) => {
+    const payload = prepareQuotePayload(quoteData);
+    try {
+      await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
+    } catch (error: any) {
+      console.error("Erro ao atualizar orçamento:", error);
+      // O toast de erro já é tratado na mutação
+    }
   };
 
   const handleGenerateAndDownloadPDF = async (quoteData: QuoteData) => {
     try {
       const pdfBlob = await createQuotePdfBlob(quoteData);
       const fileName = `orcamento_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
-      await saveQuoteAndGetId(quoteData);
+      
+      // 1. Salvar/Atualizar o orçamento no DB
+      let savedQuoteId: string;
+      const quoteIdFromParams = searchParams.get('quoteId');
+
+      if (quoteIdFromParams) {
+        // Se estiver editando, atualiza o registro existente
+        const payload = prepareQuotePayload(quoteData);
+        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
+        savedQuoteId = updatedQuote.id;
+      } else {
+        // Se for novo, salva
+        const savedQuote = await saveQuoteAndGetId(quoteData);
+        savedQuoteId = savedQuote.id;
+      }
+
+      // 2. Fazer upload do PDF
+      const publicUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName: `${savedQuoteId}/${fileName}` });
+
+      // 3. Atualizar o registro do orçamento com a URL do PDF (se for um novo save ou se a URL mudou)
+      await supabase
+        .from('quotes')
+        .update({ pdf_url: publicUrl })
+        .eq('id', savedQuoteId);
+
+      // 4. Baixar o PDF
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -455,6 +559,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
       toast({
         title: "PDF gerado e salvo!",
         description: "O orçamento foi baixado para seu dispositivo e salvo no sistema.",
@@ -480,9 +585,20 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
 
     try {
-      const savedQuote = await saveQuoteAndGetId(quoteData);
+      let savedQuoteId: string;
+      const quoteIdFromParams = searchParams.get('quoteId');
+
+      if (quoteIdFromParams) {
+        const payload = prepareQuotePayload(quoteData);
+        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
+        savedQuoteId = updatedQuote.id;
+      } else {
+        const savedQuote = await saveQuoteAndGetId(quoteData);
+        savedQuoteId = savedQuote.id;
+      }
+
       const baseUrl = getBaseUrl();
-      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuoteId}`;
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${quoteViewLink}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
@@ -505,9 +621,20 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
   const handleGenerateLink = async (quoteData: QuoteData) => {
     try {
-      const savedQuote = await saveQuoteAndGetId(quoteData);
+      let savedQuoteId: string;
+      const quoteIdFromParams = searchParams.get('quoteId');
+
+      if (quoteIdFromParams) {
+        const payload = prepareQuotePayload(quoteData);
+        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
+        savedQuoteId = updatedQuote.id;
+      } else {
+        const savedQuote = await saveQuoteAndGetId(quoteData);
+        savedQuoteId = savedQuote.id;
+      }
+
       const baseUrl = getBaseUrl();
-      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuoteId}`;
       await navigator.clipboard.writeText(quoteViewLink);
       window.open(quoteViewLink, '_blank');
       toast({
@@ -528,9 +655,20 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
   const handleGenerateLocalLink = async (quoteData: QuoteData) => {
     try {
-      const savedQuote = await saveQuoteAndGetId(quoteData);
+      let savedQuoteId: string;
+      const quoteIdFromParams = searchParams.get('quoteId');
+
+      if (quoteIdFromParams) {
+        const payload = prepareQuotePayload(quoteData);
+        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
+        savedQuoteId = updatedQuote.id;
+      } else {
+        const savedQuote = await saveQuoteAndGetId(quoteData);
+        savedQuoteId = savedQuote.id;
+      }
+
       const baseUrl = window.location.origin; // Usa o domínio atual (localhost)
-      const quoteViewLink = `${baseUrl}/quote/view/${savedQuote.id}`;
+      const quoteViewLink = `${baseUrl}/quote/view/${savedQuoteId}`;
       await navigator.clipboard.writeText(quoteViewLink);
       window.open(quoteViewLink, '_blank');
       toast({
@@ -549,14 +687,15 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     }
   };
 
-  const isGeneratingOrSaving = saveQuoteMutation.isPending;
-  const isSendingWhatsApp = saveQuoteMutation.isPending;
+  const isGeneratingOrSaving = saveQuoteMutation.isPending || updateQuoteMutation.isPending;
+  const isSendingWhatsApp = saveQuoteMutation.isPending || updateQuoteMutation.isPending;
 
   return {
     handleGenerateAndDownloadPDF,
     handleSendViaWhatsApp,
     handleGenerateLink,
-    handleGenerateLocalLink, // Exportar a nova função
+    handleGenerateLocalLink,
+    handleUpdateQuote, // Exportar a nova função de update
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };

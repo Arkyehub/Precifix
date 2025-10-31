@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom'; // Importar useNavigate
 
 interface Quote {
   id: string;
@@ -41,9 +42,10 @@ export const AgendaView = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate(); // Inicializar useNavigate
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
-  const [quoteIdToDelete, setQuoteIdToDelete] = useState<string | null>(null); // Novo estado para rastrear o ID a ser excluído
+  const [quoteIdToDelete, setQuoteIdToDelete] = useState<string | null>(null);
 
   // Fetch all quotes that have a service_date defined
   const { data: quotes, isLoading, error } = useQuery<Quote[]>({
@@ -84,7 +86,7 @@ export const AgendaView = () => {
         title: "Orçamento excluído!",
         description: "O orçamento e seu link foram removidos.",
       });
-      setQuoteIdToDelete(null); // Limpa o ID após sucesso
+      setQuoteIdToDelete(null);
     },
     onError: (err) => {
       console.error("Erro ao excluir orçamento:", err);
@@ -93,7 +95,7 @@ export const AgendaView = () => {
         description: err.message,
         variant: "destructive",
       });
-      setQuoteIdToDelete(null); // Limpa o ID após erro
+      setQuoteIdToDelete(null);
     },
   });
 
@@ -115,6 +117,11 @@ export const AgendaView = () => {
           variant: "destructive",
         });
       });
+  };
+
+  const handleEditQuote = (quoteId: string) => {
+    // Redireciona para a página de geração de orçamento com o ID do orçamento na URL
+    navigate(`/generate-quote?quoteId=${quoteId}`);
   };
 
   const filteredQuotes = useMemo(() => {
@@ -329,6 +336,26 @@ export const AgendaView = () => {
                         </TooltipProvider>
                       )}
 
+                      {/* NOVO: Botão de Editar Orçamento (Apenas para Pendente) */}
+                      {quote.status === 'pending' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleEditQuote(quote.id)}
+                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                title="Editar Orçamento"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar Orçamento</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+
                       {/* Botão de Excluir (Apenas para Pendente) */}
                       {quote.status === 'pending' && (
                         <AlertDialog>
@@ -341,8 +368,8 @@ export const AgendaView = () => {
                                     size="icon" 
                                     className="text-destructive hover:bg-destructive/10"
                                     title="Excluir Orçamento"
-                                    onClick={() => setQuoteIdToDelete(quote.id)} // Define o ID antes de abrir o diálogo
-                                    disabled={deleteQuoteMutation.isPending} // Desabilita se qualquer exclusão estiver pendente
+                                    onClick={() => setQuoteIdToDelete(quote.id)}
+                                    disabled={deleteQuoteMutation.isPending}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -362,7 +389,6 @@ export const AgendaView = () => {
                               <AlertDialogCancel disabled={isDeletingThisQuote}>Cancelar</AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={() => {
-                                  // Chama a mutação usando o ID armazenado no estado
                                   if (quoteIdToDelete) {
                                     deleteQuoteMutation.mutate(quoteIdToDelete);
                                   }
