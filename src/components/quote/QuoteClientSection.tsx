@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Car, Loader2, Calendar, Clock } from "lucide-react"; // Adicionado Calendar e Clock
+import { Plus, Users, Car, Loader2, Calendar, Clock, Pencil } from "lucide-react"; // Adicionado Pencil
 import { Client } from '@/types/clients';
 import { Vehicle } from '@/types/vehicles';
 import { ClientFormDialog } from '../ClientFormDialog';
@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ClientAutocomplete } from './ClientAutocomplete';
 import { useSession } from '@/components/SessionContextProvider';
-import { Checkbox } from '@/components/ui/checkbox'; // Adicionado Checkbox
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface QuoteClientSectionProps {
   selectedClient: Client | undefined;
@@ -125,6 +125,12 @@ export const QuoteClientSection = ({
     setIsClientFormDialogOpen(true);
   };
 
+  const handleEditClientClick = () => {
+    if (selectedClient) {
+      setIsClientFormDialogOpen(true);
+    }
+  };
+
   const formatPlate = (plate: string | null) => plate ? plate.toUpperCase() : 'N/A';
 
   return (
@@ -133,6 +139,18 @@ export const QuoteClientSection = ({
         <div className="flex items-center gap-2 mb-2">
           <Users className="h-4 w-4 text-primary" />
           <Label className="text-sm font-medium">Dados do Cliente</Label>
+          {selectedClient && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleEditClientClick}
+              className="h-6 w-6 text-muted-foreground hover:text-primary"
+              title="Editar Cliente"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -263,6 +281,7 @@ export const QuoteClientSection = ({
       <ClientFormDialog
         isOpen={isClientFormDialogOpen}
         onClose={() => setIsClientFormDialogOpen(false)}
+        client={selectedClient} // Passa o cliente selecionado para edição
         onClientSaved={onClientSaved}
       />
     </div>

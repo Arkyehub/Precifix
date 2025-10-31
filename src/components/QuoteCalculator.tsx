@@ -47,6 +47,12 @@ interface OperationalCost {
   created_at: string;
 }
 
+// Interface para o resultado da contagem de orçamentos
+interface ServiceQuoteCount {
+  service_id: string;
+  count: number;
+}
+
 export const QuoteCalculator = () => {
   const { user } = useSession();
   const { toast } = useToast();
@@ -124,6 +130,45 @@ export const QuoteCalculator = () => {
         return { ...service, products: [] };
       }));
       return servicesWithProducts;
+    },
+    enabled: !!user,
+  });
+
+  // NOVA QUERY: Fetch service quote counts
+  const { data: serviceQuoteCounts, isLoading: isLoadingQuoteCounts } = useQuery<ServiceQuoteCount[]>({
+    queryKey: ['serviceQuoteCounts', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      // Esta query usa uma função do Supabase para contar ocorrências de service_id
+      // dentro do JSONB services_summary de todos os orçamentos do usuário.
+      // Como não temos uma função de agregação complexa no RLS, faremos uma busca simples
+      // e a contagem será feita no cliente, ou assumiremos que o DB tem uma view/função
+      // para isso (simulando a chamada de uma view/função que retorna a contagem).
+      
+      // Para simplificar e evitar complexidade de DB, vamos buscar todos os orçamentos
+      // e calcular a contagem no cliente.
+      const { data: quotesData, error: quotesError } = await supabase
+        .from('quotes')
+        .select('services_summary')
+        .eq('user_id', user.id);
+
+      if (quotesError) throw quotesError;
+
+      const counts: { [serviceId: string]: number } = {};
+      
+      quotesData.forEach(quote => {
+        const servicesSummary = quote.services_summary as { id: string }[];
+        if (Array.isArray(servicesSummary)) {
+          servicesSummary.forEach(service => {
+            if (service.id) {
+              counts[service.id] = (counts[service.id] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      return Object.entries(counts).map(([service_id, count]) => ({ service_id, count }));
     },
     enabled: !!user,
   });
@@ -322,10 +367,26 @@ export const QuoteCalculator = () => {
   const netProfit = finalPriceWithFee - totalCost;
   const currentProfitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
   const suggestedPriceBasedOnDesiredMargin = profitMargin > 0 ? totalCost / (1 - profitMargin / 100) : totalCost;
-  const serviceOptions = allServices?.map(s => ({ label: s.name, value: s.id })) || [];
+  
+  // Lógica de ordenação dos serviços
+  const serviceOptions = React.useMemo(() => {
+    if (!allServices) return [];
+
+    const countsMap = new Map(serviceQuoteCounts?.map(c => [c.service_id, c.count]) || []);
+
+    const sortedServices = [...allServices].sort((a, b) => {
+      const countA = countsMap.get(a.id) || 0;
+      const countB = countsMap.get(b.id) || 0;
+      // Ordenação decrescente (mais popular primeiro)
+      return countB - countA;
+    });
+
+    return sortedServices.map(s => ({ label: s.name, value: s.id }));
+  }, [allServices, serviceQuoteCounts]);
+
   const currentPaymentMethod = paymentMethods?.find(pm => pm.id === selectedPaymentMethodId);
 
-  if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods) {
+  if (isLoadingServices || isLoadingMonthlyCost || isLoadingPaymentMethods || isLoadingQuoteCounts) {
     return <p className="text-center py-8">Carregando dados...</p>;
   }
 

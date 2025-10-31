@@ -1,48 +1,59 @@
-import React from 'react';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Check, ChevronDown, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+"use client";
 
-interface MultiSelectOption {
+import * as React from "react";
+import { Check, X, ChevronDown } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandInput,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface Option {
   label: string;
   value: string;
 }
 
 interface MultiSelectProps {
-  options: MultiSelectOption[];
+  options: Option[];
   selected: string[];
-  onSelectChange: (selectedValues: string[]) => void;
+  onSelectChange: (selected: string[]) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-export const MultiSelect = ({
+export function MultiSelect({
   options,
   selected,
   onSelectChange,
-  placeholder = "Selecione...",
+  placeholder = "Selecione as opções",
   className,
-}: MultiSelectProps) => {
+  disabled,
+}: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
   const handleSelect = (value: string) => {
     const newSelected = selected.includes(value)
-      ? selected.filter((item) => item !== value)
+      ? selected.filter((id) => id !== value)
       : [...selected, value];
     onSelectChange(newSelected);
   };
 
-  const handleRemove = (value: string) => {
-    const newSelected = selected.filter((item) => item !== value);
-    onSelectChange(newSelected);
-  };
-
-  const selectedLabels = selected
-    .map((value) => options.find((option) => option.value === value)?.label)
-    .filter(Boolean) as string[];
+  const selectedLabels = React.useMemo(() => {
+    return selected.map(id => options.find(opt => opt.value === id)?.label || id);
+  }, [selected, options]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -51,33 +62,41 @@ export const MultiSelect = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between h-auto min-h-[38px] flex-wrap", className)}
+          className={cn("w-full justify-between h-auto min-h-10", className)}
+          disabled={disabled}
         >
-          {selected.length === 0 ? (
-            <span className="text-muted-foreground">{placeholder}</span>
-          ) : (
-            <div className="flex flex-wrap gap-1">
-              {selectedLabels.map((label, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {label}
-                  <X className="h-3 w-3 cursor-pointer" onClick={(e) => {
+          <div className="flex flex-wrap gap-1">
+            {selected.length > 0 ? (
+              selectedLabels.map((label, index) => (
+                <Badge 
+                  key={selected[index]} 
+                  variant="secondary" 
+                  className="flex items-center gap-1"
+                  onClick={(e) => {
                     e.stopPropagation();
-                    handleRemove(options.find(opt => opt.label === label)?.value || '');
-                  }} />
+                    handleSelect(selected[index]);
+                  }}
+                >
+                  {label}
+                  <X className="h-3 w-3 cursor-pointer" />
                 </Badge>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
-          <CommandGroup>
-            <CommandList>
+          <CommandInput placeholder="Buscar serviço..." />
+          <CommandList className="max-h-[250px]"> {/* Aplicando max-h diretamente no CommandList */}
+            <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
+                  value={option.label}
                   onSelect={() => handleSelect(option.value)}
                   className="cursor-pointer"
                 >
@@ -90,10 +109,10 @@ export const MultiSelect = ({
                   {option.label}
                 </CommandItem>
               ))}
-            </CommandList>
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
   );
-};
+}
