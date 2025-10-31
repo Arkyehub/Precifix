@@ -120,51 +120,6 @@ export const QuoteCalculator = () => {
     enabled: !!quoteIdToEdit && !!user,
   });
 
-  // Efeito para preencher o formulário quando o orçamento para edição é carregado
-  useEffect(() => {
-    if (quoteToEdit) {
-      // 1. Cliente e Veículo
-      setSelectedClientId(quoteToEdit.client_id);
-      setSelectedVehicleId(quoteToEdit.vehicle_id);
-      
-      // 2. Serviços
-      const servicesFromQuote = quoteToEdit.services_summary.map(s => ({
-        ...s,
-        id: s.id || `temp-${Math.random()}`, // Garante que cada serviço tenha um ID para o estado
-        price: s.price,
-        labor_cost_per_hour: 0, // Estes campos não são salvos no summary, então usamos 0 ou o valor padrão do catálogo se necessário
-        execution_time_minutes: s.execution_time_minutes,
-        other_costs: 0,
-        user_id: user!.id,
-        quote_price: s.price,
-        quote_execution_time_minutes: s.execution_time_minutes,
-        // Nota: Produtos e outros custos detalhados não são recuperados do summary, apenas os totais.
-        // Para edição completa, precisaríamos salvar mais detalhes no JSONB services_summary.
-        // Por enquanto, preenchemos o básico.
-      }));
-      setQuotedServices(servicesFromQuote);
-      setSelectedServiceIds(servicesFromQuote.map(s => s.id)); // Seleciona os IDs para o MultiSelect
-
-      // 3. Agendamento e Observações
-      setServiceDate(quoteToEdit.service_date || '');
-      setServiceTime(quoteToEdit.service_time || '');
-      setIsTimeDefined(!!quoteToEdit.service_time);
-      setObservations(quoteToEdit.notes || '');
-
-      // 4. Preço Final (para calcular desconto reverso, se necessário)
-      // Como o total_price é o valor final, e não temos o valor original,
-      // vamos assumir que o valor original do serviço é o total_price para fins de edição
-      // e o desconto é 0, a menos que o usuário o ajuste.
-      // Para simplificar, vamos apenas definir o valor final e deixar o usuário recalcular.
-      // setTotalServiceValue(quoteToEdit.total_price); // Não temos esse estado aqui, mas o summary recalcula.
-      
-      toast({
-        title: "Orçamento carregado para edição",
-        description: `Orçamento #${quoteIdToEdit.substring(0, 8)} carregado.`,
-      });
-    }
-  }, [quoteToEdit, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Fetch all services with their linked products
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
     queryKey: ['allServicesWithProducts', user?.id],
@@ -214,6 +169,57 @@ export const QuoteCalculator = () => {
     },
     enabled: !!user,
   });
+
+  // Efeito para preencher o formulário quando o orçamento para edição é carregado
+  useEffect(() => {
+    if (quoteToEdit && allServices) {
+      // 1. Cliente e Veículo
+      setSelectedClientId(quoteToEdit.client_id);
+      setSelectedVehicleId(quoteToEdit.vehicle_id);
+      
+      // 2. Serviços
+      const servicesFromQuote: QuotedService[] = quoteToEdit.services_summary.map(s => {
+        // Tenta encontrar o serviço original no catálogo para preencher os custos
+        const originalService = allServices.find(as => as.id === s.id);
+        
+        return {
+          ...s,
+          id: s.id || `temp-${Math.random()}`, // Garante que cada serviço tenha um ID para o estado
+          price: originalService?.price ?? s.price,
+          labor_cost_per_hour: originalService?.labor_cost_per_hour ?? 0,
+          execution_time_minutes: originalService?.execution_time_minutes ?? s.execution_time_minutes,
+          other_costs: originalService?.other_costs ?? 0,
+          user_id: user!.id,
+          // Sobrescreve com os valores do orçamento (se existirem)
+          quote_price: s.price,
+          quote_execution_time_minutes: s.execution_time_minutes,
+          // Produtos e outros detalhes de custo não são salvos no summary, então usamos os defaults do catálogo
+          products: originalService?.products,
+          quote_products: originalService?.products, // Inicializa quote_products com os produtos do catálogo
+        };
+      });
+      
+      setQuotedServices(servicesFromQuote);
+      setSelectedServiceIds([]); // IMPORTANTE: Limpar o MultiSelect para que ele não mostre os IDs temporários/reconstruídos
+
+      // 3. Agendamento e Observações
+      setServiceDate(quoteToEdit.service_date || '');
+      setServiceTime(quoteToEdit.service_time || '');
+      setIsTimeDefined(!!quoteToEdit.service_time);
+      setObservations(quoteToEdit.notes || '');
+
+      // 4. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
+      // Como o total_price é o valor final, e não temos o valor original,
+      // vamos assumir que o valor original do serviço é o total_price para fins de edição
+      // e o desconto é 0, a menos que o usuário o ajuste.
+      // Para simplificar, vamos apenas definir o valor final e deixar o usuário recalcular.
+      
+      toast({
+        title: "Orçamento carregado para edição",
+        description: `Orçamento #${quoteIdToEdit.substring(0, 8)} carregado.`,
+      });
+    }
+  }, [quoteToEdit, allServices, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // NOVA QUERY: Fetch service quote counts
   const { data: serviceQuoteCounts, isLoading: isLoadingQuoteCounts } = useQuery<ServiceQuoteCount[]>({
