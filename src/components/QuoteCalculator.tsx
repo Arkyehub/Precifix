@@ -72,7 +72,8 @@ export const QuoteCalculator = () => {
   const [searchParams] = useSearchParams();
   const quoteIdToEdit = searchParams.get('quoteId');
 
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  // serviceIdToAdd agora é apenas o ID do serviço que o usuário está prestes a adicionar
+  const [serviceIdToAdd, setServiceIdToAdd] = useState<string[]>([]);
   const [quotedServices, setQuotedServices] = useState<QuotedService[]>([]);
   const [otherCostsGlobal, setOtherCostsGlobal] = useState(0);
   const [profitMargin, setProfitMargin] = useState(40);
@@ -200,7 +201,7 @@ export const QuoteCalculator = () => {
       });
       
       setQuotedServices(servicesFromQuote);
-      setSelectedServiceIds([]); // IMPORTANTE: Limpar o MultiSelect para que ele não mostre os IDs temporários/reconstruídos
+      setServiceIdToAdd([]); // Limpa o MultiSelect
 
       // 3. Agendamento e Observações
       setServiceDate(quoteToEdit.service_date || '');
@@ -209,10 +210,6 @@ export const QuoteCalculator = () => {
       setObservations(quoteToEdit.notes || '');
 
       // 4. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
-      // Como o total_price é o valor final, e não temos o valor original,
-      // vamos assumir que o valor original do serviço é o total_price para fins de edição
-      // e o desconto é 0, a menos que o usuário o ajuste.
-      // Para simplificar, vamos apenas definir o valor final e deixar o usuário recalcular.
       
       toast({
         title: "Orçamento carregado para edição",
@@ -227,14 +224,6 @@ export const QuoteCalculator = () => {
     queryFn: async () => {
       if (!user) return [];
       
-      // Esta query usa uma função do Supabase para contar ocorrências de service_id
-      // dentro do JSONB services_summary de todos os orçamentos do usuário.
-      // Como não temos uma função de agregação complexa no RLS, faremos uma busca simples
-      // e a contagem será feita no cliente, ou assumiremos que o DB tem uma view/função
-      // para isso (simulando a chamada de uma view/função que retorna a contagem).
-      
-      // Para simplificar e evitar complexidade de DB, vamos buscar todos os orçamentos
-      // e calcular a contagem no cliente.
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select('services_summary')
@@ -324,28 +313,42 @@ export const QuoteCalculator = () => {
     }
   }, [selectedClientId, clientDetails]);
 
-  useEffect(() => {
-    if (!allServices) return;
-
-    const newQuotedServices: QuotedService[] = [];
-    const currentQuotedServiceIds = new Set(quotedServices.map(s => s.id));
-
-    selectedServiceIds.forEach(id => {
-      const existingQuotedService = quotedServices.find(qs => qs.id === id);
-      if (existingQuotedService) {
-        newQuotedServices.push(existingQuotedService);
-      } else {
-        const serviceFromAll = allServices.find(s => s.id === id);
-        if (serviceFromAll) {
-          newQuotedServices.push({ ...serviceFromAll });
-        }
+  // NOVA LÓGICA: Adicionar serviço quando um ID é selecionado no MultiSelect
+  const handleServiceSelectChange = (newSelectedIds: string[]) => {
+    // O MultiSelect sempre retorna a lista de IDs selecionados.
+    // Como queremos que ele funcione apenas para ADIÇÃO, vamos processar apenas o ID que foi adicionado.
+    
+    const currentQuotedIds = quotedServices.map(s => s.id);
+    
+    // Identificar o ID que foi adicionado (se houver)
+    const addedId = newSelectedIds.find(id => !currentQuotedIds.includes(id));
+    
+    if (addedId) {
+      const serviceFromAll = allServices?.find(s => s.id === addedId);
+      if (serviceFromAll) {
+        const newService: QuotedService = { ...serviceFromAll };
+        setQuotedServices(prev => [...prev, newService]);
+        toast({
+          title: "Serviço adicionado!",
+          description: `${serviceFromAll.name} foi adicionado ao orçamento.`,
+        });
       }
-    });
+    }
+    
+    // Identificar o ID que foi removido (se houver)
+    const removedId = currentQuotedIds.find(id => !newSelectedIds.includes(id));
+    
+    if (removedId) {
+      setQuotedServices(prev => prev.filter(s => s.id !== removedId));
+      toast({
+        title: "Serviço removido!",
+        description: `O serviço foi removido do orçamento.`,
+      });
+    }
 
-    const filteredQuotedServices = newQuotedServices.filter(qs => selectedServiceIds.includes(qs.id));
-
-    setQuotedServices(filteredQuotedServices);
-  }, [selectedServiceIds, allServices]);
+    // Limpar o MultiSelect após a ação (mantendo o estado interno do MultiSelect vazio)
+    setServiceIdToAdd([]);
+  };
 
   useEffect(() => {
     setDisplayProfitMargin(profitMargin.toFixed(2).replace('.', ','));
@@ -498,8 +501,9 @@ export const QuoteCalculator = () => {
         <CardContent className="space-y-6">
           <QuoteServiceSelection
             serviceOptions={serviceOptions}
-            selectedServiceIds={selectedServiceIds}
-            onSelectChange={setSelectedServiceIds}
+            selectedServiceIds={serviceIdToAdd} // Usar o estado de buffer (sempre vazio após a ação)
+            onSelectChange={handleServiceSelectChange} // Usar a nova função de manipulação
+            existingServiceIds={quotedServices.map(s => s.id)} // Passar IDs existentes para filtrar opções
           />
 
           <QuoteSelectedServicesList
