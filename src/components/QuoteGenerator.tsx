@@ -101,6 +101,9 @@ export const QuoteGenerator = ({
       if (!clientNameInput) {
         setRawPhoneNumber('');
         setAddress('');
+        if (typeof setSelectedVehicleId === 'function') {
+          setSelectedVehicleId(null);
+        }
       }
     }
   }, [selectedClient]);
@@ -228,7 +231,7 @@ export const QuoteGenerator = ({
         />
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
-          {quoteIdToEdit && (
+          {quoteIdToEdit ? (
             <Button
               onClick={handleSaveOrUpdate}
               disabled={!isQuoteValid || isGeneratingOrSaving}
@@ -241,47 +244,49 @@ export const QuoteGenerator = ({
               )}
               Salvar Alterações
             </Button>
+          ) : (
+            <>
+              <Button
+                onClick={() => handleGenerateAndDownloadPDF(quoteData)}
+                disabled={!isQuoteValid || isGeneratingOrSaving}
+                className="flex-1 bg-primary hover:bg-primary-glow"
+              >
+                {isGeneratingOrSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Gerar e Baixar PDF
+              </Button>
+              
+              <Button
+                onClick={() => handleGenerateLink(quoteData)}
+                disabled={!isQuoteValid || isGeneratingOrSaving}
+                variant="outline"
+                className="flex-1 border-primary/30 hover:bg-primary/10 hover:border-primary"
+              >
+                {isGeneratingOrSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                )}
+                Link do Orçamento
+              </Button>
+
+              <Button
+                onClick={() => handleSendViaWhatsApp(quoteData)}
+                disabled={isWhatsAppDisabled}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              >
+                {isSendingWhatsApp ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Enviar via WhatsApp
+              </Button>
+            </>
           )}
-
-          <Button
-            onClick={() => handleGenerateAndDownloadPDF(quoteData)}
-            disabled={!isQuoteValid || isGeneratingOrSaving}
-            className="flex-1 bg-primary hover:bg-primary-glow"
-          >
-            {isGeneratingOrSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            Gerar e Baixar PDF
-          </Button>
-          
-          <Button
-            onClick={() => handleGenerateLink(quoteData)}
-            disabled={!isQuoteValid || isGeneratingOrSaving}
-            variant="outline"
-            className="flex-1 border-primary/30 hover:bg-primary/10 hover:border-primary"
-          >
-            {isGeneratingOrSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <LinkIcon className="mr-2 h-4 w-4" />
-            )}
-            Link do Orçamento
-          </Button>
-
-          <Button
-            onClick={() => handleSendViaWhatsApp(quoteData)}
-            disabled={isWhatsAppDisabled}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-          >
-            {isSendingWhatsApp ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Enviar via WhatsApp
-          </Button>
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
