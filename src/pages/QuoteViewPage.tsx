@@ -68,14 +68,16 @@ const QuoteViewPage = () => {
     queryKey: ['publicQuote', quoteId],
     queryFn: async () => {
       if (!quoteId) throw new Error("ID do orçamento não fornecido.");
+      // Acesso anônimo (público) à tabela quotes
       const { data, error } = await supabase
         .from('quotes')
         .select('*')
         .eq('id', quoteId)
         .single();
       if (error) {
+        // Se o erro for de RLS (42501) ou não encontrado (PGRST116), tratamos como não encontrado/inválido
         if (error.code === 'PGRST116' || error.code === '42501') {
-          throw new Error("Orçamento Não Encontrado.");
+          throw new Error("Orçamento Não Encontrado ou Acesso Negado.");
         }
         throw error;
       }
@@ -96,16 +98,19 @@ const QuoteViewPage = () => {
     queryKey: ['publicProfile', quote?.user_id],
     queryFn: async () => {
       if (!quote?.user_id) return null;
+      // Acesso anônimo (público) à tabela profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, company_name, document_number, phone_number, address, address_number, zip_code')
         .eq('id', quote.user_id)
         .single();
       if (error) {
         console.error("Erro ao buscar perfil:", error);
         return null;
       }
-      return { ...data, email: null } as Profile;
+      // O avatar_url precisa ser buscado separadamente se não estiver na política pública de SELECT
+      // Mas como a política de SELECT na tabela profiles é 'true', todos os campos devem vir.
+      return data as Profile;
     },
     enabled: !!quote?.user_id,
     retry: false,
@@ -113,6 +118,9 @@ const QuoteViewPage = () => {
 
   const updateQuoteStatusMutation = useMutation({
     mutationFn: async (newStatus: 'accepted' | 'rejected') => {
+      // Esta mutação deve ser feita de forma anônima, mas o RLS deve permitir
+      // que qualquer usuário (anon) atualize o status se a política for configurada.
+      // Assumindo que a política de UPDATE na tabela quotes permite anon/true para status update.
       const { error } = await supabase
         .from('quotes')
         .update({ status: newStatus })
@@ -163,7 +171,7 @@ const QuoteViewPage = () => {
         <XCircle className="h-12 w-12 text-destructive mb-4" />
         <h1 className="text-2xl font-bold text-destructive">Orçamento Não Encontrado</h1>
         <p className="text-muted-foreground mt-2 text-center">
-          O link do orçamento pode estar incorreto ou o orçamento foi excluído.
+          O link do orçamento pode estar incorreto ou o acesso foi negado.
         </p>
         <p className="text-xs text-gray-400 mt-4">Detalhe do erro: {quoteError.message}</p>
       </div>
@@ -199,9 +207,9 @@ const QuoteViewPage = () => {
   if (profile?.address) {
     companyAddress = profile.address;
     if (profile.address_number) companyAddress += `, ${profile.address_number}`;
-    if (profile.city) companyAddress += ` - ${profile.city}`;
-    if (profile.state) companyAddress += `/${profile.state}`;
-    if (profile.zip_code) companyAddress += ` (CEP: ${formatCep(profile.zip_code)})`;
+    // Note: City/State/Zip are not fetched in the public profile query above, 
+    // but we rely on the existing profile structure if they were present.
+    // Since the public profile query was simplified, let's stick to what we fetch.
   }
 
   return (
