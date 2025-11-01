@@ -10,20 +10,36 @@ import {
   FolderOpen,
   ReceiptText,
   Users,
-  CalendarCheck, // Importar CalendarCheck
+  CalendarCheck,
+  Wallet, // Novo ícone para Financeiro
+  Wrench, // Novo ícone para Serviços
 } from 'lucide-react';
 
 export const navigationLinks = [
-  { to: '/', icon: Gauge, label: 'Painel Principal' },
-  { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
-  { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' },
-  { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
-  { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
-  { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
-  { to: '/clients', icon: Users, label: 'Gerenciar Clientes' },
-  { to: '/agenda', icon: CalendarCheck, label: 'Agenda' }, // Novo link
-  { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
-  { to: '/storage-test', icon: FolderOpen, label: 'Testar Storage' },
+  { to: '/', icon: Gauge, label: 'Painel Principal', type: 'link' },
+  { 
+    label: 'Financeiro', 
+    icon: Wallet, 
+    type: 'group',
+    sublinks: [
+      { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
+      { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' },
+      { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
+    ]
+  },
+  { 
+    label: 'Serviços', 
+    icon: Wrench, 
+    type: 'group',
+    sublinks: [
+      { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
+      { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
+      { to: '/agenda', icon: CalendarCheck, label: 'Agenda' },
+      { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
+    ]
+  },
+  { to: '/clients', icon: Users, label: 'Clientes', type: 'link' },
+  // Removido /storage-test
 ];
 
 export const userDropdownLinks = [

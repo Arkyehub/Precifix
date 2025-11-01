@@ -13,7 +13,6 @@ import QuoteGenerationPage from "./pages/QuoteGenerationPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
-import StorageTestPage from "./pages/StorageTestPage";
 import BillingPage from "./pages/BillingPage";
 import ClientsPage from "./pages/ClientsPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
@@ -115,14 +114,7 @@ const App = () => (
                 </DashboardLayout>
               } 
             />
-            <Route 
-              path="/storage-test"
-              element={
-                <DashboardLayout>
-                  <StorageTestPage />
-                </DashboardLayout>
-              }
-            />
+            {/* Rota /storage-test removida */}
             <Route 
               path="/billing"
               element={
