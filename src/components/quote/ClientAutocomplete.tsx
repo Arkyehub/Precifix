@@ -18,6 +18,7 @@ interface ClientAutocompleteProps {
   clientNameInput: string;
   setClientNameInput: (name: string) => void;
   onAddClientClick: () => void;
+  disabled?: boolean; // Nova prop
 }
 
 // Hook para debounce
@@ -41,6 +42,7 @@ export const ClientAutocomplete = ({
   clientNameInput,
   setClientNameInput,
   onAddClientClick,
+  disabled = false,
 }: ClientAutocompleteProps) => {
   const { user } = useSession();
   const [open, setOpen] = useState(false);
@@ -66,15 +68,15 @@ export const ClientAutocomplete = ({
       if (error) throw error;
       return data as Client[]; // Garantir que o retorno é Client[]
     },
-    enabled: !!user && debouncedSearchTerm.length >= 2,
+    enabled: !!user && debouncedSearchTerm.length >= 2 && !disabled, // Desabilitar query se o componente estiver desabilitado
   });
 
   // Efeito para controlar a abertura do Popover
   useEffect(() => {
     // Usar Array.isArray(clients) para garantir que 'clients' é um array antes de acessar .length
-    const shouldOpen = debouncedSearchTerm.length >= 2 && (Array.isArray(clients) && clients.length > 0 || isLoadingClients);
+    const shouldOpen = !disabled && debouncedSearchTerm.length >= 2 && (Array.isArray(clients) && clients.length > 0 || isLoadingClients);
     setOpen(shouldOpen);
-  }, [debouncedSearchTerm, clients, isLoadingClients]);
+  }, [debouncedSearchTerm, clients, isLoadingClients, disabled]);
 
   // Efeito para calcular a largura do input e definir a largura do popover
   useEffect(() => {
@@ -99,14 +101,14 @@ export const ClientAutocomplete = ({
   };
 
   const handleInputFocus = () => {
-    if (clientNameInput.length >= 2) {
+    if (clientNameInput.length >= 2 && !disabled) {
       setOpen(true);
     }
   };
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="clientName">Nome do Cliente *</Label>
+      <Label htmlFor="clientName">Nome do Cliente {disabled ? '' : '*'}</Label>
       <div className="flex gap-2">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -120,6 +122,7 @@ export const ClientAutocomplete = ({
                 placeholder="Ex: João Silva (comece a digitar para buscar)"
                 className="bg-background/50 w-full"
                 autoComplete="off"
+                disabled={disabled} // Aplicar disabled aqui
                 onBlur={() => {
                   setTimeout(() => {
                     setOpen(false);
@@ -177,6 +180,7 @@ export const ClientAutocomplete = ({
           size="icon"
           onClick={onAddClientClick}
           title="Adicionar Novo Cliente"
+          disabled={disabled} // Aplicar disabled aqui
         >
           <Plus className="h-4 w-4" />
         </Button>

@@ -17,6 +17,8 @@ import { QuotePaymentMethodSection } from '@/components/quote/QuotePaymentMethod
 import { QuoteCalculationSummary } from '@/components/quote/QuoteCalculationSummary';
 import { Client } from '@/types/clients'; // Importar Client
 import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface Service {
   id: string;
@@ -105,6 +107,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const [isTimeDefined, setIsTimeDefined] = useState(false);
   const [serviceTime, setServiceTime] = useState('');
   const [observations, setObservations] = useState(''); // Adicionado estado de observações
+  
+  // NOVO ESTADO: Se o cliente é obrigatório (apenas para isSale)
+  const [isClientRequired, setIsClientRequired] = useState(!isSale);
 
   // Fetch all services with their linked products (MOVIDO PARA CIMA)
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -511,6 +516,34 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          
+          <QuoteClientSection
+            selectedClient={selectedClient}
+            onClientSelect={handleClientSelect}
+            onClientSaved={handleClientSaved}
+            clientNameInput={selectedClient?.name || ''} // Usar o nome do cliente selecionado
+            setClientNameInput={() => {}} // Não permitir alteração direta do nome se o cliente estiver selecionado
+            quoteDate={''} // Não usado aqui, mas mantido para compatibilidade
+            setQuoteDate={() => {}} // Não usado aqui, mas mantido para compatibilidade
+            rawPhoneNumber={selectedClient?.phone_number || ''}
+            setRawPhoneNumber={() => {}} // Não permitir alteração direta do telefone
+            address={selectedClient?.address || ''}
+            setAddress={() => {}} // Não permitir alteração direta do endereço
+            observations={observations}
+            setObservations={setObservations}
+            selectedVehicleId={selectedVehicleId}
+            setSelectedVehicleId={setSelectedVehicleId}
+            serviceDate={serviceDate}
+            setServiceDate={setServiceDate}
+            isTimeDefined={isTimeDefined}
+            setIsTimeDefined={setIsTimeDefined}
+            serviceTime={serviceTime}
+            setServiceTime={setServiceTime}
+            isSale={isSale}
+            isClientRequired={isClientRequired}
+            setIsClientRequired={setIsClientRequired}
+          />
+
           <QuoteServiceSelection
             serviceOptions={serviceOptions}
             selectedServiceIds={serviceIdToAdd} // Usar o estado de buffer (sempre vazio após a ação)
@@ -580,6 +613,18 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             valueAfterDiscount={valueAfterDiscount}
             netProfit={netProfit}
           />
+          
+          {/* Observações Finais (Movidas para o final) */}
+          <div className="space-y-2 pt-4 border-t border-border/50">
+            <Label htmlFor="observations">Observações Adicionais</Label>
+            <Textarea
+              id="observations"
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              placeholder="Informações extras, condições de pagamento, garantia, etc."
+              className="bg-background/50 min-h-[100px]"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -603,6 +648,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           observations={observations} // Passar observações
           setObservations={setObservations} // Passar setter de observações
           isSale={isSale} // Passar a nova prop
+          isClientRequired={isClientRequired} // Passar a nova prop
         />
       )}
 

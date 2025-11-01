@@ -38,6 +38,10 @@ interface QuoteClientSectionProps {
   setIsTimeDefined: (defined: boolean) => void;
   serviceTime: string;
   setServiceTime: (time: string) => void;
+  // Novo prop para controle de obrigatoriedade
+  isSale?: boolean;
+  isClientRequired: boolean;
+  setIsClientRequired: (required: boolean) => void;
 }
 
 export const QuoteClientSection = ({
@@ -63,6 +67,10 @@ export const QuoteClientSection = ({
   setIsTimeDefined,
   serviceTime,
   setServiceTime,
+  // Novo
+  isSale = false,
+  isClientRequired,
+  setIsClientRequired,
 }: QuoteClientSectionProps) => {
   const { user } = useSession();
   const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
@@ -83,14 +91,15 @@ export const QuoteClientSection = ({
       }
       return data || [];
     },
-    enabled: !!selectedClient?.id && !!user,
+    enabled: !!selectedClient?.id && !!user && isClientRequired, // Habilitar apenas se o cliente for necessário
   });
 
   useEffect(() => {
     if (selectedClient) {
-      setClientNameInput(selectedClient.name);
-      setRawPhoneNumber(selectedClient.phone_number || '');
-      setAddress(selectedClient.address || '');
+      // Se o cliente está selecionado, os campos de texto devem refletir os dados do cliente
+      // Mas no modo venda, o QuoteCalculator está controlando o nome/telefone/endereço
+      // para que não sejam alterados diretamente se o cliente for selecionado.
+      // Aqui, apenas garantimos que o estado local do componente seja limpo se o cliente for deselecionado.
     } else {
       if (!clientNameInput) {
         setRawPhoneNumber('');
@@ -135,21 +144,84 @@ export const QuoteClientSection = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      
+      {/* Seção de Agendamento (Movida para o Topo) */}
       <div className="md:col-span-2 pt-4 border-t border-border/50">
         <div className="flex items-center gap-2 mb-2">
-          <Users className="h-4 w-4 text-primary" />
-          <Label className="text-sm font-medium">Dados do Cliente</Label>
-          {selectedClient && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={handleEditClientClick}
-              className="h-6 w-6 text-muted-foreground hover:text-primary"
-              title="Editar Cliente"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+          <Calendar className="h-4 w-4 text-primary" />
+          <Label className="text-sm font-medium">Data e Hora do Serviço *</Label>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="serviceDate">Data do Serviço</Label>
+        <Input
+          id="serviceDate"
+          type="date"
+          value={serviceDate}
+          onChange={(e) => setServiceDate(e.target.value)}
+          className="bg-background/50"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="serviceTime">Hora do Serviço</Label>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="define-time"
+            checked={isTimeDefined}
+            onCheckedChange={(checked) => setIsTimeDefined(checked as boolean)}
+          />
+          <Label htmlFor="define-time" className="text-sm text-muted-foreground">Definir hora</Label>
+          <Input
+            id="serviceTime"
+            type="time"
+            value={serviceTime}
+            onChange={(e) => setServiceTime(e.target.value)}
+            className="bg-background/50"
+            disabled={!isTimeDefined}
+          />
+        </div>
+      </div>
+
+      {/* Seção de Cliente */}
+      <div className="md:col-span-2 pt-4 border-t border-border/50">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <Label className="text-sm font-medium">Dados do Cliente</Label>
+            {selectedClient && isClientRequired && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleEditClientClick}
+                className="h-6 w-6 text-muted-foreground hover:text-primary"
+                title="Editar Cliente"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {isSale && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="client-required"
+                checked={isClientRequired}
+                onCheckedChange={(checked) => {
+                  setIsClientRequired(checked as boolean);
+                  if (!checked) {
+                    // Limpar dados do cliente se não for obrigatório
+                    handleClientDeselect();
+                    setClientNameInput('');
+                  }
+                }}
+              />
+              <Label htmlFor="client-required" className="text-sm text-muted-foreground">
+                Informar Cliente
+              </Label>
+            </div>
           )}
         </div>
       </div>
@@ -162,10 +234,11 @@ export const QuoteClientSection = ({
           clientNameInput={clientNameInput}
           setClientNameInput={setClientNameInput}
           onAddClientClick={handleAddClientClick}
+          disabled={!isClientRequired} // Desabilitar se não for obrigatório
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
         <Label htmlFor="phoneNumber">Telefone</Label>
         <Input 
           id="phoneNumber" 
@@ -174,10 +247,11 @@ export const QuoteClientSection = ({
           placeholder="(XX) XXXXX-XXXX"
           maxLength={15}
           className="bg-background/50 placeholder:text-gray-300" 
+          disabled={!isClientRequired}
         />
       </div>
 
-      <div className="space-y-2 md:col-span-2">
+      <div className="space-y-2 md:col-span-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
         <Label htmlFor="address">Endereço</Label>
         <Input
           id="address"
@@ -185,19 +259,24 @@ export const QuoteClientSection = ({
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Rua, Número, Cidade"
           className="bg-background/50"
+          disabled={!isClientRequired}
         />
       </div>
 
-      <div className="md:col-span-2 pt-4 border-t border-border/50">
+      <div className="md:col-span-2 pt-4 border-t border-border/50" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
         <div className="flex items-center gap-2 mb-2">
           <Car className="h-4 w-4 text-primary" />
           <Label className="text-sm font-medium">Veículo do Cliente</Label>
         </div>
       </div>
 
-      <div className="space-y-2 md:col-span-2">
+      <div className="space-y-2 md:col-span-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
         {selectedClient ? (
-          <Select value={selectedVehicleId || ''} onValueChange={handleVehicleSelect} disabled={isLoadingVehicles || clientVehicles?.length === 0}>
+          <Select 
+            value={selectedVehicleId || ''} 
+            onValueChange={handleVehicleSelect} 
+            disabled={isLoadingVehicles || clientVehicles?.length === 0 || !isClientRequired}
+          >
             <SelectTrigger className="bg-background/50">
               <SelectValue placeholder={clientVehicles?.length > 0 ? "Escolha um veículo" : "Cliente sem veículos cadastrados"} />
             </SelectTrigger>
@@ -224,60 +303,12 @@ export const QuoteClientSection = ({
           <Input
             placeholder="Selecione um cliente primeiro para ver veículos"
             className="bg-background/50"
-            disabled
+            disabled={!isClientRequired}
           />
         )}
       </div>
 
-      <div className="md:col-span-2 pt-4 border-t border-border/50">
-        <div className="flex items-center gap-2 mb-2">
-          <Calendar className="h-4 w-4 text-primary" />
-          <Label className="text-sm font-medium">Agendamento do Serviço</Label>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="serviceDate">Data do Serviço</Label>
-        <Input
-          id="serviceDate"
-          type="date"
-          value={serviceDate}
-          onChange={(e) => setServiceDate(e.target.value)}
-          className="bg-background/50"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="serviceTime">Hora do Serviço</Label>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="define-time"
-            checked={isTimeDefined}
-            onCheckedChange={(checked) => setIsTimeDefined(checked as boolean)}
-          />
-          <Label htmlFor="define-time" className="text-sm text-muted-foreground">Definir hora</Label>
-          <Input
-            id="serviceTime"
-            type="time"
-            value={serviceTime}
-            onChange={(e) => setServiceTime(e.target.value)}
-            className="bg-background/50"
-            disabled={!isTimeDefined}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="observations">Observações Adicionais</Label>
-        <Textarea
-          id="observations"
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Informações extras, condições de pagamento, garantia, etc."
-          className="bg-background/50 min-h-[100px]"
-        />
-      </div>
-
+      {/* Observações (Movidas para o final do QuoteCalculator) */}
       <ClientFormDialog
         isOpen={isClientFormDialogOpen}
         onClose={() => setIsClientFormDialogOpen(false)}

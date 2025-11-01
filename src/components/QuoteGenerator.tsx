@@ -33,6 +33,7 @@ interface QuoteGeneratorProps {
   observations: string; // Receber observações
   setObservations: (obs: string) => void; // Receber setter de observações
   isSale?: boolean; // Nova prop
+  isClientRequired: boolean; // Nova prop
 }
 
 const getTodayDateString = () => {
@@ -63,6 +64,7 @@ export const QuoteGenerator = ({
   observations,
   setObservations,
   isSale = false, // Default para false
+  isClientRequired, // Usar a nova prop
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const [searchParams] = useSearchParams(); // Inicializar useSearchParams
@@ -169,14 +171,21 @@ export const QuoteGenerator = ({
     serviceTime: isTimeDefined ? localServiceTime : '',
   };
 
-  const isQuoteValid = selectedServices.length > 0 
-    && clientNameInput.trim() !== '' 
-    && finalPrice > 0
-    && !!selectedVehicleId
-    && !!selectedClient?.id // Cliente deve estar selecionado
-    && !!localServiceDate; // Data de serviço deve estar definida para a verificação de duplicidade
+  // Lógica de validação ajustada:
+  // Se isClientRequired for true, todos os campos de cliente/veículo são obrigatórios.
+  // Se isClientRequired for false (venda rápida), apenas selectedServices e finalPrice são obrigatórios.
+  const isClientDataValid = !isClientRequired || (
+    clientNameInput.trim() !== '' &&
+    !!selectedClient?.id &&
+    !!selectedVehicleId
+  );
 
-  const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8;
+  const isQuoteValid = selectedServices.length > 0 
+    && finalPrice > 0
+    && !!localServiceDate // Data de serviço é obrigatória
+    && isClientDataValid;
+
+  const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8 || !isClientRequired;
 
   const handleSaveOrUpdate = () => {
     if (!isQuoteValid) return;
@@ -209,30 +218,8 @@ export const QuoteGenerator = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <QuoteClientSection
-          selectedClient={selectedClient}
-          onClientSelect={onClientSelect}
-          onClientSaved={onClientSaved}
-          clientNameInput={clientNameInput}
-          setClientNameInput={setClientNameInput}
-          quoteDate={quoteDate}
-          setQuoteDate={setQuoteDate}
-          rawPhoneNumber={rawPhoneNumber}
-          setRawPhoneNumber={setRawPhoneNumber}
-          address={address}
-          setAddress={setAddress}
-          observations={observations}
-          setObservations={setObservations}
-          selectedVehicleId={selectedVehicleId}
-          setSelectedVehicleId={setSelectedVehicleId}
-          // Passando os novos estados e setters
-          serviceDate={localServiceDate}
-          setServiceDate={setLocalServiceDate}
-          isTimeDefined={isTimeDefined}
-          setIsTimeDefined={setIsTimeDefined}
-          serviceTime={localServiceTime}
-          setServiceTime={setLocalServiceTime}
-        />
+        {/* A seção de cliente foi movida para o QuoteCalculator, mas os dados de entrada ainda são necessários aqui */}
+        {/* ... (QuoteClientSection foi removido daqui, mas os dados de entrada são passados via props) */}
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
           {isSale ? (
@@ -307,7 +294,11 @@ export const QuoteGenerator = ({
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
-            Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo**, **selecione o cliente**, **defina a data do serviço** e garanta que o preço final seja maior que zero.
+            {isSale && !isClientRequired ? (
+              "Selecione pelo menos um serviço e garanta que o preço final seja maior que zero."
+            ) : (
+              "Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo**, **selecione o cliente**, **defina a data do serviço** e garanta que o preço final seja maior que zero."
+            )}
           </p>
         )}
       </CardContent>
