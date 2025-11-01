@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil } from 'lucide-react';
+import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -13,13 +13,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom'; // Importar useNavigate
+import { ConfirmPaymentDialog } from '@/components/agenda/ConfirmPaymentDialog'; // Importar o novo diálogo
+import { useQuoteActions } from '@/hooks/use-quote-actions'; // Importar useQuoteActions
 
 interface Quote {
   id: string;
   client_name: string;
   vehicle: string;
   total_price: number;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'closed'; // Adicionado 'closed'
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
@@ -33,6 +35,7 @@ const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
   pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/50' },
   rejected: { text: 'Rejeitado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
+  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' }, // Novo status
 };
 
 // Helper function to parse YYYY-MM-DD string into a local Date object
@@ -47,7 +50,8 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+  const { handleCloseSale } = useQuoteActions(undefined, true); // Usar o hook de ações
+
   // Usar initialDate como estado inicial
   const [selectedDate, setSelectedDate] = useState(initialDate);
   
@@ -58,6 +62,10 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [quoteIdToDelete, setQuoteIdToDelete] = useState<string | null>(null);
+  
+  // Estados para o diálogo de pagamento
+  const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState(false);
+  const [quoteToClose, setQuoteToClose] = useState<Quote | null>(null);
 
   // Fetch all quotes that have a service_date defined
   const { data: quotes, isLoading, error } = useQuery<Quote[]>({
@@ -137,6 +145,41 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     navigate(`/generate-quote?quoteId=${quoteId}`);
   };
 
+  const handleOpenCloseSaleDialog = (quote: Quote) => {
+    setQuoteToClose(quote);
+    setIsConfirmPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = async (paymentMethodId: string, installments: number | null) => {
+    if (!quoteToClose) return;
+
+    try {
+      await handleCloseSale.mutateAsync({
+        quoteId: quoteToClose.id,
+        paymentMethodId,
+        installments,
+      });
+      
+      // O onSuccess da mutação em useQuoteActions deve invalidar as queries
+      // e o status deve ser atualizado para 'closed' no banco de dados.
+      
+      toast({
+        title: "Tarefa Concluída!",
+        description: `A venda para ${quoteToClose.client_name} foi registrada com sucesso.`,
+      });
+      
+    } catch (error: any) {
+      toast({
+        title: "Erro ao finalizar venda",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsConfirmPaymentDialogOpen(false);
+      setQuoteToClose(null);
+    }
+  };
+
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
 
@@ -168,10 +211,12 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       accepted: 0,
       pending: 0,
       rejected: 0,
+      closed: 0, // Adicionado closed
       totalValue: 0,
       acceptedValue: 0,
       pendingValue: 0,
       rejectedValue: 0,
+      closedValue: 0, // Adicionado closedValue
     };
 
     quotesForSummary.forEach(quote => {
@@ -187,6 +232,9 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       } else if (quote.status === 'rejected') {
         result.rejected++;
         result.rejectedValue += quote.total_price;
+      } else if (quote.status === 'closed') { // Novo status
+        result.closed++;
+        result.closedValue += quote.total_price;
       }
     });
 
@@ -274,18 +322,18 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
             valueColor="text-success"
           />
           <SummaryCard 
+            title="Concluídos" 
+            count={summary.closed} 
+            value={summary.closedValue} 
+            color="text-info" 
+            valueColor="text-info"
+          />
+          <SummaryCard 
             title="Pendentes" 
             count={summary.pending} 
             value={summary.pendingValue} 
             color="text-accent" 
             valueColor="text-accent"
-          />
-          <SummaryCard 
-            title="Rejeitados" 
-            count={summary.rejected} 
-            value={summary.rejectedValue} 
-            color="text-destructive" 
-            valueColor="text-destructive"
           />
         </div>
       </div>
@@ -330,44 +378,65 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                       </p>
                     </div>
                     <div className="flex gap-1 items-center">
-                      {/* Botão de Copiar Link (Apenas para Pendente) */}
-                      {quote.status === 'pending' && (
+                      
+                      {/* Botão de Tarefa Concluída (Apenas para Aceito) */}
+                      {quote.status === 'accepted' && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={() => handleCopyLink(quote.id)}
-                                className="text-primary hover:bg-primary/10"
-                                title="Copiar Link do Orçamento"
+                                onClick={() => handleOpenCloseSaleDialog(quote)}
+                                className="text-success hover:bg-success/10"
+                                title="Marcar como Concluído (Lançar Venda)"
+                                disabled={handleCloseSale.isPending}
                               >
-                                <LinkIcon className="h-4 w-4" />
+                                <CheckCheck className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Copiar Link</TooltipContent>
+                            <TooltipContent>Marcar como Concluído</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
 
-                      {/* NOVO: Botão de Editar Orçamento (Apenas para Pendente) */}
+                      {/* Botões de Ação para Pendente */}
                       {quote.status === 'pending' && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleEditQuote(quote.id)}
-                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                title="Editar Orçamento"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar Orçamento</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleCopyLink(quote.id)}
+                                  className="text-primary hover:bg-primary/10"
+                                  title="Copiar Link do Orçamento"
+                                >
+                                  <LinkIcon className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copiar Link</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleEditQuote(quote.id)}
+                                  className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  title="Editar Orçamento"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Editar Orçamento</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </>
                       )}
 
                       {/* Botão de Excluir (Apenas para Pendente) */}
@@ -445,6 +514,17 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
           </p>
         )}
       </div>
+      
+      {/* Diálogo de Confirmação de Pagamento */}
+      {quoteToClose && (
+        <ConfirmPaymentDialog
+          isOpen={isConfirmPaymentDialogOpen}
+          onClose={() => setIsConfirmPaymentDialogOpen(false)}
+          quote={quoteToClose}
+          onConfirm={handleConfirmPayment}
+          isProcessing={handleCloseSale.isPending}
+        />
+      )}
     </div>
   );
 };

@@ -37,14 +37,14 @@ const SalesPage = () => {
         .select('id, sale_number, client_name, total_price, created_at, services_summary, status')
         .eq('user_id', user.id)
         .eq('is_sale', true) // Filtrar apenas vendas
-        .in('status', ['accepted', 'closed']) // Incluir 'closed' se for implementado no futuro
+        .in('status', ['accepted', 'closed']) // Incluir 'closed'
         .order('created_at', { ascending: false });
       if (error) throw error;
       
-      // Mapear para a interface Sale (usando 'accepted' como 'closed' por enquanto)
+      // Mapear para a interface Sale
       return data.map(q => ({
         ...q,
-        status: q.status === 'accepted' ? 'closed' : 'canceled',
+        status: q.status === 'closed' ? 'closed' : 'canceled', // Assumindo que 'accepted' não deve mais aparecer aqui se o fluxo for concluído
       })) as Sale[];
     },
     enabled: !!user,

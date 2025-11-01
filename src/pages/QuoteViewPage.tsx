@@ -35,7 +35,7 @@ interface Quote {
   services_summary: QuotedService[];
   products: any[];
   total_price: number;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'closed';
   valid_until: string;
   created_at: string;
   notes: string;
@@ -50,7 +50,6 @@ interface Profile {
   company_name: string | null;
   document_number: string | null;
   phone_number: string | null;
-  email: string | null;
   address: string | null;
   address_number: string | null;
   zip_code: string | null;
@@ -194,6 +193,7 @@ const QuoteViewPage = () => {
     pending: { text: 'Pendente', icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
     accepted: { text: 'Aceito', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
     rejected: { text: 'Rejeitado', icon: XCircle, color: 'text-red-600 bg-red-100' },
+    closed: { text: 'Concluído', icon: CheckCircle, color: 'text-blue-600 bg-blue-100' }, // Novo status
   };
 
   const currentStatus = statusMap[quote.status] || statusMap.pending;

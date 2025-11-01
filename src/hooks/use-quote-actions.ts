@@ -290,7 +290,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     pdf_url?: string;
     client_id?: string;
     vehicle_id?: string;
-    status?: 'pending' | 'accepted' | 'rejected';
+    status?: 'pending' | 'accepted' | 'rejected' | 'closed'; // Adicionado 'closed'
     client_document?: string;
     client_phone?: string;
     client_email?: string;
@@ -304,6 +304,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     service_time: string;
     is_sale: boolean; // Novo campo
     sale_number?: string; // Novo campo
+    // Novos campos para registrar a forma de pagamento da venda
+    payment_method_id?: string;
+    installments?: number;
   }
 
   // Função de verificação de duplicidade (reutilizada)
@@ -344,7 +347,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     }
   };
 
-  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending', isSale: boolean = false): QuotePayload => {
+  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' | 'closed' = 'pending', isSale: boolean = false): QuotePayload => {
     const quoteDateObj = new Date(quoteData.quote_date);
     const validUntilDate = addDays(quoteDateObj, 7);
     const validUntilString = validUntilDate.toISOString().split('T')[0];
@@ -413,7 +416,6 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       if (!user) throw new Error("Usuário não autenticado.");
 
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
-      // A verificação de duplicidade só faz sentido se houver um client_id e service_date
       if (quoteData.client_id) {
         await checkDuplicity(quoteData);
       }
@@ -445,6 +447,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           service_time: quoteData.service_time || null,
           is_sale: quoteData.is_sale, // Novo campo
           sale_number: quoteData.sale_number || null, // Novo campo
+          payment_method_id: quoteData.payment_method_id || null, // Novo campo
+          installments: quoteData.installments || null, // Novo campo
         })
         .select()
         .single();
@@ -507,7 +511,11 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           valid_until: quoteData.valid_until,
           service_date: quoteData.service_date || null,
           service_time: quoteData.service_time || null,
-          // is_sale e sale_number não devem ser alterados em um update de orçamento
+          status: quoteData.status, // Permitir atualização de status
+          is_sale: quoteData.is_sale, // Permitir atualização de is_sale
+          sale_number: quoteData.sale_number || null, // Permitir atualização de sale_number
+          payment_method_id: quoteData.payment_method_id || null, // Novo campo
+          installments: quoteData.installments || null, // Novo campo
         })
         .eq('id', quoteId)
         .eq('user_id', user.id)
@@ -516,17 +524,25 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      
+      if (data.is_sale) {
+        queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
+        // Se for uma venda fechada, redireciona para a agenda (não para a lista de vendas)
+        navigate('/agenda/daily?date=' + data.service_date);
+      } else {
+        // Se for apenas um update de orçamento, redireciona para a agenda
+        navigate('/agenda');
+      }
+      
       toast({
         title: "Orçamento atualizado!",
         description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
       });
-      // Redirecionar de volta para a agenda após o salvamento
-      navigate('/agenda');
     },
     onError: (err) => {
       toast({
@@ -590,6 +606,51 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       // O toast de erro já é tratado na mutação
     }
   };
+
+  // NOVA FUNÇÃO: Fechar Venda a partir da Agenda
+  const handleCloseSale = useMutation({
+    mutationFn: async ({ quoteId, paymentMethodId, installments }: { quoteId: string; paymentMethodId: string; installments: number | null }) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      // 1. Gerar sale_number
+      const saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+
+      // 2. Atualizar o orçamento para status 'closed', is_sale: true, e adicionar dados de pagamento
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({
+          status: 'closed',
+          is_sale: true,
+          sale_number: saleNumber,
+          payment_method_id: paymentMethodId,
+          installments: installments,
+        })
+        .eq('id', quoteId)
+        .eq('user_id', user.id)
+        .select('service_date') // Selecionar service_date para redirecionamento
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      
+      // Redireciona para a agenda do dia da venda
+      if (data.service_date) {
+        navigate(`/agenda/daily?date=${data.service_date}`);
+      }
+    },
+    onError: (err) => {
+      toast({
+        title: "Erro ao finalizar venda",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleGenerateAndDownloadPDF = async (quoteData: QuoteData) => {
     if (!user) {
@@ -786,6 +847,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     handleGenerateLocalLink,
     handleUpdateQuote,
     handleSaveSale, // Exportar a nova função
+    handleCloseSale, // Exportar a nova função de fechar venda
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };
