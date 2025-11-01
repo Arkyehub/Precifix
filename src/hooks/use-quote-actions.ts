@@ -290,7 +290,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     pdf_url?: string;
     client_id?: string;
     vehicle_id?: string;
-    status?: 'pending' | 'accepted' | 'rejected' | 'closed'; // Adicionado 'closed'
+    status?: 'pending' | 'accepted' | 'rejected' | 'closed';
     client_document?: string;
     client_phone?: string;
     client_email?: string;
@@ -304,7 +304,6 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     service_time: string;
     is_sale: boolean; // Novo campo
     sale_number?: string; // Novo campo
-    // Novos campos para registrar a forma de pagamento da venda
     payment_method_id?: string;
     installments?: number;
   }
@@ -379,12 +378,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       finalClientZipCode = undefined;
     }
 
-    // Gerar sale_number apenas se for venda
+    // O sale_number não é gerado aqui, mas sim na mutação
     let saleNumber = undefined;
-    if (isSale) {
-      // Gera um UUID e pega os primeiros 8 caracteres, prefixando com 'V'
-      saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-    }
 
     return {
       client_name: finalClientName,
@@ -416,10 +411,14 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       if (!user) throw new Error("Usuário não autenticado.");
 
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
+      // A verificação de duplicidade só faz sentido se houver um client_id e service_date
       if (quoteData.client_id) {
         await checkDuplicity(quoteData);
       }
       // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
+
+      // Se for uma venda (is_sale: true), gera o sale_number sequencial
+      let saleNumber = quoteData.is_sale ? (await supabase.rpc('get_next_sale_number')).data : null;
 
       const { data, error } = await supabase
         .from('quotes')
@@ -445,10 +444,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           valid_until: quoteData.valid_until,
           service_date: quoteData.service_date || null,
           service_time: quoteData.service_time || null,
-          is_sale: quoteData.is_sale, // Novo campo
-          sale_number: quoteData.sale_number || null, // Novo campo
-          payment_method_id: quoteData.payment_method_id || null, // Novo campo
-          installments: quoteData.installments || null, // Novo campo
+          is_sale: quoteData.is_sale,
+          sale_number: saleNumber, // Usar o número sequencial gerado
+          payment_method_id: quoteData.payment_method_id || null,
+          installments: quoteData.installments || null,
         })
         .select()
         .single();
@@ -612,8 +611,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     mutationFn: async ({ quoteId, paymentMethodId, installments }: { quoteId: string; paymentMethodId: string; installments: number | null }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      // 1. Gerar sale_number
-      const saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+      // 1. Gerar sale_number sequencial
+      const { data: saleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
+      if (saleNumberError) throw saleNumberError;
 
       // 2. Atualizar o orçamento para status 'closed', is_sale: true, e adicionar dados de pagamento
       const { data, error } = await supabase
@@ -621,7 +621,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         .update({
           status: 'closed',
           is_sale: true,
-          sale_number: saleNumber,
+          sale_number: saleNumber, // Usar o número sequencial gerado
           payment_method_id: paymentMethodId,
           installments: installments,
         })
