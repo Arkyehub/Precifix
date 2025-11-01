@@ -211,7 +211,7 @@ const SalesPage = () => {
                 {filteredSales.length > 0 ? (
                   filteredSales.map((sale) => (
                     <TableRow key={sale.id}>
-                      <TableCell className="font-medium text-muted-foreground">
+                      <TableCell className="font-medium text-primary-strong">
                         #{sale.sale_number || sale.id.substring(0, 8)}
                       </TableCell>
                       <TableCell className="font-medium">{sale.client_name}</TableCell>

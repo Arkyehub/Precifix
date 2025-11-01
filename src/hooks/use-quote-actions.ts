@@ -344,12 +344,79 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     }
   };
 
+  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending', isSale: boolean = false): QuotePayload => {
+    const quoteDateObj = new Date(quoteData.quote_date);
+    const validUntilDate = addDays(quoteDateObj, 7);
+    const validUntilString = validUntilDate.toISOString().split('T')[0];
+
+    // Lógica para Consumidor Final
+    let finalClientName = quoteData.client_name;
+    let finalClientId = quoteData.clientId;
+    let finalVehicle = quoteData.vehicle;
+    let finalVehicleId = quoteData.selectedVehicleId;
+    let finalClientDocument = quoteData.selectedClient?.document_number;
+    let finalClientPhone = quoteData.selectedClient?.phone_number;
+    let finalClientEmail = quoteData.selectedClient?.email;
+    let finalClientAddress = quoteData.selectedClient?.address;
+    let finalClientCity = quoteData.selectedClient?.city;
+    let finalClientState = quoteData.selectedClient?.state;
+    let finalClientZipCode = quoteData.selectedClient?.zip_code;
+
+    if (isSale && !quoteData.isClientRequired) {
+      finalClientName = "Consumidor Final";
+      finalClientId = undefined;
+      finalVehicle = "N/A";
+      finalVehicleId = undefined;
+      finalClientDocument = undefined;
+      finalClientPhone = undefined;
+      finalClientEmail = undefined;
+      finalClientAddress = undefined;
+      finalClientCity = undefined;
+      finalClientState = undefined;
+      finalClientZipCode = undefined;
+    }
+
+    // Gerar sale_number apenas se for venda
+    let saleNumber = undefined;
+    if (isSale) {
+      // Gera um UUID e pega os primeiros 8 caracteres, prefixando com 'V'
+      saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+    }
+
+    return {
+      client_name: finalClientName,
+      vehicle: finalVehicle,
+      total_price: quoteData.finalPrice,
+      quote_date: quoteData.quote_date,
+      services_summary: getServicesSummaryForDb(quoteData.selectedServices),
+      client_id: finalClientId,
+      vehicle_id: finalVehicleId,
+      status: status,
+      client_document: finalClientDocument,
+      client_phone: finalClientPhone,
+      client_email: finalClientEmail,
+      client_address: finalClientAddress,
+      client_city: finalClientCity,
+      client_state: finalClientState,
+      client_zip_code: finalClientZipCode,
+      notes: quoteData.observations,
+      valid_until: validUntilString,
+      service_date: quoteData.serviceDate,
+      service_time: quoteData.serviceTime,
+      is_sale: isSale,
+      sale_number: saleNumber,
+    };
+  };
+
   const saveQuoteMutation = useMutation({
     mutationFn: async (quoteData: QuotePayload) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
-      await checkDuplicity(quoteData);
+      // A verificação de duplicidade só faz sentido se houver um client_id e service_date
+      if (quoteData.client_id) {
+        await checkDuplicity(quoteData);
+      }
       // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
 
       const { data, error } = await supabase
@@ -414,7 +481,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       if (!user) throw new Error("Usuário não autenticado.");
 
       // --- VERIFICAÇÃO DE DUPLICIDADE (excluindo o próprio orçamento) ---
-      await checkDuplicity(quoteData, quoteId);
+      if (quoteData.client_id) {
+        await checkDuplicity(quoteData, quoteId);
+      }
       // --- FIM DA VERIFICAÇÃO DE DUPLICIDADE ---
 
       const { data, error } = await supabase
@@ -496,49 +565,6 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       });
     },
   });
-
-  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending', isSale: boolean = false): QuotePayload => {
-    const quoteDateObj = new Date(quoteData.quote_date);
-    const validUntilDate = addDays(quoteDateObj, 7);
-    const validUntilString = validUntilDate.toISOString().split('T')[0];
-
-    // Lógica para Consumidor Final
-    let finalClientName = quoteData.client_name;
-    if (isSale && !quoteData.isClientRequired) {
-      finalClientName = "Consumidor Final";
-    }
-
-    // Gerar sale_number apenas se for venda
-    let saleNumber = undefined;
-    if (isSale) {
-      // Gera um UUID e pega os primeiros 8 caracteres, prefixando com 'V'
-      saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-    }
-
-    return {
-      client_name: finalClientName,
-      vehicle: quoteData.vehicle,
-      total_price: quoteData.finalPrice,
-      quote_date: quoteData.quote_date,
-      services_summary: getServicesSummaryForDb(quoteData.selectedServices),
-      client_id: quoteData.clientId,
-      vehicle_id: quoteData.selectedVehicleId,
-      status: status,
-      client_document: quoteData.selectedClient?.document_number,
-      client_phone: quoteData.selectedClient?.phone_number,
-      client_email: quoteData.selectedClient?.email,
-      client_address: quoteData.selectedClient?.address,
-      client_city: quoteData.selectedClient?.city,
-      client_state: quoteData.selectedClient?.state,
-      client_zip_code: quoteData.selectedClient?.zip_code,
-      notes: quoteData.observations,
-      valid_until: validUntilString,
-      service_date: quoteData.serviceDate,
-      service_time: quoteData.serviceTime,
-      is_sale: isSale,
-      sale_number: saleNumber,
-    };
-  };
 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");

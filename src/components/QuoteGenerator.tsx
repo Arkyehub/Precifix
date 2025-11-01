@@ -169,6 +169,7 @@ export const QuoteGenerator = ({
     selectedClient,
     serviceDate: localServiceDate,
     serviceTime: isTimeDefined ? localServiceTime : '',
+    isClientRequired, // ADICIONADO: Propriedade que estava faltando
   };
 
   // Lógica de validação ajustada:
