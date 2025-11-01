@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface Sale {
   id: string;
+  sale_number: string | null; // Novo campo
   client_name: string;
   total_price: number;
   created_at: string;
@@ -26,15 +27,16 @@ const SalesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch all closed sales (quotes with status 'accepted' or a new 'closed' status)
-  // Por enquanto, vamos buscar orçamentos aceitos para simular vendas
+  // Buscamos apenas registros onde is_sale é TRUE
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
     queryKey: ['closedSales', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_name, total_price, created_at, services_summary, status')
+        .select('id, sale_number, client_name, total_price, created_at, services_summary, status')
         .eq('user_id', user.id)
+        .eq('is_sale', true) // Filtrar apenas vendas
         .in('status', ['accepted', 'closed']) // Incluir 'closed' se for implementado no futuro
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -50,7 +52,7 @@ const SalesPage = () => {
 
   const filteredSales = sales?.filter(sale => 
     sale.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.id.substring(0, 8).includes(searchTerm)
+    (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
   const summary = React.useMemo(() => {
@@ -210,7 +212,7 @@ const SalesPage = () => {
                   filteredSales.map((sale) => (
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium text-muted-foreground">
-                        #{sale.id.substring(0, 8)}
+                        #{sale.sale_number || sale.id.substring(0, 8)}
                       </TableCell>
                       <TableCell className="font-medium">{sale.client_name}</TableCell>
                       <TableCell>{sale.services_summary.length} serviço(s)</TableCell>

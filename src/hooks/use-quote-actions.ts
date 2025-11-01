@@ -42,6 +42,7 @@ interface QuoteData {
   // Novos campos de agendamento
   serviceDate: string;
   serviceTime: string;
+  isClientRequired: boolean; // Adicionado para verificar se o cliente é obrigatório
 }
 
 const getImageDataUrl = async (url: string | null): Promise<string | null> => {
@@ -301,6 +302,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     valid_until: string;
     service_date: string;
     service_time: string;
+    is_sale: boolean; // Novo campo
+    sale_number?: string; // Novo campo
   }
 
   // Função de verificação de duplicidade (reutilizada)
@@ -373,6 +376,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           valid_until: quoteData.valid_until,
           service_date: quoteData.service_date || null,
           service_time: quoteData.service_time || null,
+          is_sale: quoteData.is_sale, // Novo campo
+          sale_number: quoteData.sale_number || null, // Novo campo
         })
         .select()
         .single();
@@ -385,12 +390,12 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
       
-      if (variables.status === 'accepted') {
+      if (variables.is_sale) {
         // Se for uma venda, invalida a lista de vendas
         queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
         toast({
           title: "Venda registrada!",
-          description: `Venda #${data.id.substring(0, 8)} registrada com sucesso.`,
+          description: `Venda #${data.sale_number} registrada com sucesso.`,
         });
         navigate('/sales'); // Redireciona para a página de vendas
       }
@@ -433,7 +438,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           valid_until: quoteData.valid_until,
           service_date: quoteData.service_date || null,
           service_time: quoteData.service_time || null,
-          // PDF URL não é atualizada automaticamente no update, a menos que seja gerado um novo PDF
+          // is_sale e sale_number não devem ser alterados em um update de orçamento
         })
         .eq('id', quoteId)
         .eq('user_id', user.id)
@@ -492,13 +497,26 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     },
   });
 
-  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending'): QuotePayload => {
+  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending', isSale: boolean = false): QuotePayload => {
     const quoteDateObj = new Date(quoteData.quote_date);
     const validUntilDate = addDays(quoteDateObj, 7);
     const validUntilString = validUntilDate.toISOString().split('T')[0];
 
+    // Lógica para Consumidor Final
+    let finalClientName = quoteData.client_name;
+    if (isSale && !quoteData.isClientRequired) {
+      finalClientName = "Consumidor Final";
+    }
+
+    // Gerar sale_number apenas se for venda
+    let saleNumber = undefined;
+    if (isSale) {
+      // Gera um UUID e pega os primeiros 8 caracteres, prefixando com 'V'
+      saleNumber = `V${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+    }
+
     return {
-      client_name: quoteData.client_name,
+      client_name: finalClientName,
       vehicle: quoteData.vehicle,
       total_price: quoteData.finalPrice,
       quote_date: quoteData.quote_date,
@@ -517,25 +535,28 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       valid_until: validUntilString,
       service_date: quoteData.serviceDate,
       service_time: quoteData.serviceTime,
+      is_sale: isSale,
+      sale_number: saleNumber,
     };
   };
 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData, 'pending');
+    const payload = prepareQuotePayload(quoteData, 'pending', false);
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
   const handleSaveSale = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    // Salva com status 'accepted' para indicar venda fechada
-    const payload = prepareQuotePayload(quoteData, 'accepted'); 
+    // Salva com status 'accepted' e is_sale=true
+    const payload = prepareQuotePayload(quoteData, 'accepted', true); 
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
   const handleUpdateQuote = async (quoteId: string, quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData, 'pending'); // Mantém o status atual (ou pending se não for venda)
+    // Para updates de orçamento, is_sale é false
+    const payload = prepareQuotePayload(quoteData, 'pending', false); 
     try {
       await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
     } catch (error: any) {
@@ -554,21 +575,24 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       
       // 1. Salvar/Atualizar o orçamento no DB
       let savedQuoteId: string;
+      let savedQuoteNumber: string;
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
         // Se estiver editando, atualiza o registro existente
-        const payload = prepareQuotePayload(quoteData, 'pending');
+        const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
+        savedQuoteNumber = updatedQuote.id.substring(0, 8);
       } else {
         // Se for novo, salva
         const savedQuote = await saveQuoteAndGetId(quoteData);
         savedQuoteId = savedQuote.id;
+        savedQuoteNumber = savedQuote.id.substring(0, 8);
       }
 
       // 2. Fazer upload do PDF
-      const fileName = `orcamento_${savedQuoteId.substring(0, 8)}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
+      const fileName = `orcamento_${savedQuoteNumber}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
       const publicUrl = await uploadPdfMutation.mutateAsync({ pdfBlob, fileName: `${savedQuoteId}/${fileName}` });
 
       // 3. Atualizar o registro do orçamento com a URL do PDF (se for um novo save ou se a URL mudou)
@@ -620,7 +644,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData, 'pending');
+        const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -660,7 +684,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData, 'pending');
+        const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -698,7 +722,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData, 'pending');
+        const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
