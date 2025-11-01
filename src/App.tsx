@@ -16,7 +16,8 @@ import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import BillingPage from "./pages/BillingPage";
 import ClientsPage from "./pages/ClientsPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
-import AgendaPage from "./pages/AgendaPage"; // Importar AgendaPage
+import CalendarPage from "./pages/CalendarPage"; // Importar CalendarPage
+import DailyAgendaPage from "./pages/DailyAgendaPage"; // Importar DailyAgendaPage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -83,10 +84,18 @@ const App = () => (
               } 
             />
             <Route 
-              path="/agenda" // Nova rota
+              path="/agenda" // Nova rota principal
               element={
                 <DashboardLayout>
-                  <AgendaPage />
+                  <CalendarPage />
+                </DashboardLayout>
+              } 
+            />
+            <Route 
+              path="/agenda/daily" // Nova rota diária
+              element={
+                <DashboardLayout>
+                  <DailyAgendaPage />
                 </DashboardLayout>
               } 
             />
@@ -114,7 +123,6 @@ const App = () => (
                 </DashboardLayout>
               } 
             />
-            {/* Rota /storage-test removida */}
             <Route 
               path="/billing"
               element={

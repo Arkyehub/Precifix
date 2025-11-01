@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
-import { format, subDays, addDays, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { format, subDays, addDays, startOfDay, endOfDay, isSameDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -25,6 +25,10 @@ interface Quote {
   notes: string | null;
 }
 
+interface AgendaViewProps {
+  initialDate: Date;
+}
+
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
   pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/50' },
@@ -38,12 +42,20 @@ const parseDateString = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
-export const AgendaView = () => {
+export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const navigate = useNavigate(); // Inicializar useNavigate
-  const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
+  const navigate = useNavigate();
+  
+  // Usar initialDate como estado inicial
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  
+  // Sincronizar o estado se a prop initialDate mudar (ex: se o usuário navegar de volta do calendário)
+  useEffect(() => {
+    setSelectedDate(initialDate);
+  }, [initialDate]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [quoteIdToDelete, setQuoteIdToDelete] = useState<string | null>(null);
 
@@ -82,6 +94,7 @@ export const AgendaView = () => {
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] }); // Invalida o novo calendário mensal
       toast({
         title: "Orçamento excluído!",
         description: "O orçamento e seu link foram removidos.",
