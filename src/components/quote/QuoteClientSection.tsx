@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ClientAutocomplete } from './ClientAutocomplete';
 import { useSession } from '@/components/SessionContextProvider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils'; // Importar cn para classes dinâmicas
 
 interface QuoteClientSectionProps {
   selectedClient: Client | undefined;
@@ -96,10 +97,9 @@ export const QuoteClientSection = ({
 
   useEffect(() => {
     if (selectedClient) {
-      // Se o cliente está selecionado, os campos de texto devem refletir os dados do cliente
-      // Mas no modo venda, o QuoteCalculator está controlando o nome/telefone/endereço
-      // para que não sejam alterados diretamente se o cliente for selecionado.
-      // Aqui, apenas garantimos que o estado local do componente seja limpo se o cliente for deselecionado.
+      setClientNameInput(selectedClient.name);
+      setRawPhoneNumber(selectedClient.phone_number || '');
+      setAddress(selectedClient.address || '');
     } else {
       if (!clientNameInput) {
         setRawPhoneNumber('');
@@ -185,7 +185,7 @@ export const QuoteClientSection = ({
         </div>
       </div>
 
-      {/* Seção de Cliente */}
+      {/* Seção de Cliente - Cabeçalho e Checkbox */}
       <div className="md:col-span-2 pt-4 border-t border-border/50">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -226,87 +226,92 @@ export const QuoteClientSection = ({
         </div>
       </div>
 
-      <div className="md:col-span-2">
-        <ClientAutocomplete
-          selectedClient={selectedClient}
-          onClientSelect={handleClientSelectFromAutocomplete}
-          onClientDeselect={handleClientDeselect}
-          clientNameInput={clientNameInput}
-          setClientNameInput={setClientNameInput}
-          onAddClientClick={handleAddClientClick}
-          disabled={!isClientRequired} // Desabilitar se não for obrigatório
-        />
-      </div>
+      {/* Conteúdo do Cliente (Condicional) */}
+      {isClientRequired && (
+        <>
+          <div className="md:col-span-2">
+            <ClientAutocomplete
+              selectedClient={selectedClient}
+              onClientSelect={handleClientSelectFromAutocomplete}
+              onClientDeselect={handleClientDeselect}
+              clientNameInput={clientNameInput}
+              setClientNameInput={setClientNameInput}
+              onAddClientClick={handleAddClientClick}
+              disabled={!isClientRequired}
+            />
+          </div>
 
-      <div className="space-y-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
-        <Label htmlFor="phoneNumber">Telefone</Label>
-        <Input 
-          id="phoneNumber" 
-          value={formatPhoneNumber(rawPhoneNumber)}
-          onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ''))} 
-          placeholder="(XX) XXXXX-XXXX"
-          maxLength={15}
-          className="bg-background/50 placeholder:text-gray-300" 
-          disabled={!isClientRequired}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber">Telefone</Label>
+            <Input 
+              id="phoneNumber" 
+              value={formatPhoneNumber(rawPhoneNumber)}
+              onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ''))} 
+              placeholder="(XX) XXXXX-XXXX"
+              maxLength={15}
+              className="bg-background/50 placeholder:text-gray-300" 
+              disabled={!isClientRequired}
+            />
+          </div>
 
-      <div className="space-y-2 md:col-span-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
-        <Label htmlFor="address">Endereço</Label>
-        <Input
-          id="address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Rua, Número, Cidade"
-          className="bg-background/50"
-          disabled={!isClientRequired}
-        />
-      </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="address">Endereço</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Rua, Número, Cidade"
+              className="bg-background/50"
+              disabled={!isClientRequired}
+            />
+          </div>
 
-      <div className="md:col-span-2 pt-4 border-t border-border/50" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
-        <div className="flex items-center gap-2 mb-2">
-          <Car className="h-4 w-4 text-primary" />
-          <Label className="text-sm font-medium">Veículo do Cliente</Label>
-        </div>
-      </div>
+          <div className="md:col-span-2 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Car className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">Veículo do Cliente</Label>
+            </div>
+          </div>
 
-      <div className="space-y-2 md:col-span-2" style={{ opacity: isClientRequired ? 1 : 0.5 }}>
-        {selectedClient ? (
-          <Select 
-            value={selectedVehicleId || ''} 
-            onValueChange={handleVehicleSelect} 
-            disabled={isLoadingVehicles || clientVehicles?.length === 0 || !isClientRequired}
-          >
-            <SelectTrigger className="bg-background/50">
-              <SelectValue placeholder={clientVehicles?.length > 0 ? "Escolha um veículo" : "Cliente sem veículos cadastrados"} />
-            </SelectTrigger>
-            <SelectContent>
-              {isLoadingVehicles ? (
-                <SelectItem value="loading" disabled>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Carregando veículos...
-                </SelectItem>
-              ) : clientVehicles && clientVehicles.length > 0 ? (
-                clientVehicles.map((vehicle) => (
-                  <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} - {formatPlate(vehicle.plate)} ({vehicle.year})
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="no-vehicles" disabled>
-                  Nenhum veículo cadastrado. Adicione no perfil do cliente.
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            placeholder="Selecione um cliente primeiro para ver veículos"
-            className="bg-background/50"
-            disabled={!isClientRequired}
-          />
-        )}
-      </div>
+          <div className="space-y-2 md:col-span-2">
+            {selectedClient ? (
+              <Select 
+                value={selectedVehicleId || ''} 
+                onValueChange={handleVehicleSelect} 
+                disabled={isLoadingVehicles || clientVehicles?.length === 0 || !isClientRequired}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder={clientVehicles?.length > 0 ? "Escolha um veículo" : "Cliente sem veículos cadastrados"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingVehicles ? (
+                    <SelectItem value="loading" disabled>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Carregando veículos...
+                    </SelectItem>
+                  ) : clientVehicles && clientVehicles.length > 0 ? (
+                    clientVehicles.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.brand} {vehicle.model} - {formatPlate(vehicle.plate)} ({vehicle.year})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-vehicles" disabled>
+                      Nenhum veículo cadastrado. Adicione no perfil do cliente.
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="Selecione um cliente primeiro para ver veículos"
+                className="bg-background/50"
+                disabled={!isClientRequired}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* Observações (Movidas para o final do QuoteCalculator) */}
       <ClientFormDialog
