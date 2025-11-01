@@ -19,6 +19,7 @@ import { Client } from '@/types/clients'; // Importar Client
 import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { QuoteClientSection } from '@/components/quote/QuoteClientSection'; // Adicionado importação
 
 interface Service {
   id: string;
