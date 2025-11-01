@@ -16,8 +16,10 @@ import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import BillingPage from "./pages/BillingPage";
 import ClientsPage from "./pages/ClientsPage";
 import QuoteViewPage from "./pages/QuoteViewPage";
-import CalendarPage from "./pages/CalendarPage"; // Importar CalendarPage
-import DailyAgendaPage from "./pages/DailyAgendaPage"; // Importar DailyAgendaPage
+import CalendarPage from "./pages/CalendarPage";
+import DailyAgendaPage from "./pages/DailyAgendaPage";
+import SalesPage from "./pages/SalesPage"; // Importar SalesPage
+import NewSalePage from "./pages/NewSalePage"; // Importar NewSalePage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -84,7 +86,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/agenda" // Nova rota principal
+              path="/agenda" 
               element={
                 <DashboardLayout>
                   <CalendarPage />
@@ -92,7 +94,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/agenda/daily" // Nova rota diária
+              path="/agenda/daily" 
               element={
                 <DashboardLayout>
                   <DailyAgendaPage />
@@ -104,6 +106,23 @@ const App = () => (
               element={
                 <DashboardLayout>
                   <QuoteGenerationPage />
+                </DashboardLayout>
+              } 
+            />
+            {/* Novas Rotas de Vendas */}
+            <Route 
+              path="/sales" 
+              element={
+                <DashboardLayout>
+                  <SalesPage />
+                </DashboardLayout>
+              } 
+            />
+            <Route 
+              path="/sales/new" 
+              element={
+                <DashboardLayout>
+                  <NewSalePage />
                 </DashboardLayout>
               } 
             />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Loader2, Send, Link as LinkIcon, Pencil } from "lucide-react"; // Adicionado Pencil
+import { FileText, Download, Loader2, Send, Link as LinkIcon, Pencil, ShoppingCart } from "lucide-react"; // Adicionado ShoppingCart
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
 import { QuotedService } from "./QuoteServiceFormDialog";
@@ -32,6 +32,7 @@ interface QuoteGeneratorProps {
   quoteIdToEdit: string | null; // Novo prop para ID de edição
   observations: string; // Receber observações
   setObservations: (obs: string) => void; // Receber setter de observações
+  isSale?: boolean; // Nova prop
 }
 
 const getTodayDateString = () => {
@@ -61,6 +62,7 @@ export const QuoteGenerator = ({
   quoteIdToEdit, // Usar o novo prop
   observations,
   setObservations,
+  isSale = false, // Default para false
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const [searchParams] = useSearchParams(); // Inicializar useSearchParams
@@ -119,10 +121,11 @@ export const QuoteGenerator = ({
     handleSendViaWhatsApp, 
     handleGenerateLink,
     handleGenerateLocalLink,
+    handleUpdateQuote,
     isGeneratingOrSaving, 
     isSendingWhatsApp,
-    handleUpdateQuote, // Adicionar a nova função de update
-  } = useQuoteActions(profile);
+    handleSaveSale, // Nova função para salvar venda
+  } = useQuoteActions(profile, isSale); // Passar isSale para o hook
 
   const { data: vehicleDetails } = useQuery<Vehicle | null>({
     queryKey: ['vehicleDetails', selectedVehicleId],
@@ -180,9 +183,10 @@ export const QuoteGenerator = ({
 
     if (quoteIdToEdit) {
       handleUpdateQuote(quoteIdToEdit, quoteData);
+    } else if (isSale) {
+      handleSaveSale(quoteData); // Salva como venda
     } else {
-      // Para novos orçamentos, o fluxo continua o mesmo (gerar link/pdf salva implicitamente)
-      // Mas para o botão principal, vamos forçar a geração de link/pdf ou um save simples.
+      // Para novos orçamentos, o fluxo padrão é gerar link/pdf
       handleGenerateLink(quoteData);
     }
   };
@@ -192,14 +196,14 @@ export const QuoteGenerator = ({
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
-            <FileText className="h-5 w-5 text-primary-foreground" />
+            {isSale ? <ShoppingCart className="h-5 w-5 text-primary-foreground" /> : <FileText className="h-5 w-5 text-primary-foreground" />}
           </div>
           <div>
             <CardTitle className="text-foreground">
-              {quoteIdToEdit ? 'Atualizar Orçamento' : 'Gerar Orçamento para Cliente'}
+              {isSale ? 'Finalizar Venda' : (quoteIdToEdit ? 'Atualizar Orçamento' : 'Gerar Orçamento para Cliente')}
             </CardTitle>
             <CardDescription>
-              Preencha os dados abaixo para {quoteIdToEdit ? 'atualizar' : 'gerar'} um orçamento profissional.
+              Preencha os dados abaixo para {isSale ? 'registrar a venda' : (quoteIdToEdit ? 'atualizar' : 'gerar')} o documento.
             </CardDescription>
           </div>
         </div>
@@ -231,7 +235,20 @@ export const QuoteGenerator = ({
         />
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
-          {quoteIdToEdit ? (
+          {isSale ? (
+            <Button
+              onClick={handleSaveOrUpdate}
+              disabled={!isQuoteValid || isGeneratingOrSaving}
+              className="flex-1 bg-success hover:bg-success/90"
+            >
+              {isGeneratingOrSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="mr-2 h-4 w-4" />
+              )}
+              Registrar Venda Finalizada
+            </Button>
+          ) : quoteIdToEdit ? (
             <Button
               onClick={handleSaveOrUpdate}
               disabled={!isQuoteValid || isGeneratingOrSaving}

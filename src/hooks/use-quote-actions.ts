@@ -258,7 +258,7 @@ const createQuotePdfBlob = async ({
   return doc.output('blob');
 };
 
-export const useQuoteActions = (profile: Profile | undefined) => {
+export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = false) => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -289,7 +289,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     pdf_url?: string;
     client_id?: string;
     vehicle_id?: string;
-    status?: 'pending' | 'confirmed' | 'rejected';
+    status?: 'pending' | 'accepted' | 'rejected';
     client_document?: string;
     client_phone?: string;
     client_email?: string;
@@ -379,14 +379,25 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      
+      if (variables.status === 'accepted') {
+        // Se for uma venda, invalida a lista de vendas
+        queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
+        toast({
+          title: "Venda registrada!",
+          description: `Venda #${data.id.substring(0, 8)} registrada com sucesso.`,
+        });
+        navigate('/sales'); // Redireciona para a página de vendas
+      }
     },
     onError: (err) => {
       toast({
-        title: "Erro ao salvar orçamento",
+        title: "Erro ao salvar orçamento/venda",
         description: err.message,
         variant: "destructive",
       });
@@ -435,6 +446,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
       toast({
         title: "Orçamento atualizado!",
         description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
@@ -480,7 +492,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     },
   });
 
-  const prepareQuotePayload = (quoteData: QuoteData): QuotePayload => {
+  const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' = 'pending'): QuotePayload => {
     const quoteDateObj = new Date(quoteData.quote_date);
     const validUntilDate = addDays(quoteDateObj, 7);
     const validUntilString = validUntilDate.toISOString().split('T')[0];
@@ -493,7 +505,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       services_summary: getServicesSummaryForDb(quoteData.selectedServices),
       client_id: quoteData.clientId,
       vehicle_id: quoteData.selectedVehicleId,
-      status: 'pending',
+      status: status,
       client_document: quoteData.selectedClient?.document_number,
       client_phone: quoteData.selectedClient?.phone_number,
       client_email: quoteData.selectedClient?.email,
@@ -510,13 +522,20 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData);
+    const payload = prepareQuotePayload(quoteData, 'pending');
+    return await saveQuoteMutation.mutateAsync(payload);
+  };
+
+  const handleSaveSale = async (quoteData: QuoteData) => {
+    if (!user) throw new Error("Usuário não autenticado.");
+    // Salva com status 'accepted' para indicar venda fechada
+    const payload = prepareQuotePayload(quoteData, 'accepted'); 
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
   const handleUpdateQuote = async (quoteId: string, quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData);
+    const payload = prepareQuotePayload(quoteData, 'pending'); // Mantém o status atual (ou pending se não for venda)
     try {
       await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
     } catch (error: any) {
@@ -539,7 +558,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
 
       if (quoteIdFromParams) {
         // Se estiver editando, atualiza o registro existente
-        const payload = prepareQuotePayload(quoteData);
+        const payload = prepareQuotePayload(quoteData, 'pending');
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -601,7 +620,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData);
+        const payload = prepareQuotePayload(quoteData, 'pending');
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -641,7 +660,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData);
+        const payload = prepareQuotePayload(quoteData, 'pending');
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -679,7 +698,7 @@ export const useQuoteActions = (profile: Profile | undefined) => {
       const quoteIdFromParams = searchParams.get('quoteId');
 
       if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData);
+        const payload = prepareQuotePayload(quoteData, 'pending');
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
       } else {
@@ -715,7 +734,8 @@ export const useQuoteActions = (profile: Profile | undefined) => {
     handleSendViaWhatsApp,
     handleGenerateLink,
     handleGenerateLocalLink,
-    handleUpdateQuote, // Exportar a nova função de update
+    handleUpdateQuote,
+    handleSaveSale, // Exportar a nova função
     isGeneratingOrSaving,
     isSendingWhatsApp,
   };

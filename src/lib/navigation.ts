@@ -7,24 +7,24 @@ import {
   FileText,
   User as UserIcon,
   Settings,
-  FolderOpen,
   ReceiptText,
   Users,
   CalendarCheck,
-  Wallet, // Novo ícone para Financeiro
-  Wrench, // Novo ícone para Serviços
+  Wallet,
+  Wrench,
+  ShoppingCart, // Novo ícone para Vendas
+  PlusCircle, // Novo ícone para Lançar Venda
 } from 'lucide-react';
 
 export const navigationLinks = [
   { to: '/', icon: Gauge, label: 'Painel Principal', type: 'link' },
   { 
-    label: 'Financeiro', 
-    icon: Wallet, 
+    label: 'Vendas', 
+    icon: ShoppingCart, 
     type: 'group',
     sublinks: [
-      { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
-      { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' },
-      { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
+      { to: '/sales', icon: ShoppingCart, label: 'Gerenciar Vendas' },
+      { to: '/sales/new', icon: PlusCircle, label: 'Lançar Venda' },
     ]
   },
   { 
@@ -38,8 +38,17 @@ export const navigationLinks = [
       { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
     ]
   },
+  { 
+    label: 'Financeiro', 
+    icon: Wallet, 
+    type: 'group',
+    sublinks: [
+      { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
+      { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' },
+      { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
+    ]
+  },
   { to: '/clients', icon: Users, label: 'Clientes', type: 'link' },
-  // Removido /storage-test
 ];
 
 export const userDropdownLinks = [

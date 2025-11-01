@@ -66,7 +66,11 @@ interface QuoteDataForEdit {
   service_time: string | null;
 }
 
-export const QuoteCalculator = () => {
+interface QuoteCalculatorProps {
+  isSale?: boolean; // Nova prop para diferenciar Venda de Orçamento
+}
+
+export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const { user } = useSession();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -102,27 +106,7 @@ export const QuoteCalculator = () => {
   const [serviceTime, setServiceTime] = useState('');
   const [observations, setObservations] = useState(''); // Adicionado estado de observações
 
-  // Query para buscar o orçamento para edição
-  const { data: quoteToEdit, isLoading: isLoadingQuoteToEdit } = useQuery<QuoteDataForEdit | null>({
-    queryKey: ['quoteToEdit', quoteIdToEdit],
-    queryFn: async () => {
-      if (!quoteIdToEdit || !user) return null;
-      const { data, error } = await supabase
-        .from('quotes')
-        .select('id, client_id, client_name, vehicle_id, total_price, services_summary, notes, service_date, service_time')
-        .eq('id', quoteIdToEdit)
-        .eq('user_id', user.id)
-        .single();
-      if (error) {
-        if ((error as any).code !== 'PGRST116') console.error("Error fetching quote for edit:", error);
-        return null;
-      }
-      return data as QuoteDataForEdit;
-    },
-    enabled: !!quoteIdToEdit && !!user,
-  });
-
-  // Fetch all services with their linked products
+  // Fetch all services with their linked products (MOVIDO PARA CIMA)
   const { data: allServices, isLoading: isLoadingServices } = useQuery<Service[]>({
     queryKey: ['allServicesWithProducts', user?.id],
     queryFn: async () => {
@@ -170,6 +154,26 @@ export const QuoteCalculator = () => {
       return servicesWithProducts;
     },
     enabled: !!user,
+  });
+
+  // Query para buscar o orçamento para edição
+  const { data: quoteToEdit, isLoading: isLoadingQuoteToEdit } = useQuery<QuoteDataForEdit | null>({
+    queryKey: ['quoteToEdit', quoteIdToEdit],
+    queryFn: async () => {
+      if (!quoteIdToEdit || !user) return null;
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('id, client_id, client_name, vehicle_id, total_price, services_summary, notes, service_date, service_time')
+        .eq('id', quoteIdToEdit)
+        .eq('user_id', user.id)
+        .single();
+      if (error) {
+        if ((error as any).code !== 'PGRST116') console.error("Error fetching quote for edit:", error);
+        return null;
+      }
+      return data as QuoteDataForEdit;
+    },
+    enabled: !!quoteIdToEdit && !!user,
   });
 
   // Efeito para preencher o formulário quando o orçamento para edição é carregado
@@ -318,10 +322,6 @@ export const QuoteCalculator = () => {
   // Lógica de adição/remoção de serviços
   const handleServiceSelectChange = (newSelectedIds: string[]) => {
     const currentQuotedIds = quotedServices.map(s => s.id);
-    
-    // 1. Identificar IDs de serviços do catálogo a serem adicionados
-    // Como o MultiSelect agora mostra todos os serviços, newSelectedIds contém todos os IDs que o usuário clicou.
-    // Se o usuário clicar em um ID que já está na lista quotedServices, ele está tentando removê-lo.
     
     // IDs que estavam no MultiSelect antes, mas não estão mais (tentativa de remoção)
     const removedIds = serviceIdToAdd.filter(id => !newSelectedIds.includes(id));
@@ -502,10 +502,10 @@ export const QuoteCalculator = () => {
             </div>
             <div>
               <CardTitle className="text-foreground">
-                {quoteIdToEdit ? `Editar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento Detalhado'}
+                {isSale ? 'Lançar Venda' : (quoteIdToEdit ? `Editar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento Detalhado')}
               </CardTitle>
               <CardDescription>
-                Selecione os serviços, ajuste os custos e gere um orçamento profissional.
+                {isSale ? 'Registre os detalhes da venda finalizada.' : 'Selecione os serviços, ajuste os custos e gere um orçamento profissional.'}
               </CardDescription>
             </div>
           </div>
@@ -602,6 +602,7 @@ export const QuoteCalculator = () => {
           quoteIdToEdit={quoteIdToEdit} // Passar o ID para o gerador
           observations={observations} // Passar observações
           setObservations={setObservations} // Passar setter de observações
+          isSale={isSale} // Passar a nova prop
         />
       )}
 
