@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, Trash2, Pencil, Loader2, X } from 'lucide-react'; // Importado X
+import { ChevronDown, Plus, Trash2, Pencil, Loader2, X } from 'lucide-react';
 
 interface ClientFormDialogProps {
   isOpen: boolean;
@@ -492,28 +492,31 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
             </div>
           </div>
 
+          {/* Seção de Veículos - Título e Botão de Ação */}
+          <div className="flex items-center justify-between w-full mt-4">
+            <h4 className="text-sm font-medium text-foreground">
+              Veículos Cadastrados ({vehicles.length})
+            </h4>
+            <Button 
+              type="button"
+              size="icon" 
+              onClick={toggleAddVehicleForm}
+              className={showAddVehicle ? 
+                "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : 
+                "bg-primary hover:bg-primary-glow text-primary-foreground"
+              }
+              title={showAddVehicle ? "Cancelar Adição" : "Adicionar Novo Veículo"}
+            >
+              {showAddVehicle ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            </Button>
+          </div>
+
           <Collapsible open={showAddVehicle || vehicles.length > 0} onOpenChange={setShowAddVehicle} className="space-y-2">
             <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <div className="flex items-center gap-2">
-                  Veículos Cadastrados ({vehicles.length})
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    type="button"
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={(e) => {
-                      e.preventDefault(); // Previne o toggle do Collapsible
-                      toggleAddVehicleForm();
-                    }}
-                    className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
-                    title={showAddVehicle ? "Cancelar Adição" : "Adicionar Novo Veículo"}
-                  >
-                    {showAddVehicle ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
-                  <ChevronDown className="h-4 w-4 transition-transform" />
-                </div>
+              <Button variant="outline" className="w-full justify-between" disabled={showAddVehicle}>
+                {/* O título e o botão de ação foram movidos para fora, este trigger agora é apenas para abrir/fechar a lista */}
+                {vehicles.length > 0 ? 'Mostrar/Esconder Lista' : 'Nenhum veículo cadastrado'}
+                <ChevronDown className="h-4 w-4 transition-transform" />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
