@@ -11,9 +11,7 @@ import { Client } from '@/types/clients';
 import { Vehicle } from '@/types/vehicles';
 import { formatCpfCnpj, formatPhoneNumber, formatCep } from '@/lib/utils';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  // Removido Collapsible, CollapsibleContent, CollapsibleTrigger
 } from "@/components/ui/collapsible";
 import { ChevronDown, Plus, Trash2, Pencil, Loader2, X } from 'lucide-react';
 
@@ -492,7 +490,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
             </div>
           </div>
 
-          {/* Seção de Veículos - Título e Botão de Ação */}
+          {/* Seção de Veículos - Título e Botão de Ação (REESTRUTURADO) */}
           <div className="flex items-center justify-between w-full mt-4">
             <h4 className="text-sm font-medium text-foreground">
               Veículos Cadastrados ({vehicles.length})
@@ -511,104 +509,96 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
             </Button>
           </div>
 
-          <Collapsible open={showAddVehicle || vehicles.length > 0} onOpenChange={setShowAddVehicle} className="space-y-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full justify-between" disabled={showAddVehicle}>
-                {/* O título e o botão de ação foram movidos para fora, este trigger agora é apenas para abrir/fechar a lista */}
-                {vehicles.length > 0 ? 'Mostrar/Esconder Lista' : 'Nenhum veículo cadastrado'}
-                <ChevronDown className="h-4 w-4 transition-transform" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              {vehicles.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {vehicles.map((vehicle) => (
-                    <div key={vehicle.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                      <div>
-                        <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
-                        <p className="text-sm text-muted-foreground">Placa: {vehicle.plate || 'N/A'} | Ano: {vehicle.year}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => startEditVehicle(vehicle)}
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                          title="Editar veículo"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeVehicleFromList(vehicle.id)}
-                          className="text-destructive hover:bg-destructive/10"
-                          title="Excluir veículo"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+          {/* Conteúdo dos Veículos (Lista e Formulário) */}
+          <div className="space-y-2">
+            {vehicles.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {vehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
+                    <div>
+                      <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
+                      <p className="text-sm text-muted-foreground">Placa: {vehicle.plate || 'N/A'} | Ano: {vehicle.year}</p>
                     </div>
-                  ))}
-                </div>
-              )}
-              {(showAddVehicle || isEditingVehicle) && (
-                <div className="space-y-2 p-3 border rounded-md bg-muted/50">
-                  <h4 className="font-semibold text-foreground">
-                    {isEditingVehicle ? `Editando Veículo: ${editingVehicle.brand} ${editingVehicle.model}` : 'Adicionar Novo Veículo'}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
-                    <div className="space-y-1 md:col-span-2">
-                      <Label htmlFor="vehicle-brand">Marca *</Label>
-                      <Input 
-                        id="vehicle-brand" 
-                        value={currentVehicleData.brand} 
-                        onChange={(e) => handleAddVehicleChange('brand', e.target.value)} 
-                        placeholder="Ex: Honda" 
-                        className="bg-background" 
-                      />
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => startEditVehicle(vehicle)}
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        title="Editar veículo"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeVehicleFromList(vehicle.id)}
+                        className="text-destructive hover:bg-destructive/10"
+                        title="Excluir veículo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <Label htmlFor="vehicle-model">Modelo *</Label>
-                      <Input 
-                        id="vehicle-model" 
-                        value={currentVehicleData.model} 
-                        onChange={(e) => handleAddVehicleChange('model', e.target.value)} 
-                        placeholder="Ex: Civic" 
-                        className="bg-background" 
-                      />
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <Label htmlFor="vehicle-plate">Placa</Label>
-                      <Input 
-                        id="vehicle-plate" 
-                        value={currentVehicleData.plate} 
-                        onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())} 
-                        placeholder="Ex: ABC1D23" 
-                        maxLength={7} 
-                        className="bg-background" 
-                      />
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <Label htmlFor="vehicle-year">Ano *</Label>
-                      <Input 
-                        id="vehicle-year" 
-                        type="number" 
-                        value={currentVehicleData.year} 
-                        onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)} 
-                        min={1900} 
-                        max={new Date().getFullYear() + 1} 
-                        className="bg-background" 
-                      />
-                    </div>
-                    <Button onClick={addVehicleToList} className="md:col-span-4">
-                      {isEditingVehicle ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
-                    </Button>
                   </div>
+                ))}
+              </div>
+            )}
+            {(showAddVehicle || isEditingVehicle) && (
+              <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+                <h4 className="font-semibold text-foreground">
+                  {isEditingVehicle ? `Editando Veículo: ${editingVehicle.brand} ${editingVehicle.model}` : 'Adicionar Novo Veículo'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
+                  <div className="space-y-1 md:col-span-2">
+                    <Label htmlFor="vehicle-brand">Marca *</Label>
+                    <Input 
+                      id="vehicle-brand" 
+                      value={currentVehicleData.brand} 
+                      onChange={(e) => handleAddVehicleChange('brand', e.target.value)} 
+                      placeholder="Ex: Honda" 
+                      className="bg-background" 
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label htmlFor="vehicle-model">Modelo *</Label>
+                    <Input 
+                      id="vehicle-model" 
+                      value={currentVehicleData.model} 
+                      onChange={(e) => handleAddVehicleChange('model', e.target.value)} 
+                      placeholder="Ex: Civic" 
+                      className="bg-background" 
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label htmlFor="vehicle-plate">Placa</Label>
+                    <Input 
+                      id="vehicle-plate" 
+                      value={currentVehicleData.plate} 
+                      onChange={(e) => handleAddVehicleChange('plate', e.target.value.toUpperCase())} 
+                      placeholder="Ex: ABC1D23" 
+                      maxLength={7} 
+                      className="bg-background" 
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label htmlFor="vehicle-year">Ano *</Label>
+                    <Input 
+                      id="vehicle-year" 
+                      type="number" 
+                      value={currentVehicleData.year} 
+                      onChange={(e) => handleAddVehicleChange('year', parseInt(e.target.value) || 0)} 
+                      min={1900} 
+                      max={new Date().getFullYear() + 1} 
+                      className="bg-background" 
+                    />
+                  </div>
+                  <Button onClick={addVehicleToList} className="md:col-span-4">
+                    {isEditingVehicle ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
+                  </Button>
                 </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
