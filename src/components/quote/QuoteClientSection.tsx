@@ -32,6 +32,8 @@ interface QuoteClientSectionProps {
   setObservations: (obs: string) => void;
   selectedVehicleId: string | null;
   setSelectedVehicleId: (id: string | null) => void;
+  manualVehicleInput: string; // NOVO: Input manual para veículo
+  setManualVehicleInput: (vehicle: string) => void; // NOVO: Setter para input manual
   // Novos props para agendamento
   serviceDate: string;
   setServiceDate: (date: string) => void;
@@ -61,6 +63,8 @@ export const QuoteClientSection = ({
   setObservations,
   selectedVehicleId,
   setSelectedVehicleId,
+  manualVehicleInput, // NOVO
+  setManualVehicleInput, // NOVO
   // Novos
   serviceDate,
   setServiceDate,
@@ -221,7 +225,10 @@ export const QuoteClientSection = ({
                   if (!checked) {
                     // Limpar dados do cliente se não for obrigatório
                     handleClientDeselect();
-                    setClientNameInput('');
+                    setClientNameInput('Consumidor Final'); // Define nome padrão para venda rápida
+                    setManualVehicleInput(''); // Limpa veículo manual
+                  } else {
+                    setClientNameInput(''); // Limpa nome se voltar a ser obrigatório
                   }
                 }}
               />
@@ -325,6 +332,23 @@ export const QuoteClientSection = ({
             )}
           </div>
         </>
+      )}
+      
+      {/* NOVO: Campo de Veículo Manual para Venda Rápida */}
+      {!isClientRequired && isSale && (
+        <div className="md:col-span-2 space-y-2 pt-4 border-t border-border/50">
+          <div className="flex items-center gap-2 mb-2">
+            <Car className="h-4 w-4 text-primary" />
+            <Label className="text-sm font-medium">Veículo (Venda Rápida)</Label>
+          </div>
+          <Input
+            id="manualVehicle"
+            value={manualVehicleInput}
+            onChange={(e) => setManualVehicleInput(e.target.value)}
+            placeholder="Ex: Carro Pequeno, Moto, etc."
+            className="bg-background/50"
+          />
+        </div>
       )}
 
       {/* Observações (Movidas para o final do QuoteCalculator) */}

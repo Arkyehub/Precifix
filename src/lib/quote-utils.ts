@@ -99,7 +99,7 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
   const validUntilDate = addDays(quoteDateObj, 7);
   const validUntilString = validUntilDate.toISOString().split('T')[0];
 
-  // Lógica para Consumidor Final (Venda Rápida)
+  // Valores padrão para cliente/veículo
   let finalClientName = quoteData.client_name;
   let finalClientId = quoteData.clientId;
   let finalVehicle = quoteData.vehicle;
@@ -113,9 +113,10 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
   let finalClientZipCode = quoteData.selectedClient?.zip_code;
 
   if (isSale && !quoteData.isClientRequired) {
-    finalClientName = "Consumidor Final";
+    // Se for venda rápida (sem cliente obrigatório), usamos os dados do input manual
+    finalClientName = quoteData.client_name || "Consumidor Final";
     finalClientId = undefined;
-    finalVehicle = "N/A";
+    finalVehicle = quoteData.vehicle || "N/A"; // Usa o veículo digitado manualmente
     finalVehicleId = undefined;
     finalClientDocument = undefined;
     finalClientPhone = undefined;

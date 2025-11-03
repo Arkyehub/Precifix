@@ -26,6 +26,7 @@ interface QuoteGeneratorProps {
   onClientSaved: (client: Client) => void;
   selectedVehicleId: string | null;
   setSelectedVehicleId: (id: string | null) => void;
+  manualVehicleInput: string; // NOVO: Input manual para veículo
   // Novos props para agendamento
   serviceDate: string;
   serviceTime: string;
@@ -57,6 +58,7 @@ export const QuoteGenerator = ({
   onClientSaved,
   selectedVehicleId,
   setSelectedVehicleId,
+  manualVehicleInput, // NOVO
   // Novos
   serviceDate,
   serviceTime,
@@ -124,9 +126,9 @@ export const QuoteGenerator = ({
     handleGenerateLink,
     handleGenerateLocalLink,
     handleUpdateQuote,
+    handleSaveSale, // Nova função para salvar venda
     isGeneratingOrSaving, 
     isSendingWhatsApp,
-    handleSaveSale, // Nova função para salvar venda
   } = useQuoteActions(profile, isSale); // Passar isSale para o hook
 
   const { data: vehicleDetails } = useQuery<Vehicle | null>({
@@ -145,12 +147,18 @@ export const QuoteGenerator = ({
   });
 
   useEffect(() => {
-    if (vehicleDetails) {
-      setVehicle(`${vehicleDetails.brand} ${vehicleDetails.model} (${vehicleDetails.plate || 'N/A'})`);
+    if (isClientRequired) {
+      // Se o cliente é obrigatório, o veículo vem do cadastro
+      if (vehicleDetails) {
+        setVehicle(`${vehicleDetails.brand} ${vehicleDetails.model} (${vehicleDetails.plate || 'N/A'})`);
+      } else {
+        setVehicle("");
+      }
     } else {
-      setVehicle("");
+      // Se o cliente NÃO é obrigatório (venda rápida), o veículo vem do input manual
+      setVehicle(manualVehicleInput || "N/A");
     }
-  }, [vehicleDetails]);
+  }, [vehicleDetails, isClientRequired, manualVehicleInput]);
 
   const quoteData = {
     client_name: clientNameInput,
@@ -165,26 +173,30 @@ export const QuoteGenerator = ({
     profile,
     clientDetails: { phoneNumber: rawPhoneNumber, address: address },
     clientId: selectedClient?.id, // Passando o ID do cliente
-    selectedVehicleId,
+    selectedVehicleId: isClientRequired ? selectedVehicleId : undefined, // Só passa vehicleId se o cliente for obrigatório
     selectedClient,
     serviceDate: localServiceDate,
     serviceTime: isTimeDefined ? localServiceTime : '',
-    isClientRequired, // ADICIONADO: Propriedade que estava faltando
+    isClientRequired,
   };
 
   // Lógica de validação ajustada:
-  // Se isClientRequired for true, todos os campos de cliente/veículo são obrigatórios.
-  // Se isClientRequired for false (venda rápida), apenas selectedServices e finalPrice são obrigatórios.
-  const isClientDataValid = !isClientRequired || (
-    clientNameInput.trim() !== '' &&
-    !!selectedClient?.id &&
-    !!selectedVehicleId
-  );
-
-  const isQuoteValid = selectedServices.length > 0 
+  // 1. Serviços e Preço Final > 0 são sempre obrigatórios.
+  // 2. Data de Serviço é obrigatória.
+  // 3. Se isClientRequired for true (Orçamento/Venda com cliente):
+  //    - clientNameInput, selectedClient?.id, selectedVehicleId são obrigatórios.
+  // 4. Se isClientRequired for false (Venda Rápida):
+  //    - manualVehicleInput é obrigatório.
+  
+  const isBaseValid = selectedServices.length > 0 
     && finalPrice > 0
-    && !!localServiceDate // Data de serviço é obrigatória
-    && isClientDataValid;
+    && !!localServiceDate;
+
+  const isClientDataValid = isClientRequired 
+    ? (clientNameInput.trim() !== '' && !!selectedClient?.id && !!selectedVehicleId)
+    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== ''); // Para venda rápida, nome e veículo manual são necessários
+
+  const isQuoteValid = isBaseValid && isClientDataValid;
 
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8 || !isClientRequired;
 
@@ -295,10 +307,10 @@ export const QuoteGenerator = ({
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
-            {isSale && !isClientRequired ? (
-              "Selecione pelo menos um serviço e garanta que o preço final seja maior que zero."
-            ) : (
+            {isClientRequired ? (
               "Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo**, **selecione o cliente**, **defina a data do serviço** e garanta que o preço final seja maior que zero."
+            ) : (
+              "Selecione pelo menos um serviço, informe o nome do cliente, **informe o veículo**, **defina a data do serviço** e garanta que o preço final seja maior que zero."
             )}
           </p>
         )}

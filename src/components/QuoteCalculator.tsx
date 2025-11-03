@@ -62,6 +62,7 @@ interface QuoteDataForEdit {
   client_id: string | null;
   client_name: string;
   vehicle_id: string | null;
+  vehicle: string; // Adicionado campo vehicle para edição
   total_price: number;
   services_summary: QuotedService[];
   notes: string | null;
@@ -102,8 +103,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
   
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [manualVehicleInput, setManualVehicleInput] = useState(''); // NOVO ESTADO PARA VEÍCULO MANUAL
 
-  // NOVO ESTADO LOCAL PARA O NOME DO CLIENTE (PERMITE DIGITAÇÃO)
+  // ESTADO LOCAL PARA O NOME DO CLIENTE (PERMITE DIGITAÇÃO)
   const [clientNameInput, setClientNameInput] = useState('');
 
   // Novos estados para agendamento
@@ -172,7 +174,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       if (!quoteIdToEdit || !user) return null;
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_id, client_name, vehicle_id, total_price, services_summary, notes, service_date, service_time')
+        .select('id, client_id, client_name, vehicle_id, vehicle, total_price, services_summary, notes, service_date, service_time')
         .eq('id', quoteIdToEdit)
         .eq('user_id', user.id)
         .single();
@@ -193,6 +195,11 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       setSelectedVehicleId(quoteToEdit.vehicle_id);
       setClientNameInput(quoteToEdit.client_name); // Inicializa o input com o nome do orçamento
       
+      // Se for edição de um orçamento sem cliente/veículo vinculado (venda rápida antiga), preenche o manual
+      if (!quoteToEdit.client_id && quoteToEdit.vehicle) {
+        setManualVehicleInput(quoteToEdit.vehicle);
+      }
+      
       // 2. Serviços
       const servicesFromQuote: QuotedService[] = quoteToEdit.services_summary.map(s => {
         // Tenta encontrar o serviço original no catálogo para preencher os custos
@@ -201,7 +208,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
         return {
           ...s,
           // Gerar um ID único para a instância do serviço no orçamento
-          id: `temp-${Math.random()}-${Date.now()}`, 
+          id: `temp-${Math.random()}-${Date.now()}-${s.id}`, 
           price: originalService?.price ?? s.price,
           labor_cost_per_hour: originalService?.labor_cost_per_hour ?? 0,
           execution_time_minutes: originalService?.execution_time_minutes ?? s.execution_time_minutes,
@@ -551,6 +558,8 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             setObservations={setObservations}
             selectedVehicleId={selectedVehicleId}
             setSelectedVehicleId={setSelectedVehicleId}
+            manualVehicleInput={manualVehicleInput} // NOVO: Passar o input manual
+            setManualVehicleInput={setManualVehicleInput} // NOVO: Passar o setter manual
             serviceDate={serviceDate}
             setServiceDate={setServiceDate}
             isTimeDefined={isTimeDefined}
@@ -664,6 +673,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           onClientSaved={handleClientSaved}
           selectedVehicleId={selectedVehicleId}
           setSelectedVehicleId={setSelectedVehicleId}
+          manualVehicleInput={manualVehicleInput} // <-- Adicionado aqui
           serviceDate={serviceDate}
           serviceTime={isTimeDefined ? serviceTime : ''}
           quoteIdToEdit={quoteIdToEdit} // Passar o ID para o gerador
