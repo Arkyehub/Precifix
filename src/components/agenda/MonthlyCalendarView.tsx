@@ -26,10 +26,10 @@ interface DailySummary {
 }
 
 const statusColors = {
-  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20' },
-  pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20' },
-  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20' }, // Nomenclatura atualizada
-  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20' }, // Adicionado cor azul (info)
+  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20', compactBg: 'bg-success', compactText: 'text-success-foreground' },
+  pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20', compactBg: 'bg-accent', compactText: 'text-accent-foreground' },
+  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-destructive-foreground' }, // Nomenclatura atualizada
+  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-info-foreground' }, // Adicionado cor azul (info)
 };
 
 export const MonthlyCalendarView = () => {
@@ -145,6 +145,36 @@ export const MonthlyCalendarView = () => {
 
   const { dataMap, monthlySummary } = calendarData;
 
+  // Componente auxiliar para renderizar o status
+  const StatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
+    if (count === 0) return null;
+    const status = statusColors[statusKey];
+    return (
+      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", status.bg, status.color)}>
+        <BarChart3 className="h-3 w-3" />
+        {count} {status.text}
+      </div>
+    );
+  };
+
+  // Componente auxiliar para renderizar o status compacto
+  const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
+    if (count === 0) return null;
+    const status = statusColors[statusKey];
+    return (
+      <div 
+        className={cn(
+          "h-5 w-5 flex items-center justify-center rounded-full text-xs font-bold", 
+          status.compactBg, 
+          status.compactText
+        )}
+        title={`${count} ${status.text}`}
+      >
+        {count}
+      </div>
+    );
+  };
+
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
       <CardHeader>
@@ -203,11 +233,21 @@ export const MonthlyCalendarView = () => {
             const isDayToday = isToday(date);
             const hasQuotes = !!summary && summary.total > 0;
 
+            const statusList = [
+              { key: 'closed', count: summary?.closed || 0, status: statusColors.closed },
+              { key: 'accepted', count: summary?.accepted || 0, status: statusColors.accepted },
+              { key: 'pending', count: summary?.pending || 0, status: statusColors.pending },
+              { key: 'rejected', count: summary?.rejected || 0, status: statusColors.rejected },
+            ].filter(s => s.count > 0);
+
+            // Determina se deve usar o modo compacto (mais de 3 status ativos)
+            const useCompactView = statusList.length > 3;
+
             return (
               <div
                 key={index}
                 className={cn(
-                  "h-28 p-2 border border-border/50 cursor-pointer transition-colors",
+                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors", // Aumentado h-28 para h-32
                   isCurrentMonth ? 'bg-background hover:bg-muted/50' : 'bg-muted/20 text-muted-foreground/70',
                   isDayToday && 'border-2 border-primary shadow-inner'
                 )}
@@ -218,34 +258,18 @@ export const MonthlyCalendarView = () => {
                 </div>
                 
                 {hasQuotes && (
-                  <div className="space-y-1 text-xs">
-                    {/* Concluídos (Azul) */}
-                    {summary.closed > 0 && (
-                      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.closed.bg, statusColors.closed.color)}>
-                        <BarChart3 className="h-3 w-3" />
-                        {summary.closed} {statusColors.closed.text}
-                      </div>
-                    )}
-                    {/* Aceitos (Verde) */}
-                    {summary.accepted > 0 && (
-                      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.accepted.bg, statusColors.accepted.color)}>
-                        <BarChart3 className="h-3 w-3" />
-                        {summary.accepted} {statusColors.accepted.text}
-                      </div>
-                    )}
-                    {/* Pendentes (Amarelo) */}
-                    {summary.pending > 0 && (
-                      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.pending.bg, statusColors.pending.color)}>
-                        <BarChart3 className="h-3 w-3" />
-                        {summary.pending} {statusColors.pending.text}
-                      </div>
-                    )}
-                    {/* Rejeitados (Vermelho) */}
-                    {summary.rejected > 0 && (
-                      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.rejected.bg, statusColors.rejected.color)}>
-                        <BarChart3 className="h-3 w-3" />
-                        {summary.rejected} {statusColors.rejected.text}
-                      </div>
+                  <div className={cn("space-y-1 text-xs", useCompactView ? "flex gap-1 flex-wrap" : "space-y-1")}>
+                    {useCompactView ? (
+                      statusList.map(s => (
+                        <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                      ))
+                    ) : (
+                      <>
+                        <StatusPill count={summary?.closed || 0} statusKey="closed" />
+                        <StatusPill count={summary?.accepted || 0} statusKey="accepted" />
+                        <StatusPill count={summary?.pending || 0} statusKey="pending" />
+                        <StatusPill count={summary?.rejected || 0} statusKey="rejected" />
+                      </>
                     )}
                   </div>
                 )}
