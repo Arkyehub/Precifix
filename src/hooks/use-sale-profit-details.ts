@@ -122,21 +122,23 @@ export const useSaleProfitDetails = (saleId: string | null) => {
 
       if (productCostCalculationMethod === 'per-service') {
         // Fetch product links and catalog items only if needed
-        const { data: linksData, error: linksError } = await supabase
-          .from('service_product_links')
-          .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
-          .in('service_id', serviceIds);
-        if (linksError) throw linksError;
-        productLinks = linksData;
+        if (serviceIds.length > 0) { // Proteção adicional
+          const { data: linksData, error: linksError } = await supabase
+            .from('service_product_links')
+            .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
+            .in('service_id', serviceIds);
+          if (linksError) throw linksError;
+          productLinks = linksData;
 
-        const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
-        if (productIds.length > 0) {
-          const { data: productsData, error: productsError } = await supabase
-            .from('product_catalog_items')
-            .select('id, name, size, price, type, dilution_ratio')
-            .in('id', productIds);
-          if (productsError) throw productsError;
-          catalogProducts = productsData;
+          const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
+          if (productIds.length > 0) { // Proteção adicional
+            const { data: productsData, error: productsError } = await supabase
+              .from('product_catalog_items')
+              .select('id, name, size, price, type, dilution_ratio')
+              .in('id', productIds);
+            if (productsError) throw productsError;
+            catalogProducts = productsData;
+          }
         }
       }
 
