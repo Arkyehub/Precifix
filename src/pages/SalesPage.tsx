@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { SaleDetailsDrawer } from '@/components/sales/SaleDetailsDrawer'; // Importar o Drawer
+import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details'; // Importar o hook
 
 // Mapeamento de status do DB para rótulos de Venda
 type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
@@ -54,6 +56,11 @@ const SalesPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+
+  // Hook para buscar detalhes e calcular lucro da venda selecionada
+  const { saleDetails, profitDetails, isLoadingDetails } = useSaleProfitDetails(selectedSaleId);
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
@@ -96,6 +103,11 @@ const SalesPage = () => {
 
   const handleStatusChange = (id: string, newStatus: QuoteStatus) => {
     updateSaleStatusMutation.mutate({ id, newStatus });
+  };
+
+  const handleOpenDetails = (saleId: string) => {
+    setSelectedSaleId(saleId);
+    setIsDrawerOpen(true);
   };
 
   const filteredSales = sales?.filter(sale => 
@@ -272,7 +284,7 @@ const SalesPage = () => {
                             <DropdownMenuTrigger asChild>
                               <span 
                                 className={cn(
-                                  "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center", // Adicionado inline-block e text-center
+                                  "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center",
                                   statusInfo.color
                                 )}
                                 title="Clique para mudar o status"
@@ -300,8 +312,12 @@ const SalesPage = () => {
                           </DropdownMenu>
                         </TableCell>
                         <TableCell className="text-center flex justify-center gap-1">
-                          {/* Removido o botão de lápis, mantendo apenas o de info */}
-                          <Button variant="ghost" size="icon" onClick={() => navigate(`/quote/view/${sale.id}`)} title="Ver Detalhes">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleOpenDetails(sale.id)} 
+                            title="Ver Detalhes e Lucratividade"
+                          >
                             <Info className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -320,6 +336,15 @@ const SalesPage = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Drawer de Detalhes da Venda */}
+      <SaleDetailsDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        sale={saleDetails || null}
+        profitDetails={profitDetails}
+        isLoadingDetails={isLoadingDetails}
+      />
     </div>
   );
 };
