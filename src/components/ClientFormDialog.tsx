@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, Trash2, Pencil, Loader2 } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Pencil, Loader2, X } from 'lucide-react'; // Importado X
 
 interface ClientFormDialogProps {
   isOpen: boolean;
@@ -379,6 +379,15 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const currentVehicleData = editingVehicle || newVehicle;
   const isEditingVehicle = !!editingVehicle;
 
+  // Função para alternar a exibição do formulário de adição/edição de veículo
+  const toggleAddVehicleForm = () => {
+    if (showAddVehicle) {
+      resetVehicleForm(); // Limpa o formulário se estiver fechando
+    } else {
+      setShowAddVehicle(true);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] bg-card">
@@ -486,8 +495,25 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           <Collapsible open={showAddVehicle || vehicles.length > 0} onOpenChange={setShowAddVehicle} className="space-y-2">
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
-                Veículos Cadastrados ({vehicles.length})
-                <ChevronDown className="h-4 w-4 transition-transform" />
+                <div className="flex items-center gap-2">
+                  Veículos Cadastrados ({vehicles.length})
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => {
+                      e.preventDefault(); // Previne o toggle do Collapsible
+                      toggleAddVehicleForm();
+                    }}
+                    className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
+                    title={showAddVehicle ? "Cancelar Adição" : "Adicionar Novo Veículo"}
+                  >
+                    {showAddVehicle ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                  <ChevronDown className="h-4 w-4 transition-transform" />
+                </div>
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
@@ -523,31 +549,11 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                   ))}
                 </div>
               )}
-              <div className="space-y-2 p-3 border rounded-md bg-muted/50">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (isEditingVehicle) {
-                      resetVehicleForm();
-                    } else {
-                      setShowAddVehicle(!showAddVehicle);
-                    }
-                  }}
-                  className="w-full justify-start h-auto p-2"
-                >
-                  {isEditingVehicle ? (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                      Cancelar Edição
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Novo Veículo
-                    </>
-                  )}
-                </Button>
-                {(showAddVehicle || isEditingVehicle) && (
+              {(showAddVehicle || isEditingVehicle) && (
+                <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+                  <h4 className="font-semibold text-foreground">
+                    {isEditingVehicle ? `Editando Veículo: ${editingVehicle.brand} ${editingVehicle.model}` : 'Adicionar Novo Veículo'}
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="vehicle-brand">Marca *</Label>
@@ -596,8 +602,8 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                       {isEditingVehicle ? 'Salvar Alterações do Veículo' : 'Adicionar Veículo à Lista'}
                     </Button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </CollapsibleContent>
           </Collapsible>
         </div>
