@@ -65,8 +65,7 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         setComplement(client.complement || ''); // Carregar Complemento
         setCity(client.city || '');
         setState(client.state || '');
-        // Carregar addressNumber se existir no objeto client (assumindo que a interface foi atualizada)
-        // @ts-ignore - Ignorando temporariamente a verificação de tipo para address_number
+        // @ts-ignore - Carregar address_number
         setAddressNumber(client.address_number || ''); 
         
         if (client.id) {
@@ -452,17 +451,15 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
                 id="address" 
                 value={address} 
                 onChange={(e) => setAddress(e.target.value)} 
-                placeholder="Rua, Bairro"
                 className="bg-background"
               />
             </div>
             <div className="space-y-2 col-span-1">
-              <Label htmlFor="address-number">Nº</Label>
+              <Label htmlFor="address-number">Número</Label>
               <Input 
                 id="address-number" 
                 value={addressNumber} 
                 onChange={(e) => setAddressNumber(e.target.value)} 
-                placeholder="Nº"
                 className="bg-background" 
               />
             </div>
