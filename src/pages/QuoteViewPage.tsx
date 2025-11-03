@@ -27,6 +27,8 @@ interface Quote {
   client_phone: string | null;
   client_email: string | null;
   client_address: string | null;
+  client_address_number: string | null; // Adicionado
+  client_complement: string | null; // Adicionado
   client_city: string | null;
   client_state: string | null;
   client_zip_code: string | null;
@@ -70,7 +72,7 @@ const QuoteViewPage = () => {
       // Acesso anônimo (público) à tabela quotes
       const { data, error } = await supabase
         .from('quotes')
-        .select('*')
+        .select('*, client_address_number, client_complement') // Incluindo as novas colunas
         .eq('id', quoteId)
         .single();
       if (error) {
@@ -212,6 +214,21 @@ const QuoteViewPage = () => {
     // Since the public profile query was simplified, let's stick to what we fetch.
   }
 
+  // Construção do endereço completo do cliente
+  let clientFullAddress = quote.client_address || 'N/A';
+  if (quote.client_address_number) {
+    clientFullAddress += `, Nº ${quote.client_address_number}`;
+  }
+  if (quote.client_complement) {
+    clientFullAddress += ` (${quote.client_complement})`;
+  }
+  if (quote.client_city && quote.client_state) {
+    clientFullAddress += ` - ${quote.client_city}/${quote.client_state}`;
+  } else if (quote.client_city) {
+    clientFullAddress += ` - ${quote.client_city}`;
+  }
+
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
@@ -288,7 +305,7 @@ const QuoteViewPage = () => {
               <p><strong>E-mail:</strong> {quote.client_email || 'N/A'}</p>
               <p className="flex items-center">
                 <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                {quote.client_address || 'N/A'}
+                {clientFullAddress}
               </p>
               <div className="pt-2 mt-2 border-t">
                 <p className="flex items-center font-medium">
