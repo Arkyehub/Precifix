@@ -27,10 +27,10 @@ interface DailySummary {
 }
 
 const statusColors = {
-  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20', compactBg: 'bg-success', compactText: 'text-success-foreground' },
-  pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20', compactBg: 'bg-accent', compactText: 'text-accent-foreground' },
-  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-destructive-foreground' }, // Nomenclatura atualizada
-  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-info-foreground' }, // Adicionado cor azul (info)
+  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20', compactBg: 'bg-success', compactText: 'text-white' }, // Alterado para text-white
+  pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20', compactBg: 'bg-accent', compactText: 'text-white' }, // Alterado para text-white
+  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' }, // Alterado para text-white
+  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' }, // Alterado para text-white
 };
 
 export const MonthlyCalendarView = () => {
@@ -168,7 +168,7 @@ export const MonthlyCalendarView = () => {
     return (
       <div 
         className={cn(
-          "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", // Alterado h-5 w-5 para h-6 w-6 e rounded-full para rounded-md
+          "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", 
           status.compactBg, 
           status.compactText
         )}
@@ -249,6 +249,10 @@ export const MonthlyCalendarView = () => {
             // 2. Se não for mobile, usa o modo compacto se houver mais de 2 status ativos.
             const useCompactView = isMobile || statusList.length > 2;
 
+            // Dividir a lista de status em duas linhas (2 em cima, 2 em baixo)
+            const firstRow = statusList.slice(0, 2);
+            const secondRow = statusList.slice(2, 4);
+
             return (
               <div
                 key={index}
@@ -264,13 +268,24 @@ export const MonthlyCalendarView = () => {
                 </div>
                 
                 {hasQuotes && (
-                  <div className={cn("flex gap-1 mt-auto", useCompactView ? "justify-start" : "flex-col")}> {/* Removido flex-wrap para melhor alinhamento */}
+                  <div className="flex flex-col gap-1 mt-auto">
                     {useCompactView ? (
-                      <div className="flex gap-1"> {/* Novo container flex para as caixas compactas */}
-                        {statusList.map(s => (
-                          <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
-                        ))}
-                      </div>
+                      <>
+                        {/* Primeira linha: 2 indicadores */}
+                        <div className="flex gap-1 justify-start">
+                          {firstRow.map(s => (
+                            <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                          ))}
+                        </div>
+                        {/* Segunda linha: 2 indicadores */}
+                        {secondRow.length > 0 && (
+                          <div className="flex gap-1 justify-start">
+                            {secondRow.map(s => (
+                              <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <>
                         <StatusPill count={summary?.closed || 0} statusKey="closed" />
