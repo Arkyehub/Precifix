@@ -82,22 +82,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       if (quoteError) throw quoteError;
 
       const serviceIds = (quoteData.services_summary as any[]).map(s => s.id).filter(Boolean);
-      
-      // Se não houver IDs de serviço, retornamos os dados básicos para evitar o erro 400
-      if (serviceIds.length === 0) {
-        return {
-          quoteData: {
-            ...quoteData,
-            client_id: quoteData.client_id,
-            vehicle_id: quoteData.vehicle_id,
-          } as Sale,
-          serviceDetails: [] as ServiceDetails[],
-          productLinks: [] as ServiceProductLink[],
-          catalogProducts: [] as CatalogProduct[],
-          operationalCosts: [] as OperationalCost[],
-          productCostCalculationMethod: 'per-service', // Default se não houver serviços
-        };
-      }
 
       // Fetch full service details (labor cost, other costs)
       const { data: serviceDetails, error: serviceDetailsError } = await supabase
@@ -122,23 +106,21 @@ export const useSaleProfitDetails = (saleId: string | null) => {
 
       if (productCostCalculationMethod === 'per-service') {
         // Fetch product links and catalog items only if needed
-        if (serviceIds.length > 0) { // Proteção adicional
-          const { data: linksData, error: linksError } = await supabase
-            .from('service_product_links')
-            .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
-            .in('service_id', serviceIds);
-          if (linksError) throw linksError;
-          productLinks = linksData;
+        const { data: linksData, error: linksError } = await supabase
+          .from('service_product_links')
+          .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
+          .in('service_id', serviceIds);
+        if (linksError) throw linksError;
+        productLinks = linksData;
 
-          const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
-          if (productIds.length > 0) { // Proteção adicional
-            const { data: productsData, error: productsError } = await supabase
-              .from('product_catalog_items')
-              .select('id, name, size, price, type, dilution_ratio')
-              .in('id', productIds);
-            if (productsError) throw productsError;
-            catalogProducts = productsData;
-          }
+        const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
+        if (productIds.length > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('product_catalog_items')
+            .select('id, name, size, price, type, dilution_ratio')
+            .in('id', productIds);
+          if (productsError) throw productsError;
+          catalogProducts = productsData;
         }
       }
 

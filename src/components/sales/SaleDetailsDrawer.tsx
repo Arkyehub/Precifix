@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2 } from 'lucide-react';
@@ -56,24 +56,24 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
   const saleDate = new Date(sale.created_at);
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-md bg-card flex flex-col p-0"> {/* Adicionado p-0 aqui */}
-        <SheetHeader className="p-6 border-b border-border/50">
-          <SheetTitle className="flex items-center gap-2 text-xl font-bold">
+    <Drawer open={isOpen} onOpenChange={onClose} direction="right">
+      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card">
+        <DrawerHeader className="p-4 border-b border-border/50">
+          <DrawerTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
             Detalhes da Venda {sale.sale_number || `#${sale.id.substring(0, 8)}`}
-          </SheetTitle>
-          <SheetDescription className="flex items-center justify-between">
+          </DrawerTitle>
+          <DrawerDescription className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
               Cliente: {sale.client_name}
             </span>
             <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold", currentStatus.color, currentStatus.bg)}>
               {currentStatus.text}
             </span>
-          </SheetDescription>
-        </SheetHeader>
+          </DrawerDescription>
+        </DrawerHeader>
         
-        <ScrollArea className="flex-1 p-6">
+        <ScrollArea className="flex-1 p-4">
           <div className="space-y-6">
             
             {/* Seção de Informações Básicas */}
@@ -196,7 +196,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
             )}
           </div>
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 };
