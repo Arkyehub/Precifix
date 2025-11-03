@@ -194,7 +194,7 @@ const QuoteViewPage = () => {
   const statusMap = {
     pending: { text: 'Pendente', icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
     accepted: { text: 'Aceito', icon: CheckCircle, color: 'text-green-600 bg-green-100' },
-    rejected: { text: 'Rejeitado', icon: XCircle, color: 'text-red-600 bg-red-100' },
+    rejected: { text: 'Rejeitado/Não Realizado', icon: XCircle, color: 'text-red-600 bg-red-100' }, // Nomenclatura atualizada
     closed: { text: 'Concluído', icon: CheckCircle, color: 'text-blue-600 bg-blue-100' }, // Novo status
   };
 

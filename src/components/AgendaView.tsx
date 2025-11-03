@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck } from 'lucide-react';
+import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X } from 'lucide-react'; // Importado X
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -34,7 +34,7 @@ interface AgendaViewProps {
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
   pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/50' },
-  rejected: { text: 'Rejeitado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
+  rejected: { text: 'Rejeitado/Não Realizado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' }, // Nomenclatura atualizada
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' }, // Novo status
 };
 
@@ -120,6 +120,37 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     },
   });
 
+  // Nova mutação para marcar como Não Realizado (status: rejected)
+  const markAsNotRealizedMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      
+      const { error } = await supabase
+        .from('quotes')
+        .update({ status: 'rejected' })
+        .eq('id', quoteId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: (data, quoteId) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      toast({
+        title: "Agendamento marcado como Não Realizado!",
+        description: "O status do agendamento foi atualizado para Rejeitado/Não Realizado.",
+      });
+    },
+    onError: (err) => {
+      console.error("Erro ao marcar como Não Realizado:", err);
+      toast({
+        title: "Erro ao atualizar status",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCopyLink = (quoteId: string) => {
     const baseUrl = window.location.origin;
     const quoteViewLink = `${baseUrl}/quote/view/${quoteId}`;
@@ -159,9 +190,6 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
         paymentMethodId,
         installments,
       });
-      
-      // O onSuccess da mutação em useQuoteActions deve invalidar as queries
-      // e o status deve ser atualizado para 'closed' no banco de dados.
       
       toast({
         title: "Tarefa Concluída!",
@@ -341,7 +369,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
         {/* Adicionando Rejeitados separadamente se o layout for 4 colunas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <SummaryCard 
-            title="Rejeitados" 
+            title="Rejeitados/Não Realizados" // Nomenclatura atualizada
             count={summary.rejected} 
             value={summary.rejectedValue} 
             color="text-destructive" 
@@ -393,23 +421,44 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                       
                       {/* Botão de Tarefa Concluída (Apenas para Aceito) */}
                       {quote.status === 'accepted' && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleOpenCloseSaleDialog(quote)}
-                                className="text-success hover:bg-success/10"
-                                title="Marcar como Concluído (Lançar Venda)"
-                                disabled={handleCloseSale.isPending}
-                              >
-                                <CheckCheck className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Marcar como Concluído</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleOpenCloseSaleDialog(quote)}
+                                  className="text-success hover:bg-success/10"
+                                  title="Marcar como Concluído (Lançar Venda)"
+                                  disabled={handleCloseSale.isPending}
+                                >
+                                  <CheckCheck className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Marcar como Concluído</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          {/* NOVO Botão Não Realizados (Apenas para Aceito) */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => markAsNotRealizedMutation.mutate(quote.id)}
+                                  className="text-destructive hover:bg-destructive/10"
+                                  title="Marcar como Não Realizado"
+                                  disabled={markAsNotRealizedMutation.isPending}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Marcar como Não Realizado</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </>
                       )}
 
                       {/* Botões de Ação para Pendente */}
