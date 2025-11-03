@@ -99,7 +99,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                   </>
                 )}
                 <p className="text-muted-foreground">Valor Total:</p>
-                <p className="font-bold text-primary text-right text-lg">R$ {sale.total_price.toFixed(2)}</p>
+                <p className="font-bold text-primary text-right text-xl">R$ {sale.total_price.toFixed(2)}</p>
               </div>
             </div>
 
@@ -176,7 +176,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground italic">Detalhes de custo não disponíveis.</p>
+                <p className="text-sm text-muted-foreground italic">Detalhes de custo não disponíveis. Verifique se os serviços originais ainda existem no seu catálogo.</p>
               )}
             </div>
             

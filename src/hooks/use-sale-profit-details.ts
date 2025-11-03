@@ -67,7 +67,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       // Fetch the sale details (we need the full quote record for service details)
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id') // Adicionado 'id'
+        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status') // Adicionado campos necessários para o Drawer
         .eq('id', saleId)
         .single();
       if (quoteError) throw quoteError;
@@ -180,18 +180,9 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     });
 
     // D. Global Operational Costs (Fixed + Variable, excluding 'Produtos Gastos no Mês')
-    const globalCosts = operationalCosts.filter(c => c.description !== 'Produtos Gastos no Mês');
-    const sumGlobalCosts = globalCosts.reduce((sum, cost) => sum + cost.value, 0);
-
-    // E. Calculate Hourly Cost based on global costs and hours (needed to distribute global costs)
-    // This is complex and usually done on the ManageCostsPage. 
-    // For simplicity in this read-only view, we will assume the global costs are covered by the labor cost per hour,
-    // UNLESS the product cost method is 'monthly-average', in which case the 'Produtos Gastos no Mês' value 
-    // is implicitly included in the labor cost per hour already used above.
-    
-    // Since the labor cost per hour already includes fixed/variable costs, 
-    // we only need to add the product cost if the method is 'per-service'.
-    // If the method is 'monthly-average', the product cost is already factored into the labor cost per hour.
+    // NOTA: Não estamos incluindo custos globais aqui, pois eles já estão embutidos no labor_cost_per_hour.
+    // Se o usuário quiser incluir custos globais adicionais, eles devem ser adicionados como 'otherCostsGlobal' no QuoteCalculator.
+    // Para esta análise de venda, vamos considerar apenas os custos diretos (Produtos, Mão de Obra, Outros Custos por Serviço).
     
     const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts;
     const netProfit = totalServiceValue - totalCost;
