@@ -196,15 +196,25 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     mutationFn: async ({ quoteId, paymentMethodId, installments }: { quoteId: string; paymentMethodId: string; installments: number | null }) => {
       if (!user) throw new Error("Usuário não autenticado.");
 
-      // 1. Gerar sale_number sequencial
-      const { data: saleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
-      if (saleNumberError) throw saleNumberError;
+      // 1. Gerar sale_number sequencial (se ainda não tiver)
+      const { data: existingQuote } = await supabase
+        .from('quotes')
+        .select('sale_number')
+        .eq('id', quoteId)
+        .single();
+      
+      let saleNumber = existingQuote?.sale_number;
+      if (!saleNumber) {
+        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
+        if (saleNumberError) throw saleNumberError;
+        saleNumber = newSaleNumber;
+      }
 
       // 2. Atualizar o orçamento para status 'closed', is_sale: true, e adicionar dados de pagamento
       const { data, error } = await supabase
         .from('quotes')
         .update({
-          status: 'closed',
+          status: 'closed', // Status 'Atendida'
           is_sale: true,
           sale_number: saleNumber,
           payment_method_id: paymentMethodId,
@@ -244,7 +254,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
 
   const handleSaveSale = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData, 'accepted', true); 
+    // Ao salvar uma venda rápida, o status inicial é 'closed' (Atendida)
+    const payload = prepareQuotePayload(quoteData, 'closed', true); 
     return await saveQuoteMutation.mutateAsync(payload);
   };
 

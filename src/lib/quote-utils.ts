@@ -53,7 +53,7 @@ export interface QuotePayload {
   pdf_url?: string;
   client_id?: string;
   vehicle_id?: string;
-  status?: 'pending' | 'accepted' | 'rejected' | 'closed';
+  status?: 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment'; // Adicionado 'awaiting_payment'
   client_document?: string;
   client_phone?: string;
   client_email?: string;
@@ -101,7 +101,7 @@ const getServicesSummaryForDb = (selectedServices: QuotedService[]) => selectedS
   id: service.id, 
 }));
 
-export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' | 'closed' = 'pending', isSale: boolean = false): QuotePayload => {
+export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment' = 'pending', isSale: boolean = false): QuotePayload => {
   const quoteDateObj = new Date(quoteData.quote_date);
   const validUntilDate = addDays(quoteDateObj, 7);
   const validUntilString = validUntilDate.toISOString().split('T')[0];
