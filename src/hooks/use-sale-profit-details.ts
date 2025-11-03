@@ -6,13 +6,20 @@ import { calculateProductCost, ProductForCalculation } from '@/lib/cost-calculat
 
 interface Sale {
   id: string;
+  sale_number: string | null;
+  client_name: string;
+  total_price: number;
+  created_at: string;
   services_summary: { 
     id: string; 
     name: string; 
     price: number; 
     execution_time_minutes: number; 
   }[];
-  total_price: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
+  service_date: string | null;
+  service_time: string | null;
+  notes: string | null;
 }
 
 interface OperationalCost {
