@@ -20,6 +20,8 @@ interface Sale {
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
+  client_id: string | null; // Added to match query
+  vehicle_id: string | null; // Added to match query
 }
 
 interface OperationalCost {
@@ -123,7 +125,11 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       }
 
       return {
-        quoteData,
+        quoteData: {
+          ...quoteData,
+          client_id: quoteData.client_id,
+          vehicle_id: quoteData.vehicle_id,
+        } as Sale, // Explicitly cast to Sale after ensuring all fields are present
         serviceDetails: serviceDetails as ServiceDetails[],
         productLinks,
         catalogProducts,
