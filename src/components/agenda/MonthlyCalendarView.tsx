@@ -9,6 +9,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile'; // Importar o hook de mobile
 
 interface Quote {
   id: string;
@@ -35,6 +36,7 @@ const statusColors = {
 export const MonthlyCalendarView = () => {
   const { user } = useSession();
   const navigate = useNavigate();
+  const isMobile = useIsMobile(); // Usar o hook de mobile
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
 
   const startOfCurrentMonth = startOfMonth(currentMonth);
@@ -240,14 +242,16 @@ export const MonthlyCalendarView = () => {
               { key: 'rejected', count: summary?.rejected || 0, status: statusColors.rejected },
             ].filter(s => s.count > 0);
 
-            // Determina se deve usar o modo compacto (mais de 3 status ativos)
-            const useCompactView = statusList.length > 3;
+            // Lógica de visualização:
+            // 1. Se for mobile, sempre usa o modo compacto.
+            // 2. Se não for mobile, usa o modo compacto se houver mais de 2 status ativos.
+            const useCompactView = isMobile || statusList.length > 2;
 
             return (
               <div
                 key={index}
                 className={cn(
-                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors", // Aumentado h-28 para h-32
+                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors",
                   isCurrentMonth ? 'bg-background hover:bg-muted/50' : 'bg-muted/20 text-muted-foreground/70',
                   isDayToday && 'border-2 border-primary shadow-inner'
                 )}
