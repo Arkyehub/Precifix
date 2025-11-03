@@ -35,6 +35,8 @@ interface QuoteGeneratorProps {
   setObservations: (obs: string) => void; // Receber setter de observações
   isSale?: boolean; // Nova prop
   isClientRequired: boolean; // Nova prop
+  addressNumber: string; // NOVO: Prop para número do endereço
+  complement: string; // NOVO: Prop para complemento
 }
 
 const getTodayDateString = () => {
@@ -67,6 +69,8 @@ export const QuoteGenerator = ({
   setObservations,
   isSale = false, // Default para false
   isClientRequired, // Usar a nova prop
+  addressNumber, // NOVO
+  complement, // NOVO
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const [searchParams] = useSearchParams(); // Inicializar useSearchParams
@@ -171,7 +175,12 @@ export const QuoteGenerator = ({
     selectedInstallments,
     observations,
     profile,
-    clientDetails: { phoneNumber: rawPhoneNumber, address: address },
+    clientDetails: { 
+      phoneNumber: rawPhoneNumber, 
+      address: address,
+      addressNumber: addressNumber, // NOVO: Adicionado
+      complement: complement, // NOVO: Adicionado
+    },
     clientId: selectedClient?.id, // Passando o ID do cliente
     selectedVehicleId: isClientRequired ? selectedVehicleId : undefined, // Só passa vehicleId se o cliente for obrigatório
     selectedClient,

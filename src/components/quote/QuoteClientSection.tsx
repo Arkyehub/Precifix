@@ -28,6 +28,10 @@ interface QuoteClientSectionProps {
   setRawPhoneNumber: (phone: string) => void;
   address: string;
   setAddress: (address: string) => void;
+  addressNumber: string; // NOVO
+  setAddressNumber: (number: string) => void; // NOVO
+  complement: string; // NOVO
+  setComplement: (complement: string) => void; // NOVO
   observations: string;
   setObservations: (obs: string) => void;
   selectedVehicleId: string | null;
@@ -59,6 +63,10 @@ export const QuoteClientSection = ({
   setRawPhoneNumber,
   address,
   setAddress,
+  addressNumber, // NOVO
+  setAddressNumber, // NOVO
+  complement, // NOVO
+  setComplement, // NOVO
   observations,
   setObservations,
   selectedVehicleId,
@@ -84,6 +92,8 @@ export const QuoteClientSection = ({
   // Estado local para telefone e endereço, que serão preenchidos pelo selectedClient
   const [localRawPhoneNumber, setLocalRawPhoneNumber] = useState(rawPhoneNumber);
   const [localAddress, setLocalAddress] = useState(address);
+  const [localAddressNumber, setLocalAddressNumber] = useState(addressNumber);
+  const [localComplement, setLocalComplement] = useState(complement);
 
   const { data: clientVehicles, isLoading: isLoadingVehicles } = useQuery<Vehicle[]>({
     queryKey: ['clientVehicles', selectedClient?.id],
@@ -108,15 +118,25 @@ export const QuoteClientSection = ({
       // Atualiza os estados locais e os estados do pai (QuoteCalculator)
       setLocalRawPhoneNumber(selectedClient.phone_number || '');
       setLocalAddress(selectedClient.address || '');
+      setLocalAddressNumber(selectedClient.address_number || '');
+      setLocalComplement(selectedClient.complement || '');
+
       setRawPhoneNumber(selectedClient.phone_number || ''); // Atualiza o estado do pai
       setAddress(selectedClient.address || ''); // Atualiza o estado do pai
+      setAddressNumber(selectedClient.address_number || ''); // Atualiza o estado do pai
+      setComplement(selectedClient.complement || ''); // Atualiza o estado do pai
     } else {
       // Se o cliente for deselecionado, limpa os campos
       if (isClientRequired) {
         setLocalRawPhoneNumber('');
         setLocalAddress('');
+        setLocalAddressNumber('');
+        setLocalComplement('');
+
         setRawPhoneNumber('');
         setAddress('');
+        setAddressNumber('');
+        setComplement('');
       }
       if (typeof setSelectedVehicleId === 'function') {
         setSelectedVehicleId(null);
@@ -272,20 +292,57 @@ export const QuoteClientSection = ({
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="address">Endereço</Label>
-            <Input
-              id="address"
-              value={localAddress}
-              onChange={(e) => {
-                setLocalAddress(e.target.value);
-                setAddress(e.target.value); // Atualiza o estado do pai
-              }}
-              placeholder="Rua, Número, Cidade"
-              className="bg-background/50"
-              disabled={!isContactInfoEditable} // Desabilitar se o cliente estiver selecionado
-            />
+          {/* NOVO LAYOUT DE ENDEREÇO: Grid de 10 colunas (5/1/4) */}
+          <div className="md:col-span-2 grid grid-cols-10 gap-4">
+            {/* Endereço (50% -> col-span-5) */}
+            <div className="space-y-2 col-span-5">
+              <Label htmlFor="address">Endereço (Rua, Bairro)</Label>
+              <Input
+                id="address"
+                value={localAddress}
+                onChange={(e) => {
+                  setLocalAddress(e.target.value);
+                  setAddress(e.target.value); // Atualiza o estado do pai
+                }}
+                placeholder="Rua, Bairro, Cidade"
+                className="bg-background/50"
+                disabled={!isContactInfoEditable}
+              />
+            </div>
+
+            {/* Número (10% -> col-span-1) */}
+            <div className="space-y-2 col-span-1">
+              <Label htmlFor="addressNumber">Nº</Label>
+              <Input
+                id="addressNumber"
+                value={localAddressNumber}
+                onChange={(e) => {
+                  setLocalAddressNumber(e.target.value);
+                  setAddressNumber(e.target.value); // Atualiza o estado do pai
+                }}
+                placeholder="S/N"
+                className="bg-background/50"
+                disabled={!isContactInfoEditable}
+              />
+            </div>
+
+            {/* Complemento (40% -> col-span-4) */}
+            <div className="space-y-2 col-span-4">
+              <Label htmlFor="complement">Complemento</Label>
+              <Input
+                id="complement"
+                value={localComplement}
+                onChange={(e) => {
+                  setLocalComplement(e.target.value);
+                  setComplement(e.target.value); // Atualiza o estado do pai
+                }}
+                placeholder="Apto, Bloco, etc."
+                className="bg-background/50"
+                disabled={!isContactInfoEditable}
+              />
+            </div>
           </div>
+          {/* FIM NOVO LAYOUT DE ENDEREÇO */}
 
           <div className="md:col-span-2 pt-4 border-t border-border/50">
             <div className="flex items-center gap-2 mb-2">

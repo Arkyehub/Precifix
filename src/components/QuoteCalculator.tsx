@@ -108,6 +108,10 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   // ESTADO LOCAL PARA O NOME DO CLIENTE (PERMITE DIGITAÇÃO)
   const [clientNameInput, setClientNameInput] = useState('');
 
+  // Novos estados para endereço detalhado
+  const [addressNumber, setAddressNumber] = useState('');
+  const [complement, setComplement] = useState('');
+
   // Novos estados para agendamento
   const [serviceDate, setServiceDate] = useState('');
   const [isTimeDefined, setIsTimeDefined] = useState(false);
@@ -245,10 +249,13 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   useEffect(() => {
     if (selectedClient) {
       setClientNameInput(selectedClient.name);
+      // Atualiza os novos campos de endereço
+      setAddressNumber(selectedClient.address_number || '');
+      setComplement(selectedClient.complement || '');
     } else if (!quoteIdToEdit) {
-      // Se deselecionado e não estiver editando, limpa o input
-      // Se estiver editando, o nome já foi carregado acima
-      // setClientNameInput(''); // Removido para permitir que o usuário digite antes de selecionar
+      // Se deselecionado e não estiver editando, limpa os campos de endereço detalhado
+      setAddressNumber('');
+      setComplement('');
     }
   }, [selectedClient, quoteIdToEdit]);
 
@@ -554,6 +561,10 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             setRawPhoneNumber={() => {}} // Não permitir alteração direta do telefone
             address={selectedClient?.address || ''}
             setAddress={() => {}} // Não permitir alteração direta do endereço
+            addressNumber={addressNumber} // NOVO
+            setAddressNumber={setAddressNumber} // NOVO
+            complement={complement} // NOVO
+            setComplement={setComplement} // NOVO
             observations={observations}
             setObservations={setObservations}
             selectedVehicleId={selectedVehicleId}
@@ -681,6 +692,8 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           setObservations={setObservations} // Passar setter de observações
           isSale={isSale} // Passar a nova prop
           isClientRequired={isClientRequired} // Passar a nova prop
+          addressNumber={addressNumber} // NOVO: Passado para o gerador
+          complement={complement} // NOVO: Passado para o gerador
         />
       )}
 

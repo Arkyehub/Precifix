@@ -30,7 +30,12 @@ export interface QuoteData {
   selectedInstallments: number | null;
   observations: string;
   profile: Profile | undefined;
-  clientDetails: { phoneNumber: string | null; address: string | null };
+  clientDetails: { 
+    phoneNumber: string | null; 
+    address: string | null;
+    addressNumber: string | null; // NOVO
+    complement: string | null; // NOVO
+  };
   clientId?: string;
   selectedVehicleId?: string;
   selectedClient: Client | undefined;
@@ -56,6 +61,8 @@ export interface QuotePayload {
   client_city?: string;
   client_state?: string;
   client_zip_code?: string;
+  client_address_number?: string; // NOVO
+  client_complement?: string; // NOVO
   notes?: string;
   valid_until: string;
   service_date: string;
@@ -107,7 +114,12 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
   let finalClientDocument = quoteData.selectedClient?.document_number;
   let finalClientPhone = quoteData.selectedClient?.phone_number;
   let finalClientEmail = quoteData.selectedClient?.email;
-  let finalClientAddress = quoteData.selectedClient?.address;
+  
+  // Usar os dados do cliente selecionado ou os dados editáveis do QuoteClientSection
+  let finalClientAddress = quoteData.selectedClient?.address || quoteData.clientDetails.address;
+  let finalClientAddressNumber = quoteData.selectedClient?.address_number || quoteData.clientDetails.addressNumber;
+  let finalClientComplement = quoteData.selectedClient?.complement || quoteData.clientDetails.complement;
+  
   let finalClientCity = quoteData.selectedClient?.city;
   let finalClientState = quoteData.selectedClient?.state;
   let finalClientZipCode = quoteData.selectedClient?.zip_code;
@@ -122,6 +134,8 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     finalClientPhone = undefined;
     finalClientEmail = undefined;
     finalClientAddress = undefined;
+    finalClientAddressNumber = undefined;
+    finalClientComplement = undefined;
     finalClientCity = undefined;
     finalClientState = undefined;
     finalClientZipCode = undefined;
@@ -140,6 +154,8 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     client_phone: finalClientPhone,
     client_email: finalClientEmail,
     client_address: finalClientAddress,
+    client_address_number: finalClientAddressNumber, // NOVO
+    client_complement: finalClientComplement, // NOVO
     client_city: finalClientCity,
     client_state: finalClientState,
     client_zip_code: finalClientZipCode,
@@ -218,8 +234,16 @@ export const createQuotePdfBlob = async ({
     yPosition += 6;
   }
 
+  // Lógica de endereço atualizada para incluir número e complemento
   if (clientDetails.address) {
-    doc.text(`Endereço: ${clientDetails.address}`, 15, yPosition);
+    let fullAddress = clientDetails.address;
+    if (clientDetails.addressNumber) {
+      fullAddress += `, Nº ${clientDetails.addressNumber}`;
+    }
+    if (clientDetails.complement) {
+      fullAddress += ` (${clientDetails.complement})`;
+    }
+    doc.text(`Endereço: ${fullAddress}`, 15, yPosition);
     yPosition += 6;
   }
 
