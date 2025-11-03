@@ -56,8 +56,8 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
   const saleDate = new Date(sale.created_at);
 
   return (
-    <Drawer open={isOpen} onOpenChange={onClose} direction="right">
-      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card">
+    <Drawer open={isOpen} onOpenChange={onClose}> {/* Removido direction="right" */}
+      <DrawerContent className="fixed bottom-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card mx-auto"> {/* Ajustado para centralizar e usar max-w-md */}
         <DrawerHeader className="p-4 border-b border-border/50">
           <DrawerTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
