@@ -10,5 +10,6 @@ export interface Client {
   state: string | null;
   zip_code: string | null; // Adicionado zip_code
   complement: string | null; // Adicionado complement
+  address_number: string | null; // Adicionado address_number
   created_at: string;
 }
