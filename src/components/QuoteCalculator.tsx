@@ -386,7 +386,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
 
     // Remover serviços (se o usuário desmarcou uma tag no MultiSelect, o que não deve acontecer aqui)
     // Como removemos o filtro de opções, o MultiSelect agora pode ser usado para remover.
-    // No entanto, como estamos limpando serviceIdToAdd logo abaixo, a remoção não funcionará de forma intuitiva.
+    // No entanto, como limpamos serviceIdToAdd logo abaixo, a remoção não funcionará de forma intuitiva.
     // Para simplificar e focar na adição duplicada, vamos ignorar a remoção via MultiSelect.
     
     // Se o usuário clicar em um item que já está na lista quotedServices, ele será adicionado novamente.
@@ -396,6 +396,15 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
     
     // Limpar o MultiSelect para que ele não exiba tags, forçando o usuário a ver a lista de serviços cotados.
     setServiceIdToAdd([]);
+  };
+
+  // NOVO HANDLER: Excluir serviço do orçamento
+  const handleDeleteServiceFromQuote = (serviceId: string) => {
+    setQuotedServices(prev => prev.filter(s => s.id !== serviceId));
+    toast({
+      title: "Serviço removido!",
+      description: "O serviço foi removido deste orçamento.",
+    });
   };
 
   useEffect(() => {
@@ -592,6 +601,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           <QuoteSelectedServicesList
             quotedServices={quotedServices}
             onEditServiceForQuote={handleEditServiceForQuote}
+            onDeleteServiceFromQuote={handleDeleteServiceFromQuote} // Passar o novo handler
           />
 
           <QuoteGlobalCostsInput
