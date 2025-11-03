@@ -25,12 +25,20 @@ interface Sale {
   status: QuoteStatus;
 }
 
-const statusLabels: Record<QuoteStatus, { label: string; color: string }> = {
+// Componente para o rótulo de pagamento pendente
+const AwaitingPaymentLabel = () => (
+  <div className="flex flex-col items-center leading-none">
+    <span>Aguardando</span>
+    <span>Pagamento</span>
+  </div>
+);
+
+const statusLabels: Record<QuoteStatus, { label: string | React.ReactNode; color: string }> = {
   closed: { label: 'Atendida', color: 'bg-success/20 text-success' },
   rejected: { label: 'Cancelada', color: 'bg-destructive/20 text-destructive' },
   accepted: { label: 'Em Aberto', color: 'bg-accent/20 text-accent' },
   pending: { label: 'Em Aberto', color: 'bg-accent/20 text-accent' }, // Mapear pending para Em Aberto também
-  awaiting_payment: { label: 'Aguardando Pagamento', color: 'bg-info/20 text-info' },
+  awaiting_payment: { label: <AwaitingPaymentLabel />, color: 'bg-info/20 text-info' },
 };
 
 // Status que o usuário pode selecionar no dropdown
@@ -264,7 +272,7 @@ const SalesPage = () => {
                             <DropdownMenuTrigger asChild>
                               <span 
                                 className={cn(
-                                  "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80",
+                                  "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center", // Adicionado inline-block e text-center
                                   statusInfo.color
                                 )}
                                 title="Clique para mudar o status"
