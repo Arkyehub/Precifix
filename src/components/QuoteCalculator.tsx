@@ -201,7 +201,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
         return {
           ...s,
           // Gerar um ID único para a instância do serviço no orçamento
-          id: `temp-${Math.random()}-${Date.now()}-${Math.random()}`, 
+          id: `temp-${Math.random()}-${Date.now()}`, 
           price: originalService?.price ?? s.price,
           labor_cost_per_hour: originalService?.labor_cost_per_hour ?? 0,
           execution_time_minutes: originalService?.execution_time_minutes ?? s.execution_time_minutes,
@@ -579,21 +579,8 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             onOtherCostsGlobalChange={setOtherCostsGlobal}
           />
 
-          {/* NOVO LAYOUT: Desconto e Forma de Pagamento lado a lado */}
+          {/* NOVO LAYOUT: Forma de Pagamento (Esquerda) e Desconto (Direita) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <QuoteDiscountSection
-              discountValueInput={discountValueInput}
-              onDiscountValueInputChange={setDiscountValueInput}
-              onDiscountValueInputBlur={(value) => {
-                const rawValue = value.replace(',', '.');
-                const parsedValue = parseFloat(rawValue) || 0;
-                setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
-              }}
-              discountType={discountType}
-              onDiscountTypeChange={setDiscountType}
-              calculatedDiscount={calculatedDiscount}
-            />
-
             <QuotePaymentMethodSection
               paymentMethods={paymentMethods}
               isLoadingPaymentMethods={isLoadingPaymentMethods}
@@ -611,6 +598,19 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
               selectedInstallments={selectedInstallments}
               onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
               currentPaymentMethod={currentPaymentMethod}
+            />
+            
+            <QuoteDiscountSection
+              discountValueInput={discountValueInput}
+              onDiscountValueInputChange={setDiscountValueInput}
+              onDiscountValueInputBlur={(value) => {
+                const rawValue = value.replace(',', '.');
+                const parsedValue = parseFloat(rawValue) || 0;
+                setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
+              }}
+              discountType={discountType}
+              onDiscountTypeChange={setDiscountType}
+              calculatedDiscount={calculatedDiscount}
             />
           </div>
           {/* FIM NOVO LAYOUT */}
