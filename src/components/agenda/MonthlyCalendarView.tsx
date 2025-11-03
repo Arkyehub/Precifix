@@ -152,8 +152,13 @@ export const MonthlyCalendarView = () => {
     if (count === 0) return null;
     const status = statusColors[statusKey];
     return (
-      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", status.bg, status.color)}>
-        <BarChart3 className="h-3 w-3" />
+      <div 
+        className={cn(
+          "flex items-center justify-center px-2 py-1 rounded-md text-xs font-bold leading-none", 
+          status.compactBg, 
+          status.compactText // Usando a cor de texto compacta (branca)
+        )}
+      >
         {count} {status.text}
       </div>
     );
