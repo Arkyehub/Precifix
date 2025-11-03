@@ -28,7 +28,7 @@ interface DailySummary {
 const statusColors = {
   accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20' },
   pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20' },
-  rejected: { text: 'rejeitado/não realizado', color: 'text-destructive', bg: 'bg-destructive/20' }, // Nomenclatura atualizada
+  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20' }, // Nomenclatura atualizada
   closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20' }, // Adicionado cor azul (info)
 };
 
@@ -182,7 +182,7 @@ export const MonthlyCalendarView = () => {
             <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-info" valueColor="text-info" /> {/* Adicionado Concluídos */}
             <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-success" valueColor="text-success" />
             <SummaryBox title="Pendentes" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-accent" valueColor="text-accent" />
-            <SummaryBox title="Rejeitados/Não Realizados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" /> {/* Nomenclatura atualizada */}
+            <SummaryBox title="Cancelados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" /> {/* Nomenclatura atualizada */}
           </div>
         </div>
 

@@ -34,7 +34,7 @@ interface AgendaViewProps {
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
   pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/50' },
-  rejected: { text: 'Rejeitado/Não Realizado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' }, // Nomenclatura atualizada
+  rejected: { text: 'Cancelados', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' }, // Nomenclatura atualizada
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' }, // Novo status
 };
 
@@ -137,12 +137,12 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
       toast({
-        title: "Agendamento marcado como Não Realizado!",
-        description: "O status do agendamento foi atualizado para Rejeitado/Não Realizado.",
+        title: "Agendamento marcado como Cancelado!",
+        description: "O status do agendamento foi atualizado para Cancelado.",
       });
     },
     onError: (err) => {
-      console.error("Erro ao marcar como Não Realizado:", err);
+      console.error("Erro ao marcar como Cancelado:", err);
       toast({
         title: "Erro ao atualizar status",
         description: err.message,
@@ -369,7 +369,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
         {/* Adicionando Rejeitados separadamente se o layout for 4 colunas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <SummaryCard 
-            title="Rejeitados/Não Realizados" // Nomenclatura atualizada
+            title="Cancelados" // Nomenclatura atualizada
             count={summary.rejected} 
             value={summary.rejectedValue} 
             color="text-destructive" 
@@ -440,7 +440,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                             </Tooltip>
                           </TooltipProvider>
                           
-                          {/* NOVO Botão Não Realizados (Apenas para Aceito) */}
+                          {/* NOVO Botão Não Realizados (agora Cancelados) */}
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -449,13 +449,13 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                                   size="icon" 
                                   onClick={() => markAsNotRealizedMutation.mutate(quote.id)}
                                   className="text-destructive hover:bg-destructive/10"
-                                  title="Marcar como Não Realizado"
+                                  title="Marcar como Cancelado"
                                   disabled={markAsNotRealizedMutation.isPending}
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Marcar como Não Realizado</TooltipContent>
+                              <TooltipContent>Marcar como Cancelado</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </>
