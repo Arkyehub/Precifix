@@ -314,13 +314,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
             color="text-foreground" 
             valueColor="text-primary-strong"
           />
-          <SummaryCard 
-            title="Aceitos" 
-            count={summary.accepted} 
-            value={summary.acceptedValue} 
-            color="text-success" 
-            valueColor="text-success"
-          />
+          {/* Concluídos movido para a esquerda dos Aceitos */}
           <SummaryCard 
             title="Concluídos" 
             count={summary.closed} 
@@ -329,11 +323,29 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
             valueColor="text-info"
           />
           <SummaryCard 
+            title="Aceitos" 
+            count={summary.accepted} 
+            value={summary.acceptedValue} 
+            color="text-success" 
+            valueColor="text-success"
+          />
+          <SummaryCard 
             title="Pendentes" 
             count={summary.pending} 
             value={summary.pendingValue} 
             color="text-accent" 
             valueColor="text-accent"
+          />
+          {/* Rejeitados removido daqui, pois o layout é 4 colunas */}
+        </div>
+        {/* Adicionando Rejeitados separadamente se o layout for 4 colunas */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <SummaryCard 
+            title="Rejeitados" 
+            count={summary.rejected} 
+            value={summary.rejectedValue} 
+            color="text-destructive" 
+            valueColor="text-destructive"
           />
         </div>
       </div>

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 interface Quote {
   id: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'closed';
   service_date: string | null;
   total_price: number;
 }
@@ -21,6 +21,7 @@ interface DailySummary {
   accepted: number;
   pending: number;
   rejected: number;
+  closed: number; // Adicionado
   total: number;
 }
 
@@ -28,6 +29,7 @@ const statusColors = {
   accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20' },
   pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20' },
   rejected: { text: 'rejeitado', color: 'text-destructive', bg: 'bg-destructive/20' },
+  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20' }, // Adicionado cor azul (info)
 };
 
 export const MonthlyCalendarView = () => {
@@ -63,17 +65,19 @@ export const MonthlyCalendarView = () => {
       accepted: 0,
       pending: 0,
       rejected: 0,
+      closed: 0, // Adicionado
       totalValue: 0,
       acceptedValue: 0,
       pendingValue: 0,
       rejectedValue: 0,
+      closedValue: 0, // Adicionado
     };
 
     quotes?.forEach(quote => {
       if (!quote.service_date) return;
 
       const dateKey = quote.service_date; // YYYY-MM-DD
-      const summary = dataMap.get(dateKey) || { accepted: 0, pending: 0, rejected: 0, total: 0 };
+      const summary = dataMap.get(dateKey) || { accepted: 0, pending: 0, rejected: 0, closed: 0, total: 0 };
 
       summary.total++;
       monthlySummary.total++;
@@ -91,6 +95,10 @@ export const MonthlyCalendarView = () => {
         summary.rejected++;
         monthlySummary.rejected++;
         monthlySummary.rejectedValue += quote.total_price;
+      } else if (quote.status === 'closed') { // Novo status
+        summary.closed++;
+        monthlySummary.closed++;
+        monthlySummary.closedValue += quote.total_price;
       }
       dataMap.set(dateKey, summary);
     });
@@ -169,8 +177,9 @@ export const MonthlyCalendarView = () => {
         {/* Resumo do Período */}
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-muted-foreground">Resumo do período</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4"> {/* Alterado para 5 colunas */}
             <SummaryBox title="Total" count={monthlySummary.total} value={monthlySummary.totalValue} color="text-foreground" valueColor="text-primary-strong" />
+            <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-info" valueColor="text-info" /> {/* Adicionado Concluídos */}
             <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-success" valueColor="text-success" />
             <SummaryBox title="Pendentes" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-accent" valueColor="text-accent" />
             <SummaryBox title="Rejeitados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" />
@@ -210,18 +219,28 @@ export const MonthlyCalendarView = () => {
                 
                 {hasQuotes && (
                   <div className="space-y-1 text-xs">
+                    {/* Concluídos (Azul) */}
+                    {summary.closed > 0 && (
+                      <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.closed.bg, statusColors.closed.color)}>
+                        <BarChart3 className="h-3 w-3" />
+                        {summary.closed} {statusColors.closed.text}
+                      </div>
+                    )}
+                    {/* Aceitos (Verde) */}
                     {summary.accepted > 0 && (
                       <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.accepted.bg, statusColors.accepted.color)}>
                         <BarChart3 className="h-3 w-3" />
                         {summary.accepted} {statusColors.accepted.text}
                       </div>
                     )}
+                    {/* Pendentes (Amarelo) */}
                     {summary.pending > 0 && (
                       <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.pending.bg, statusColors.pending.color)}>
                         <BarChart3 className="h-3 w-3" />
                         {summary.pending} {statusColors.pending.text}
                       </div>
                     )}
+                    {/* Rejeitados (Vermelho) */}
                     {summary.rejected > 0 && (
                       <div className={cn("flex items-center gap-1 px-1 py-0.5 rounded", statusColors.rejected.bg, statusColors.rejected.color)}>
                         <BarChart3 className="h-3 w-3" />
