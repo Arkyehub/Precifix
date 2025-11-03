@@ -201,7 +201,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
         return {
           ...s,
           // Gerar um ID único para a instância do serviço no orçamento
-          id: `temp-${Math.random()}-${Date.now()}`, 
+          id: `temp-${Math.random()}-${Date.now()}-${Math.random()}`, 
           price: originalService?.price ?? s.price,
           labor_cost_per_hour: originalService?.labor_cost_per_hour ?? 0,
           execution_time_minutes: originalService?.execution_time_minutes ?? s.execution_time_minutes,
@@ -579,37 +579,41 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             onOtherCostsGlobalChange={setOtherCostsGlobal}
           />
 
-          <QuoteDiscountSection
-            discountValueInput={discountValueInput}
-            onDiscountValueInputChange={setDiscountValueInput}
-            onDiscountValueInputBlur={(value) => {
-              const rawValue = value.replace(',', '.');
-              const parsedValue = parseFloat(rawValue) || 0;
-              setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
-            }}
-            discountType={discountType}
-            onDiscountTypeChange={setDiscountType}
-            calculatedDiscount={calculatedDiscount}
-          />
+          {/* NOVO LAYOUT: Desconto e Forma de Pagamento lado a lado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <QuoteDiscountSection
+              discountValueInput={discountValueInput}
+              onDiscountValueInputChange={setDiscountValueInput}
+              onDiscountValueInputBlur={(value) => {
+                const rawValue = value.replace(',', '.');
+                const parsedValue = parseFloat(rawValue) || 0;
+                setDiscountValueInput(parsedValue.toFixed(2).replace('.', ','));
+              }}
+              discountType={discountType}
+              onDiscountTypeChange={setDiscountType}
+              calculatedDiscount={calculatedDiscount}
+            />
 
-          <QuotePaymentMethodSection
-            paymentMethods={paymentMethods}
-            isLoadingPaymentMethods={isLoadingPaymentMethods}
-            selectedPaymentMethodId={selectedPaymentMethodId}
-            onPaymentMethodSelectChange={(value) => {
-              setSelectedPaymentMethodId(value);
-              const method = paymentMethods?.find(pm => pm.id === value);
-              if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
-                setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
-              } else {
-                setSelectedInstallments(null);
-              }
-            }}
-            selectedInstallments={selectedInstallments}
-            onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
-            currentPaymentMethod={currentPaymentMethod}
-          />
+            <QuotePaymentMethodSection
+              paymentMethods={paymentMethods}
+              isLoadingPaymentMethods={isLoadingPaymentMethods}
+              selectedPaymentMethodId={selectedPaymentMethodId}
+              onPaymentMethodSelectChange={(value) => {
+                setSelectedPaymentMethodId(value);
+                const method = paymentMethods?.find(pm => pm.id === value);
+                if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
+                  const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
+                  setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
+                } else {
+                  setSelectedInstallments(null);
+                }
+              }}
+              selectedInstallments={selectedInstallments}
+              onInstallmentsSelectChange={(value) => setSelectedInstallments(parseInt(value, 10))}
+              currentPaymentMethod={currentPaymentMethod}
+            />
+          </div>
+          {/* FIM NOVO LAYOUT */}
 
           <QuoteCalculationSummary
             totalExecutionTime={totalExecutionTime}
