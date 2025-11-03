@@ -147,7 +147,7 @@ export const MonthlyCalendarView = () => {
 
   const { dataMap, monthlySummary } = calendarData;
 
-  // Componente auxiliar para renderizar o status
+  // Componente auxiliar para renderizar o status (modo detalhado)
   const StatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
     if (count === 0) return null;
     const status = statusColors[statusKey];
@@ -159,7 +159,7 @@ export const MonthlyCalendarView = () => {
     );
   };
 
-  // Componente auxiliar para renderizar o status compacto (a "bola")
+  // Componente auxiliar para renderizar o status compacto (a caixa arredondada)
   const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
     if (count === 0) return null;
     const status = statusColors[statusKey];
@@ -168,7 +168,7 @@ export const MonthlyCalendarView = () => {
     return (
       <div 
         className={cn(
-          "h-5 w-5 flex items-center justify-center rounded-full text-xs font-bold leading-none", 
+          "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", // Alterado h-5 w-5 para h-6 w-6 e rounded-full para rounded-md
           status.compactBg, 
           status.compactText
         )}
@@ -264,11 +264,13 @@ export const MonthlyCalendarView = () => {
                 </div>
                 
                 {hasQuotes && (
-                  <div className={cn("flex gap-1 flex-wrap mt-auto", useCompactView ? "justify-start" : "flex-col")}> {/* Alinhamento ajustado */}
+                  <div className={cn("flex gap-1 mt-auto", useCompactView ? "justify-start" : "flex-col")}> {/* Removido flex-wrap para melhor alinhamento */}
                     {useCompactView ? (
-                      statusList.map(s => (
-                        <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
-                      ))
+                      <div className="flex gap-1"> {/* Novo container flex para as caixas compactas */}
+                        {statusList.map(s => (
+                          <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                        ))}
+                      </div>
                     ) : (
                       <>
                         <StatusPill count={summary?.closed || 0} statusKey="closed" />
