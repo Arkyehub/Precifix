@@ -9,5 +9,6 @@ export interface Client {
   city: string | null;
   state: string | null;
   zip_code: string | null; // Adicionado zip_code
+  complement: string | null; // Adicionado complement
   created_at: string;
 }

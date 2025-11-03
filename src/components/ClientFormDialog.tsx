@@ -9,13 +9,13 @@ import { useSession } from '@/components/SessionContextProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Client } from '@/types/clients';
 import { Vehicle } from '@/types/vehicles';
-import { formatCpfCnpj, formatPhoneNumber } from '@/lib/utils';
+import { formatCpfCnpj, formatPhoneNumber, formatCep } from '@/lib/utils';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, Trash2, Pencil } from 'lucide-react'; // Importar Pencil
+import { ChevronDown, Plus, Trash2, Pencil, Loader2 } from 'lucide-react';
 
 interface ClientFormDialogProps {
   isOpen: boolean;
@@ -40,14 +40,17 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
   const [rawDocumentNumber, setRawDocumentNumber] = useState('');
   const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const [rawZipCode, setRawZipCode] = useState(''); // Novo estado para CEP
   const [address, setAddress] = useState('');
+  const [complement, setComplement] = useState(''); // Novo estado para Complemento
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [newVehicle, setNewVehicle] = useState<NewVehicle>({ brand: '', model: '', plate: '', year: new Date().getFullYear() });
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const [initialVehicles, setInitialVehicles] = useState<Vehicle[]>([]); // Para rastrear veículos originais
+  const [initialVehicles, setInitialVehicles] = useState<Vehicle[]>([]);
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +59,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         setRawDocumentNumber(client.document_number || '');
         setRawPhoneNumber(client.phone_number || '');
         setEmail(client.email || '');
+        setRawZipCode(client.zip_code || ''); // Carregar CEP
         setAddress(client.address || '');
+        setComplement(client.complement || ''); // Carregar Complemento
         setCity(client.city || '');
         setState(client.state || '');
         if (client.id) {
@@ -68,7 +73,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         setRawDocumentNumber('');
         setRawPhoneNumber('');
         setEmail('');
+        setRawZipCode('');
         setAddress('');
+        setComplement('');
         setCity('');
         setState('');
         setVehicles([]);
@@ -93,6 +100,62 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
     } else {
       setVehicles(data || []);
       setInitialVehicles(data || []); // Salva a lista inicial
+    }
+  };
+
+  const fetchAddressByZipCode = async (cep: string) => {
+    const cleanedCep = cep.replace(/\D/g, '');
+    if (cleanedCep.length !== 8) return;
+
+    setIsFetchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: "CEP não encontrado",
+          description: "Verifique o CEP e tente novamente.",
+          variant: "destructive",
+        });
+        setAddress('');
+        setCity('');
+        setState('');
+        setComplement('');
+        return;
+      }
+
+      setAddress(data.logradouro || '');
+      setComplement(data.complemento || '');
+      setCity(data.localidade || '');
+      setState(data.uf || '');
+      
+      if (data.logradouro) {
+        toast({
+          title: "Endereço preenchido!",
+          description: "O endereço foi preenchido automaticamente com base no CEP.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error fetching address by CEP:", err);
+      toast({
+        title: "Erro ao buscar CEP",
+        description: "Não foi possível buscar o endereço. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
+
+  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setRawZipCode(value);
+  };
+
+  const handleZipCodeBlur = () => {
+    if (rawZipCode.length === 8) {
+      fetchAddressByZipCode(rawZipCode);
     }
   };
 
@@ -168,7 +231,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       document_number: string;
       phone_number: string;
       email: string;
+      zip_code: string;
       address: string;
+      complement: string;
       city: string;
       state: string;
       vehicles: Vehicle[];
@@ -182,7 +247,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
         document_number: clientDetails.document_number || null,
         phone_number: clientDetails.phone_number || null,
         email: clientDetails.email || null,
+        zip_code: clientDetails.zip_code || null, // Incluir CEP
         address: clientDetails.address || null,
+        complement: clientDetails.complement || null, // Incluir Complemento
         city: clientDetails.city || null,
         state: clientDetails.state || null,
       };
@@ -249,13 +316,8 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
           .from('client_vehicles')
           .delete()
           .in('id', idsToDelete);
-        // O erro de chave estrangeira deve ser mitigado pela política ON DELETE SET NULL no DB
-        if (deleteError) {
-          // Se o erro for de chave estrangeira, o DB deve ter definido quotes.vehicle_id como NULL.
-          // Se for outro erro, lançamos.
-          if (deleteError.code !== '23503') { // 23503 é o código para foreign key violation
+        if (deleteError && deleteError.code !== '23503') { 
             throw new Error(`Erro ao limpar veículos antigos: ${deleteError.message}`);
-          }
         }
       }
 
@@ -297,7 +359,9 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
       document_number: rawDocumentNumber,
       phone_number: rawPhoneNumber,
       email,
+      zip_code: rawZipCode, // Incluir CEP
       address,
+      complement, // Incluir Complemento
       city,
       state,
       vehicles: vehicles,
@@ -340,14 +404,46 @@ export const ClientFormDialog = ({ isOpen, onClose, client, onClientSaved }: Cli
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-background" />
+          
+          {/* CEP e E-mail (lado a lado) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="zip-code">CEP</Label>
+              <div className="relative">
+                <Input 
+                  id="zip-code" 
+                  value={formatCep(rawZipCode)}
+                  onChange={handleZipCodeChange} 
+                  onBlur={handleZipCodeBlur}
+                  maxLength={9}
+                  className="bg-background" 
+                  placeholder="Ex: 00000-000"
+                  disabled={isFetchingCep}
+                />
+                {isFetchingCep && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-background" />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="address">Endereço Completo</Label>
-            <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-background" />
+
+          {/* Endereço e Complemento */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="address">Endereço (Rua, Bairro)</Label>
+              <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-background" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="complement">Complemento</Label>
+              <Input id="complement" value={complement} onChange={(e) => setComplement(e.target.value)} className="bg-background" />
+            </div>
           </div>
+
+          {/* Cidade e Estado */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Cidade</Label>
