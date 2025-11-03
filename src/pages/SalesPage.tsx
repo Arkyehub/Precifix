@@ -106,11 +106,13 @@ const SalesPage = () => {
   };
 
   const handleOpenDetails = (saleId: string) => {
+    console.log("Abrindo detalhes da venda:", saleId); // LOG DE DEBUG
     setSelectedSaleId(saleId);
     setIsDrawerOpen(true);
   };
   
   const handleCloseDrawer = () => {
+    console.log("Fechando detalhes da venda."); // LOG DE DEBUG
     setIsDrawerOpen(false);
     // Limpar o ID da venda selecionada após o fechamento para resetar o hook de detalhes
     setTimeout(() => setSelectedSaleId(null), 300); 
