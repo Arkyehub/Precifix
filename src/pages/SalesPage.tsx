@@ -109,6 +109,12 @@ const SalesPage = () => {
     setSelectedSaleId(saleId);
     setIsDrawerOpen(true);
   };
+  
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    // Limpar o ID da venda selecionada após o fechamento para resetar o hook de detalhes
+    setTimeout(() => setSelectedSaleId(null), 300); 
+  };
 
   const filteredSales = sales?.filter(sale => 
     sale.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -340,7 +346,7 @@ const SalesPage = () => {
       {/* Drawer de Detalhes da Venda */}
       <SaleDetailsDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={handleCloseDrawer}
         sale={saleDetails || null}
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}

@@ -57,7 +57,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-md bg-card flex flex-col p-0">
+      <SheetContent side="right" className="w-full sm:max-w-md bg-card flex flex-col p-0"> {/* Adicionado p-0 aqui */}
         <SheetHeader className="p-6 border-b border-border/50">
           <SheetTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
