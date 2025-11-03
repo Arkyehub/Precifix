@@ -159,14 +159,16 @@ export const MonthlyCalendarView = () => {
     );
   };
 
-  // Componente auxiliar para renderizar o status compacto
+  // Componente auxiliar para renderizar o status compacto (a "bola")
   const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
     if (count === 0) return null;
     const status = statusColors[statusKey];
+    
+    // Usar as classes compactBg e compactText para o fundo e a cor do texto
     return (
       <div 
         className={cn(
-          "h-5 w-5 flex items-center justify-center rounded-full text-xs font-bold", 
+          "h-5 w-5 flex items-center justify-center rounded-full text-xs font-bold leading-none", 
           status.compactBg, 
           status.compactText
         )}
@@ -251,7 +253,7 @@ export const MonthlyCalendarView = () => {
               <div
                 key={index}
                 className={cn(
-                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors",
+                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors flex flex-col", // Adicionado flex flex-col
                   isCurrentMonth ? 'bg-background hover:bg-muted/50' : 'bg-muted/20 text-muted-foreground/70',
                   isDayToday && 'border-2 border-primary shadow-inner'
                 )}
@@ -262,7 +264,7 @@ export const MonthlyCalendarView = () => {
                 </div>
                 
                 {hasQuotes && (
-                  <div className={cn("space-y-1 text-xs", useCompactView ? "flex gap-1 flex-wrap" : "space-y-1")}>
+                  <div className={cn("flex gap-1 flex-wrap mt-auto", useCompactView ? "justify-start" : "flex-col")}> {/* Alinhamento ajustado */}
                     {useCompactView ? (
                       statusList.map(s => (
                         <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
