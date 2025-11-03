@@ -150,7 +150,7 @@ const SalesPage = () => {
           {/* Resumo do Período */}
           <div className="space-y-2">
             <h4 className="text-lg font-semibold text-foreground">Resumo do Período</h4>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <SummaryItem 
                 title="Total Vendas" 
                 count={summary.totalSales}
@@ -184,12 +184,6 @@ const SalesPage = () => {
                 color="text-info"
                 tooltip="Valor médio por venda fechada."
               />
-              <SummaryItem 
-                title="Taxas" 
-                value={`${summary.taxasMaquinha.toFixed(2)}%`} 
-                color="text-destructive"
-                tooltip="Média das taxas de pagamento aplicadas."
-              />
             </div>
           </div>
 
@@ -202,7 +196,6 @@ const SalesPage = () => {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Serviços/Produtos</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>NFSe emitida</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px] text-center">Ações</TableHead>
                 </TableRow>
@@ -212,12 +205,11 @@ const SalesPage = () => {
                   filteredSales.map((sale) => (
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium text-primary-strong">
-                        #{sale.sale_number || sale.id.substring(0, 8)}
+                        {sale.sale_number || `#${sale.id.substring(0, 8)}`}
                       </TableCell>
                       <TableCell className="font-medium">{sale.client_name}</TableCell>
                       <TableCell>{sale.services_summary.length} serviço(s)</TableCell>
                       <TableCell className="text-right font-bold">R$ {sale.total_price.toFixed(2)}</TableCell>
-                      <TableCell className="text-destructive font-semibold">Não</TableCell>
                       <TableCell>
                         <span className={cn(
                           "px-2 py-1 rounded-full text-xs font-semibold",
@@ -235,7 +227,7 @@ const SalesPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       Nenhuma venda encontrada.
                     </TableCell>
                   </TableRow>
