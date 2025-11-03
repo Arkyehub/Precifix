@@ -25,7 +25,7 @@ export const navigationLinks = [
     sublinks: [
       { to: '/sales', icon: ShoppingCart, label: 'Gerenciar Vendas' },
       { to: '/sales/new', icon: PlusCircle, label: 'Lançar Venda' },
-      { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' }, // MOVIDO PARA CÁ
+      { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' },
     ]
   },
   { 
@@ -35,8 +35,6 @@ export const navigationLinks = [
     sublinks: [
       { to: '/products', icon: Package, label: 'Gerenciar Produtos' },
       { to: '/services', icon: Car, label: 'Gerenciar Serviços' },
-      { to: '/agenda', icon: CalendarCheck, label: 'Agenda' },
-      // { to: '/generate-quote', icon: FileText, label: 'Gerar Orçamento' }, // REMOVIDO DAQUI
     ]
   },
   { 
@@ -49,6 +47,7 @@ export const navigationLinks = [
       { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
     ]
   },
+  { to: '/agenda', icon: CalendarCheck, label: 'Agenda', type: 'link' }, // MOVIDO PARA CÁ
   { to: '/clients', icon: Users, label: 'Clientes', type: 'link' },
 ];
 
