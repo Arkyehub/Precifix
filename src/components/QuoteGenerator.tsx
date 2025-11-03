@@ -198,7 +198,7 @@ export const QuoteGenerator = ({
   //    - manualVehicleInput é obrigatório.
   
   const isBaseValid = selectedServices.length > 0 
-    && finalPrice > 0
+    && finalPrice > 0.01 // Alterado para 0.01 para garantir que o preço não seja zero
     && !!localServiceDate;
 
   const isClientDataValid = isClientRequired 
@@ -231,7 +231,7 @@ export const QuoteGenerator = ({
           </div>
           <div>
             <CardTitle className="text-foreground">
-              {isSale ? 'Finalizar Venda' : (quoteIdToEdit ? 'Atualizar Orçamento' : 'Gerar Orçamento para Cliente')}
+              {isSale ? 'Finalizar Venda' : (quoteIdToEdit ? `Atualizar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento para Cliente')}
             </CardTitle>
             <CardDescription>
               Preencha os dados abaixo para {isSale ? 'registrar a venda' : (quoteIdToEdit ? 'atualizar' : 'gerar')} o documento.
