@@ -12,6 +12,7 @@ import { QuoteClientSection } from '@/components/quote/QuoteClientSection';
 import { useQuoteActions } from '@/hooks/use-quote-actions';
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
 
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
@@ -190,20 +191,13 @@ export const QuoteGenerator = ({
   };
 
   // Lógica de validação ajustada:
-  // 1. Serviços e Preço Final > 0 são sempre obrigatórios.
-  // 2. Data de Serviço é obrigatória.
-  // 3. Se isClientRequired for true (Orçamento/Venda com cliente):
-  //    - clientNameInput, selectedClient?.id, selectedVehicleId são obrigatórios.
-  // 4. Se isClientRequired for false (Venda Rápida):
-  //    - manualVehicleInput é obrigatório.
-  
   const isBaseValid = selectedServices.length > 0 
-    && finalPrice > 0.01 // Alterado para 0.01 para garantir que o preço não seja zero
+    && finalPrice > 0.01 
     && !!localServiceDate;
 
   const isClientDataValid = isClientRequired 
     ? (clientNameInput.trim() !== '' && !!selectedClient?.id && !!selectedVehicleId)
-    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== ''); // Para venda rápida, nome e veículo manual são necessários
+    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== '');
 
   const isQuoteValid = isBaseValid && isClientDataValid;
 
@@ -220,6 +214,72 @@ export const QuoteGenerator = ({
       // Para novos orçamentos, o fluxo padrão é gerar link/pdf
       handleGenerateLink(quoteData);
     }
+  };
+
+  // Função para gerar a mensagem de erro detalhada
+  const getValidationMessage = () => {
+    const errors: string[] = [];
+    if (selectedServices.length === 0) {
+      errors.push("Selecione pelo menos um serviço.");
+    }
+    if (finalPrice <= 0.01) {
+      errors.push("O preço final do orçamento deve ser maior que zero. (Verifique o 'Valor Cobrado' nos serviços selecionados).");
+    }
+    if (!localServiceDate) {
+      errors.push("Defina a data do serviço.");
+    }
+
+    if (isClientRequired) {
+      if (clientNameInput.trim() === '') {
+        errors.push("Informe o nome do cliente.");
+      }
+      if (!selectedClient?.id) {
+        errors.push("Selecione um cliente cadastrado (use a busca ou adicione um novo).");
+      }
+      if (!selectedVehicleId) {
+        errors.push("Selecione o veículo do cliente.");
+      }
+    } else {
+      if (clientNameInput.trim() === '') {
+        errors.push("Informe o nome do cliente (ou 'Consumidor Final').");
+      }
+      if (manualVehicleInput.trim() === '') {
+        errors.push("Informe o veículo (Ex: 'Carro Pequeno').");
+      }
+    }
+
+    return errors.join(' | ');
+  };
+
+  const validationMessage = getValidationMessage();
+
+  // Componente auxiliar para envolver os botões em Tooltip
+  const ActionButtonWrapper = ({ children, disabled, actionType }: { children: React.ReactNode, disabled: boolean, actionType: 'save' | 'generate' | 'whatsapp' }) => {
+    if (!disabled) {
+      return <>{children}</>;
+    }
+
+    let tooltipContent = validationMessage;
+    if (actionType === 'whatsapp' && !isWhatsAppDisabled && rawPhoneNumber.replace(/\D/g, '').length < 8) {
+      tooltipContent = "O número de telefone do cliente é necessário para enviar via WhatsApp.";
+    }
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* Envolve o botão desabilitado em um span para que o Tooltip funcione */}
+            <span className="flex-1">
+              {children}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="bg-destructive text-destructive-foreground border border-destructive/50 p-3 rounded-lg shadow-md max-w-xs">
+            <p className="font-bold mb-1">Ação Bloqueada:</p>
+            <p>{tooltipContent}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
 
   return (
@@ -245,82 +305,88 @@ export const QuoteGenerator = ({
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
           {isSale ? (
-            <Button
-              onClick={handleSaveOrUpdate}
-              disabled={!isQuoteValid || isGeneratingOrSaving}
-              className="flex-1 bg-success hover:bg-success/90"
-            >
-              {isGeneratingOrSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ShoppingCart className="mr-2 h-4 w-4" />
-              )}
-              Registrar Venda Finalizada
-            </Button>
+            <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="save">
+              <Button
+                onClick={handleSaveOrUpdate}
+                disabled={!isQuoteValid || isGeneratingOrSaving}
+                className="w-full bg-success hover:bg-success/90"
+              >
+                {isGeneratingOrSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                )}
+                Registrar Venda Finalizada
+              </Button>
+            </ActionButtonWrapper>
           ) : quoteIdToEdit ? (
-            <Button
-              onClick={handleSaveOrUpdate}
-              disabled={!isQuoteValid || isGeneratingOrSaving}
-              className="flex-1 bg-success hover:bg-success/90"
-            >
-              {isGeneratingOrSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Pencil className="mr-2 h-4 w-4" />
-              )}
-              Salvar Alterações
-            </Button>
+            <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="save">
+              <Button
+                onClick={handleSaveOrUpdate}
+                disabled={!isQuoteValid || isGeneratingOrSaving}
+                className="w-full bg-success hover:bg-success/90"
+              >
+                {isGeneratingOrSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Pencil className="mr-2 h-4 w-4" />
+                )}
+                Salvar Alterações
+              </Button>
+            </ActionButtonWrapper>
           ) : (
             <>
-              <Button
-                onClick={() => handleGenerateAndDownloadPDF(quoteData)}
-                disabled={!isQuoteValid || isGeneratingOrSaving}
-                className="flex-1 bg-primary hover:bg-primary-glow"
-              >
-                {isGeneratingOrSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                Gerar e Baixar PDF
-              </Button>
+              <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="generate">
+                <Button
+                  onClick={() => handleGenerateAndDownloadPDF(quoteData)}
+                  disabled={!isQuoteValid || isGeneratingOrSaving}
+                  className="w-full bg-primary hover:bg-primary-glow"
+                >
+                  {isGeneratingOrSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Gerar e Baixar PDF
+                </Button>
+              </ActionButtonWrapper>
               
-              <Button
-                onClick={() => handleGenerateLink(quoteData)}
-                disabled={!isQuoteValid || isGeneratingOrSaving}
-                variant="outline"
-                className="flex-1 border-primary/30 hover:bg-primary/10 hover:border-primary"
-              >
-                {isGeneratingOrSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <LinkIcon className="mr-2 h-4 w-4" />
-                )}
-                Link do Orçamento
-              </Button>
+              <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="generate">
+                <Button
+                  onClick={() => handleGenerateLink(quoteData)}
+                  disabled={!isQuoteValid || isGeneratingOrSaving}
+                  variant="outline"
+                  className="w-full border-primary/30 hover:bg-primary/10 hover:border-primary"
+                >
+                  {isGeneratingOrSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <LinkIcon className="mr-2 h-4 w-4" />
+                  )}
+                  Link do Orçamento
+                </Button>
+              </ActionButtonWrapper>
 
-              <Button
-                onClick={() => handleSendViaWhatsApp(quoteData)}
-                disabled={isWhatsAppDisabled}
-                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-              >
-                {isSendingWhatsApp ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="mr-2 h-4 w-4" />
-                )}
-                Enviar via WhatsApp
-              </Button>
+              <ActionButtonWrapper disabled={isWhatsAppDisabled} actionType="whatsapp">
+                <Button
+                  onClick={() => handleSendViaWhatsApp(quoteData)}
+                  disabled={isWhatsAppDisabled}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white"
+                >
+                  {isSendingWhatsApp ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar via WhatsApp
+                </Button>
+              </ActionButtonWrapper>
             </>
           )}
         </div>
         {!isQuoteValid && (
           <p className="text-sm text-destructive text-center">
-            {isClientRequired ? (
-              "Selecione pelo menos um serviço, informe o nome do cliente, **selecione o veículo**, **selecione o cliente**, **defina a data do serviço** e garanta que o preço final seja maior que zero."
-            ) : (
-              "Selecione pelo menos um serviço, informe o nome do cliente, **informe o veículo**, **defina a data do serviço** e garanta que o preço final seja maior que zero."
-            )}
+            {validationMessage}
           </p>
         )}
       </CardContent>
