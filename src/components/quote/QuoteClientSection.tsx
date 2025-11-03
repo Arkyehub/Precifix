@@ -77,6 +77,10 @@ export const QuoteClientSection = ({
   const [isClientFormDialogOpen, setIsClientFormDialogOpen] = useState(false);
   const [showVehicleDetails, setShowVehicleDetails] = useState(false);
 
+  // Estado local para telefone e endereço, que serão preenchidos pelo selectedClient
+  const [localRawPhoneNumber, setLocalRawPhoneNumber] = useState(rawPhoneNumber);
+  const [localAddress, setLocalAddress] = useState(address);
+
   const { data: clientVehicles, isLoading: isLoadingVehicles } = useQuery<Vehicle[]>({
     queryKey: ['clientVehicles', selectedClient?.id],
     queryFn: async () => {
@@ -97,24 +101,24 @@ export const QuoteClientSection = ({
 
   useEffect(() => {
     if (selectedClient) {
-      setClientNameInput(selectedClient.name);
-      setRawPhoneNumber(selectedClient.phone_number || '');
-      setAddress(selectedClient.address || '');
+      // Atualiza os estados locais e os estados do pai (QuoteCalculator)
+      setLocalRawPhoneNumber(selectedClient.phone_number || '');
+      setLocalAddress(selectedClient.address || '');
+      setRawPhoneNumber(selectedClient.phone_number || ''); // Atualiza o estado do pai
+      setAddress(selectedClient.address || ''); // Atualiza o estado do pai
     } else {
-      if (!clientNameInput) {
+      // Se o cliente for deselecionado, limpa os campos
+      if (isClientRequired) {
+        setLocalRawPhoneNumber('');
+        setLocalAddress('');
         setRawPhoneNumber('');
         setAddress('');
-        if (typeof setSelectedVehicleId === 'function') {
-          setSelectedVehicleId(null);
-        }
+      }
+      if (typeof setSelectedVehicleId === 'function') {
+        setSelectedVehicleId(null);
       }
     }
-  }, [selectedClient]);
-
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setRawPhoneNumber(value);
-  };
+  }, [selectedClient, isClientRequired]); // Depende de selectedClient e isClientRequired
 
   const handleClientSelectFromAutocomplete = (client: Client) => {
     onClientSelect(client.id);
@@ -141,6 +145,9 @@ export const QuoteClientSection = ({
   };
 
   const formatPlate = (plate: string | null) => plate ? plate.toUpperCase() : 'N/A';
+
+  // Determina se os campos de telefone e endereço devem ser editáveis
+  const isContactInfoEditable = !selectedClient && isClientRequired;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -245,12 +252,16 @@ export const QuoteClientSection = ({
             <Label htmlFor="phoneNumber">Telefone</Label>
             <Input 
               id="phoneNumber" 
-              value={formatPhoneNumber(rawPhoneNumber)}
-              onChange={(e) => setRawPhoneNumber(e.target.value.replace(/\D/g, ''))} 
+              value={formatPhoneNumber(localRawPhoneNumber)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                setLocalRawPhoneNumber(value);
+                setRawPhoneNumber(value); // Atualiza o estado do pai
+              }} 
               placeholder="(XX) XXXXX-XXXX"
               maxLength={15}
               className="bg-background/50 placeholder:text-gray-300" 
-              disabled={!isClientRequired}
+              disabled={!isContactInfoEditable} // Desabilitar se o cliente estiver selecionado
             />
           </div>
 
@@ -258,11 +269,14 @@ export const QuoteClientSection = ({
             <Label htmlFor="address">Endereço</Label>
             <Input
               id="address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              value={localAddress}
+              onChange={(e) => {
+                setLocalAddress(e.target.value);
+                setAddress(e.target.value); // Atualiza o estado do pai
+              }}
               placeholder="Rua, Número, Cidade"
               className="bg-background/50"
-              disabled={!isClientRequired}
+              disabled={!isContactInfoEditable} // Desabilitar se o cliente estiver selecionado
             />
           </div>
 

@@ -103,6 +103,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
+  // NOVO ESTADO LOCAL PARA O NOME DO CLIENTE (PERMITE DIGITAÇÃO)
+  const [clientNameInput, setClientNameInput] = useState('');
+
   // Novos estados para agendamento
   const [serviceDate, setServiceDate] = useState('');
   const [isTimeDefined, setIsTimeDefined] = useState(false);
@@ -188,6 +191,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       // 1. Cliente e Veículo
       setSelectedClientId(quoteToEdit.client_id);
       setSelectedVehicleId(quoteToEdit.vehicle_id);
+      setClientNameInput(quoteToEdit.client_name); // Inicializa o input com o nome do orçamento
       
       // 2. Serviços
       const servicesFromQuote: QuotedService[] = quoteToEdit.services_summary.map(s => {
@@ -229,6 +233,18 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       });
     }
   }, [quoteToEdit, allServices, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Efeito para sincronizar clientNameInput quando selectedClient muda (após seleção no autocomplete)
+  useEffect(() => {
+    if (selectedClient) {
+      setClientNameInput(selectedClient.name);
+    } else if (!quoteIdToEdit) {
+      // Se deselecionado e não estiver editando, limpa o input
+      // Se estiver editando, o nome já foi carregado acima
+      // setClientNameInput(''); // Removido para permitir que o usuário digite antes de selecionar
+    }
+  }, [selectedClient, quoteIdToEdit]);
+
 
   // NOVA QUERY: Fetch service quote counts
   const { data: serviceQuoteCounts, isLoading: isLoadingQuoteCounts } = useQuery<ServiceQuoteCount[]>({
@@ -393,6 +409,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
 
   const handleClientSaved = (client: Client) => {
     setSelectedClientId(client.id);
+    setClientNameInput(client.name); // Atualiza o input com o nome do cliente salvo
   };
 
   const totalExecutionTime = quotedServices.reduce((sum, service) => 
@@ -522,8 +539,8 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             selectedClient={selectedClient}
             onClientSelect={handleClientSelect}
             onClientSaved={handleClientSaved}
-            clientNameInput={selectedClient?.name || ''} // Usar o nome do cliente selecionado
-            setClientNameInput={() => {}} // Não permitir alteração direta do nome se o cliente estiver selecionado
+            clientNameInput={clientNameInput} // Usar o estado local
+            setClientNameInput={setClientNameInput} // Passar o setter
             quoteDate={''} // Não usado aqui, mas mantido para compatibilidade
             setQuoteDate={() => {}} // Não usado aqui, mas mantido para compatibilidade
             rawPhoneNumber={selectedClient?.phone_number || ''}
