@@ -33,6 +33,14 @@ const statusLabels: Record<QuoteStatus, { label: string; color: string }> = {
   awaiting_payment: { label: 'Aguardando Pagamento', color: 'bg-info/20 text-info' },
 };
 
+// Status que o usuário pode selecionar no dropdown
+const selectableStatuses: { key: QuoteStatus; label: string }[] = [
+  { key: 'closed', label: 'Atendida' },
+  { key: 'rejected', label: 'Cancelada' },
+  { key: 'accepted', label: 'Em Aberto' },
+  { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
+];
+
 const SalesPage = () => {
   const { user } = useSession();
   const navigate = useNavigate();
@@ -252,28 +260,26 @@ const SalesPage = () => {
                         <TableCell>{sale.services_summary.length} serviço(s)</TableCell>
                         <TableCell className="text-right font-bold">R$ {sale.total_price.toFixed(2)}</TableCell>
                         <TableCell>
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-semibold",
-                            statusInfo.color
-                          )}>
-                            {statusInfo.label}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center flex justify-center gap-1">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={isUpdating} title="Mudar Status">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              <span 
+                                className={cn(
+                                  "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80",
+                                  statusInfo.color
+                                )}
+                                title="Clique para mudar o status"
+                              >
+                                {statusInfo.label}
+                              </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-56 bg-card">
                               <DropdownMenuLabel>Mudar Status da Venda</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              {Object.entries(statusLabels).map(([key, { label, color }]) => (
+                              {selectableStatuses.map(({ key, label }) => (
                                 <DropdownMenuItem 
                                   key={key} 
-                                  onClick={() => handleStatusChange(sale.id, key as QuoteStatus)}
-                                  disabled={sale.status === key}
+                                  onClick={() => handleStatusChange(sale.id, key)}
+                                  disabled={sale.status === key || isUpdating}
                                   className={cn(
                                     "cursor-pointer",
                                     sale.status === key && "bg-muted/50 font-bold"
@@ -284,6 +290,9 @@ const SalesPage = () => {
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                        </TableCell>
+                        <TableCell className="text-center flex justify-center gap-1">
+                          {/* Removido o botão de lápis, mantendo apenas o de info */}
                           <Button variant="ghost" size="icon" onClick={() => navigate(`/quote/view/${sale.id}`)} title="Ver Detalhes">
                             <Info className="h-4 w-4" />
                           </Button>
