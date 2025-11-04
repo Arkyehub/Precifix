@@ -124,4 +124,16 @@ All colors MUST be HSL.
   }
 }
 
-/* REMOVIDO: FORÇAR LARGURA MÁXIMA PARA DRAWER LATERAL DIREITO */
+/* FORÇAR LARGURA MÁXIMA PARA DRAWER LATERAL DIREITO */
+/* Usamos !important para garantir que o max-width do Tailwind seja respeitado, 
+   pois o vaul pode estar aplicando width: 100% via estilos inline. */
+[data-vaul-drawer-direction="right"] .vaul-drawer-content {
+  width: 100% !important; /* Permite que o max-width funcione */
+  max-width: 320px !important; /* max-w-xs */
+}
+
+@media (min-width: 768px) { /* Corresponde a md: */
+  [data-vaul-drawer-direction="right"] .vaul-drawer-content {
+    max-width: 384px !important; /* md:max-w-md */
+  }
+}
