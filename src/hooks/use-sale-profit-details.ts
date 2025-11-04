@@ -83,10 +83,13 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       
       if (quoteError) {
         console.error("Error fetching quote data:", quoteError);
+        // Se o orçamento não for encontrado, retornamos null para que o componente pai exiba o erro.
+        if ((quoteError as any).code === 'PGRST116') return null; 
         throw new Error("Falha ao buscar dados do orçamento.");
       }
 
       const servicesSummary = quoteData.services_summary as { id: string }[];
+      // Usamos os IDs do serviço original para buscar os detalhes de custo
       const serviceIds = servicesSummary.map(s => s.id).filter(Boolean);
       
       let serviceDetails: ServiceDetails[] = [];
@@ -100,8 +103,13 @@ export const useSaleProfitDetails = (saleId: string | null) => {
           .select('id, labor_cost_per_hour, other_costs')
           .in('id', serviceIds)
           .eq('user_id', user.id);
-        if (serviceDetailsError) throw serviceDetailsError;
-        serviceDetails = detailsData as ServiceDetails[];
+        
+        // Não lançamos erro se a busca de detalhes falhar, apenas logamos e usamos o que temos.
+        if (serviceDetailsError) {
+          console.warn("Warning: Error fetching service details (original services might be deleted):", serviceDetailsError);
+        } else {
+          serviceDetails = detailsData as ServiceDetails[];
+        }
 
         // Fetch product links
         const { data: linksData, error: linksError } = await supabase
@@ -151,7 +159,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
 
   // 2. Calculate profitability
   const profitDetails = React.useMemo<SaleProfitDetails | null>(() => {
-    if (!calculationData) return null;
+    if (!calculationData || !calculationData.quoteData) return null;
 
     const { quoteData, serviceDetails, productLinks, catalogProducts, productCostCalculationMethod } = calculationData;
     
@@ -169,9 +177,12 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     servicesSummary.forEach(summary => {
       const details = serviceDetailsMap.get(summary.id);
       
-      // Use values from the service catalog if available, otherwise default to 0
+      // Se o serviço original foi encontrado, usamos seus custos de mão de obra e outros custos.
+      // Caso contrário, usamos 0 para evitar que o cálculo falhe.
       const laborCostPerHour = details?.labor_cost_per_hour || 0;
       const otherCosts = details?.other_costs || 0;
+      
+      // Usamos o tempo de execução salvo no summary, pois ele é o valor real do orçamento.
       const executionTimeMinutes = summary.execution_time_minutes;
 
       // A. Labor Cost
@@ -201,11 +212,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       }
     });
 
-    // D. Global Operational Costs (Fixed + Variable, excluding 'Produtos Gastos no Mês')
-    // NOTA: Não estamos incluindo custos globais aqui, pois eles já estão embutidos no labor_cost_per_hour.
-    // Se o usuário quiser incluir custos globais adicionais, eles devem ser adicionados como 'otherCostsGlobal' no QuoteCalculator.
-    // Para esta análise de venda, vamos considerar apenas os custos diretos (Produtos, Mão de Obra, Outros Custos por Serviço).
-    
+    // O cálculo de custo total agora é mais robusto, mesmo que os serviços originais tenham sido excluídos.
     const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts;
     const netProfit = totalServiceValue - totalCost;
     const profitMarginPercentage = totalServiceValue > 0 ? (netProfit / totalServiceValue) * 100 : 0;
