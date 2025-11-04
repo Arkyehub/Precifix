@@ -218,7 +218,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   };
 
   const handleOpenDetailsDrawer = (quoteId: string) => {
-    console.log(`Abrindo drawer para quoteId: ${quoteId}`);
+    console.log(`Abrindo drawer para quoteId: ${quoteId}`); // LOG DE DEBUG
     setSelectedQuoteId(quoteId);
     setIsDetailsDrawerOpen(true);
   };
