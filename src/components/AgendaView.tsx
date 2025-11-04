@@ -223,6 +223,11 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     setIsDetailsDrawerOpen(true);
   };
 
+  const handleCloseDetailsDrawer = () => {
+    setIsDetailsDrawerOpen(false);
+    setSelectedQuoteId(null); // Limpa o ID ao fechar
+  };
+
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
 
@@ -601,10 +606,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       {/* Drawer de Detalhes do Agendamento/Venda */}
       <SaleDetailsDrawer
         isOpen={isDetailsDrawerOpen}
-        onClose={() => {
-          setIsDetailsDrawerOpen(false);
-          setSelectedQuoteId(null); // Limpa o ID ao fechar
-        }}
+        onClose={handleCloseDetailsDrawer} // Usar o novo handler
         sale={saleDetails || null}
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}

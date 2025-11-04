@@ -110,6 +110,11 @@ const SalesPage = () => {
     setIsDrawerOpen(true);
   };
 
+  const handleCloseDetailsDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedSaleId(null); // Limpa o ID ao fechar
+  };
+
   const filteredSales = sales?.filter(sale => 
     sale.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -340,7 +345,7 @@ const SalesPage = () => {
       {/* Drawer de Detalhes da Venda */}
       <SaleDetailsDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={handleCloseDetailsDrawer}
         sale={saleDetails || null}
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}
