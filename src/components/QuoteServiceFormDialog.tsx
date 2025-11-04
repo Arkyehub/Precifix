@@ -29,7 +29,8 @@ export interface QuotedProductForQuote {
 
 // Reutilizando a interface Service, mas adicionando campos para overrides específicos do orçamento
 export interface QuotedService {
-  id: string;
+  id: string; // ID ÚNICO DA INSTÂNCIA NO ORÇAMENTO (temp-...)
+  original_service_id: string; // NOVO: ID REAL do serviço no catálogo
   name: string;
   description?: string;
   price: number; // Valor original do serviço

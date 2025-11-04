@@ -213,6 +213,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           ...s,
           // Gerar um ID único para a instância do serviço no orçamento
           id: `temp-${Math.random()}-${Date.now()}-${s.id}`, 
+          original_service_id: s.id, // USAR O ID SALVO NO SUMMARY COMO ID ORIGINAL
           price: originalService?.price ?? s.price,
           labor_cost_per_hour: originalService?.labor_cost_per_hour ?? 0,
           execution_time_minutes: originalService?.execution_time_minutes ?? s.execution_time_minutes,
@@ -268,19 +269,21 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
-        .select('services_summary')
-        .eq('user_id', user.id);
+        .select('services_summary');
 
       if (quotesError) throw quotesError;
 
       const counts: { [serviceId: string]: number } = {};
       
       quotesData.forEach(quote => {
-        const servicesSummary = quote.services_summary as { id: string }[];
+        // Tipagem corrigida para acessar original_service_id
+        const servicesSummary = quote.services_summary as { id: string; original_service_id?: string }[];
         if (Array.isArray(servicesSummary)) {
           servicesSummary.forEach(service => {
-            if (service.id) {
-              counts[service.id] = (counts[service.id] || 0) + 1;
+            // Usamos o ID do serviço original, que agora deve estar no summary
+            const originalId = service.original_service_id || service.id; 
+            if (originalId) {
+              counts[originalId] = (counts[originalId] || 0) + 1;
             }
           });
         }
@@ -375,6 +378,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
         const newService: QuotedService = { 
           ...serviceFromAll,
           id: `temp-${serviceFromAll.id}-${Date.now()}-${Math.random()}`, // ID único para a instância
+          original_service_id: serviceFromAll.id, // NOVO: Salvar o ID original
         };
         newQuotedServices.push(newService);
         toast({
@@ -619,7 +623,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
                 setSelectedPaymentMethodId(value);
                 const method = paymentMethods?.find(pm => pm.id === value);
                 if (method?.type === 'credit_card' && method.installments && method.installments.length > 0) {
-                  const firstValidInstallment = method.installments.find(inst => inst.rate > 0);
+                  const firstValidInstallment = method.installments.find(inst => inst.installments === 1);
                   setSelectedInstallments(firstValidInstallment ? firstValidInstallment.installments : 1);
                 } else {
                   setSelectedInstallments(null);

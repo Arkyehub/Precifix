@@ -12,7 +12,7 @@ interface Sale {
   total_price: number;
   created_at: string;
   services_summary: { 
-    id: string; 
+    id: string; // Este é o ID do serviço original do catálogo
     name: string; 
     price: number; 
     execution_time_minutes: number; 
@@ -175,6 +175,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     const serviceDetailsMap = new Map(serviceDetails.map(d => [d.id, d]));
 
     servicesSummary.forEach(summary => {
+      // Usamos o ID do serviço original (summary.id) para buscar os detalhes
       const details = serviceDetailsMap.get(summary.id);
       
       // Se o serviço original foi encontrado, usamos seus custos de mão de obra e outros custos.

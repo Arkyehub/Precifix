@@ -95,10 +95,11 @@ export const getImageDataUrl = async (url: string | null): Promise<string | null
 // --- PREPARAÇÃO DE DADOS ---
 
 const getServicesSummaryForDb = (selectedServices: QuotedService[]) => selectedServices.map(service => ({
+  // Usamos o original_service_id para rastrear o serviço do catálogo
+  id: service.original_service_id, 
   name: service.name,
   price: service.quote_price ?? service.price,
   execution_time_minutes: service.quote_execution_time_minutes ?? service.execution_time_minutes,
-  id: service.id, 
 }));
 
 export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment' = 'pending', isSale: boolean = false): QuotePayload => {
