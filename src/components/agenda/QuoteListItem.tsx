@@ -2,8 +2,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X, Info, Loader2 } from 'lucide-react';
+import { FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X, Info, Loader2, MoreVertical, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Quote {
   id: string;
@@ -31,7 +32,7 @@ interface QuoteListItemProps {
 
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
-  pending: { text: 'Pendente', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' }, // CORRIGIDO AQUI
+  pending: { text: 'Pendente', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' },
   rejected: { text: 'Cancelados', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
 };
@@ -49,6 +50,11 @@ export const QuoteListItem = ({
   onDeleteQuote,
 }: QuoteListItemProps) => {
   const status = statusColors[quote.status];
+
+  // Lógica de desabilitação
+  const canEdit = quote.status === 'pending';
+  const canConclude = quote.status === 'pending' || quote.status === 'accepted';
+  const canDelete = true; // Excluir funciona para todos
 
   return (
     <div 
@@ -83,88 +89,7 @@ export const QuoteListItem = ({
         </div>
         <div className="flex gap-1 items-center">
           
-          {/* Botão de Tarefa Concluída (Apenas para Aceito) */}
-          {quote.status === 'accepted' && (
-            <>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onOpenCloseSaleDialog(quote)}
-                      className="text-success hover:bg-success/10"
-                      title="Marcar como Concluído (Lançar Venda)"
-                      disabled={isClosingSale}
-                    >
-                      <CheckCheck className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Marcar como Concluído</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              {/* Botão Cancelados */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onMarkAsNotRealized(quote.id)}
-                      className="text-destructive hover:bg-destructive/10"
-                      title="Marcar como Cancelado"
-                      disabled={isMarkingNotRealized}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Marcar como Cancelado</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
-          )}
-
-          {/* Botões de Ação para Pendente */}
-          {quote.status === 'pending' && (
-            <>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onCopyLink(quote.id)}
-                      className="text-primary hover:bg-primary/10"
-                      title="Copiar Link do Orçamento"
-                    >
-                      <LinkIcon className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Copiar Link</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onEditQuote(quote.id)}
-                      className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      title="Editar Orçamento"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Editar Orçamento</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
-          )}
-
-          {/* Botão de Info (para todos os status) */}
+          {/* Botão de Info (mantido fora do dropdown para acesso rápido) */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -184,40 +109,97 @@ export const QuoteListItem = ({
             </Tooltip>
           </TooltipProvider>
 
-          {/* Botão de Excluir (Apenas para Pendente) */}
-          {quote.status === 'pending' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-destructive hover:bg-destructive/10"
-                  title="Excluir Orçamento"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-card">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação excluirá permanentemente o orçamento de "{quote.client_name}" e seu link de visualização.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => onDeleteQuote(quote.id)} 
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          {/* Dropdown de Ações */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground hover:bg-background"
+                title="Mais ações"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 bg-card" align="end">
+              
+              {/* 1. Concluir Tarefa (Marcar como Concluído) */}
+              <DropdownMenuItem 
+                onClick={() => canConclude && onOpenCloseSaleDialog(quote)}
+                disabled={!canConclude || isClosingSale}
+                className={cn("cursor-pointer", !canConclude && "opacity-50 cursor-not-allowed")}
+              >
+                {isClosingSale ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCheck className="mr-2 h-4 w-4 text-success" />}
+                Concluir Tarefa
+              </DropdownMenuItem>
+
+              {/* 2. Copiar Link */}
+              <DropdownMenuItem 
+                onClick={() => onCopyLink(quote.id)}
+                className="cursor-pointer"
+              >
+                <LinkIcon className="mr-2 h-4 w-4 text-primary" />
+                Copiar Link
+              </DropdownMenuItem>
+
+              {/* 3. Editar Orçamento */}
+              <DropdownMenuItem 
+                onClick={() => canEdit && onEditQuote(quote.id)}
+                disabled={!canEdit}
+                className={cn("cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+              >
+                <Pencil className="mr-2 h-4 w-4 text-info" />
+                Editar Orçamento
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {/* 4. Excluir Orçamento (Usando AlertDialog para confirmação) */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem 
+                    onSelect={(e) => e.preventDefault()} // Previne o fechamento do Dropdown ao abrir o AlertDialog
                     disabled={isDeleting}
+                    className={cn("cursor-pointer text-destructive focus:text-destructive", isDeleting && "opacity-50 cursor-not-allowed")}
                   >
-                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                    Excluir
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-card">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação excluirá permanentemente o orçamento de "{quote.client_name}" e seu link de visualização.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => onDeleteQuote(quote.id)} 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              {/* Opção extra: Marcar como Cancelado (apenas se Aceito) */}
+              {quote.status === 'accepted' && (
+                <DropdownMenuItem 
+                  onClick={() => onMarkAsNotRealized(quote.id)}
+                  disabled={isMarkingNotRealized}
+                  className="cursor-pointer text-destructive"
+                >
+                  {isMarkingNotRealized ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                  Marcar como Cancelado
+                </DropdownMenuItem>
+              )}
+
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
