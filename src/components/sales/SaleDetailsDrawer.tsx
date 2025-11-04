@@ -52,6 +52,11 @@ const statusColors = {
 
 export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails }: SaleDetailsDrawerProps) => {
   
+  // Usar o hook novamente para acessar o erro da query, se necessário
+  // Nota: O hook useSaleProfitDetails já está sendo chamado no componente pai (AgendaView/SalesPage)
+  // e os resultados (sale, profitDetails, isLoadingDetails) estão sendo passados via props.
+  // Se o erro for na query inicial, o sale será null.
+
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
   const saleDate = sale ? new Date(sale.created_at) : null;
 
@@ -70,6 +75,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
     }
 
     if (!sale) {
+      // Se sale for null, exibe a mensagem de erro genérica (que você viu na imagem)
       return (
         <div className="flex flex-col items-center justify-center h-full p-4 text-center">
           <XCircle className="h-8 w-8 text-destructive" />

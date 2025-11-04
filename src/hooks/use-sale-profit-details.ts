@@ -21,8 +21,8 @@ interface Sale {
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
-  client_id: string | null; // Added to match query
-  vehicle_id: string | null; // Added to match query
+  client_id: string | null; // Adicionado
+  vehicle_id: string | null; // Adicionado
 }
 
 interface OperationalCost {
@@ -69,7 +69,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
   const { user } = useSession();
 
   // 1. Fetch all necessary data for calculation
-  const { data: calculationData, isLoading: isLoadingDetails } = useQuery({
+  const { data: calculationData, isLoading: isLoadingDetails, error: queryError } = useQuery({
     queryKey: ['saleProfitDetails', saleId, user?.id],
     queryFn: async () => {
       if (!saleId || !user) return null;
@@ -77,12 +77,17 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       // Fetch the sale details (we need the full quote record for service details)
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle') // <-- Adicionado 'vehicle' aqui
+        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle')
         .eq('id', saleId)
         .single();
-      if (quoteError) throw quoteError;
+      
+      if (quoteError) {
+        console.error("Error fetching quote data:", quoteError);
+        throw new Error("Falha ao buscar dados do orçamento.");
+      }
 
-      const serviceIds = (quoteData.services_summary as any[]).map(s => s.id).filter(Boolean);
+      const servicesSummary = quoteData.services_summary as { id: string }[];
+      const serviceIds = servicesSummary.map(s => s.id).filter(Boolean);
       
       // Se não houver IDs de serviço, retornamos os dados básicos para evitar o erro 400
       if (serviceIds.length === 0) {
@@ -123,23 +128,21 @@ export const useSaleProfitDetails = (saleId: string | null) => {
 
       if (productCostCalculationMethod === 'per-service') {
         // Fetch product links and catalog items only if needed
-        if (serviceIds.length > 0) { // Proteção adicional
-          const { data: linksData, error: linksError } = await supabase
-            .from('service_product_links')
-            .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
-            .in('service_id', serviceIds);
-          if (linksError) throw linksError;
-          productLinks = linksData;
+        const { data: linksData, error: linksError } = await supabase
+          .from('service_product_links')
+          .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
+          .in('service_id', serviceIds);
+        if (linksError) throw linksError;
+        productLinks = linksData;
 
-          const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
-          if (productIds.length > 0) { // Proteção adicional
-            const { data: productsData, error: productsError } = await supabase
-              .from('product_catalog_items')
-              .select('id, name, size, price, type, dilution_ratio')
-              .in('id', productIds);
-            if (productsError) throw productsError;
-            catalogProducts = productsData;
-          }
+        const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
+        if (productIds.length > 0) { // Proteção adicional
+          const { data: productsData, error: productsError } = await supabase
+            .from('product_catalog_items')
+            .select('id, name, size, price, type, dilution_ratio')
+            .in('id', productIds);
+          if (productsError) throw productsError;
+          catalogProducts = productsData;
         }
       }
 
@@ -235,5 +238,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     saleDetails: calculationData?.quoteData as Sale | undefined,
     profitDetails,
     isLoadingDetails,
+    queryError, // Retornar o erro da query para debug
   };
 };
