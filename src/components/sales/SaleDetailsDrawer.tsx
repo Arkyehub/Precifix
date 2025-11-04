@@ -1,5 +1,5 @@
 import React from 'react';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2, XCircle, CheckCircle } from 'lucide-react';
@@ -55,10 +55,10 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
   const saleDate = sale ? new Date(sale.created_at) : null;
 
-  // Se o Drawer estiver fechado, não renderiza nada
+  // Se o Sheet estiver fechado, não renderiza nada
   if (!isOpen) return null;
 
-  // Renderiza o estado de carregamento ou erro dentro do DrawerContent
+  // Renderiza o estado de carregamento ou erro dentro do SheetContent
   const renderContent = () => {
     if (isLoadingDetails) {
       return (
@@ -82,12 +82,12 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
     // Conteúdo normal da venda/agendamento
     return (
       <>
-        <DrawerHeader className="p-4 border-b border-border/50">
-          <DrawerTitle className="flex items-center gap-2 text-xl font-bold">
+        <SheetHeader className="p-4 border-b border-border/50">
+          <SheetTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
             Detalhes do Agendamento {sale.sale_number || `#${sale.id.substring(0, 8)}`}
-          </DrawerTitle>
-          <DrawerDescription className="flex items-center justify-between">
+          </SheetTitle>
+          <SheetDescription className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
               Cliente: {sale.client_name}
             </span>
@@ -97,8 +97,8 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 {currentStatus.text}
               </span>
             )}
-          </DrawerDescription>
-        </DrawerHeader>
+          </SheetDescription>
+        </SheetHeader>
         
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-6">
@@ -226,10 +226,10 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
   };
 
   return (
-    <Drawer open={isOpen} onOpenChange={onClose} direction="right">
-      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full max-w-xs md:max-w-md rounded-t-none bg-card flex flex-col">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="right" className="flex flex-col">
         {renderContent()}
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   );
 };
