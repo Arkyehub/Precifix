@@ -227,7 +227,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose} direction="right">
-      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-xs md:max-w-md rounded-t-none bg-card flex flex-col">
+      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full max-w-xs md:max-w-md rounded-t-none bg-card flex flex-col">
         {renderContent()}
       </DrawerContent>
     </Drawer>
