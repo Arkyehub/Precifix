@@ -6,7 +6,7 @@ import { Calendar, ArrowLeft, ArrowRight, Search, Loader2, Info, FileText, Clock
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
-import { format, subDays, addDays, startOfDay, endOfDay, isSameDay, isToday } from 'date-fns';
+import { format, subDays, addDays, startOfDay, endOfDay, isSameDay, isToday, isSameMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom'; // Importar useNavigate
 import { ConfirmPaymentDialog } from '@/components/agenda/ConfirmPaymentDialog'; // Importar o novo diálogo
 import { useQuoteActions } from '@/hooks/use-quote-actions'; // Importar useQuoteActions
+import { SaleDetailsDrawer } from '@/components/sales/SaleDetailsDrawer'; // Importar o Drawer de Detalhes
+import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details'; // Importar o hook de detalhes de lucro
 
 interface Quote {
   id: string;
@@ -55,6 +57,13 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   // Usar initialDate como estado inicial
   const [selectedDate, setSelectedDate] = useState(initialDate);
   
+  // Estados para o Drawer de Detalhes
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+
+  // Hook para buscar detalhes de lucro da cotação selecionada
+  const { saleDetails, profitDetails, isLoadingDetails } = useSaleProfitDetails(selectedQuoteId);
+
   // Sincronizar o estado se a prop initialDate mudar (ex: se o usuário navegar de volta do calendário)
   useEffect(() => {
     setSelectedDate(initialDate);
@@ -206,6 +215,11 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       setIsConfirmPaymentDialogOpen(false);
       setQuoteToClose(null);
     }
+  };
+
+  const handleOpenDetailsDrawer = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    setIsDetailsDrawerOpen(true);
   };
 
   const filteredQuotes = useMemo(() => {
@@ -500,6 +514,26 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                         </>
                       )}
 
+                      {/* Botão de Info (para todos os status) */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-muted-foreground hover:bg-background"
+                              onClick={() => handleOpenDetailsDrawer(quote.id)} // Abre o Drawer
+                            >
+                              <Info className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md max-w-xs">
+                            <p className="font-semibold mb-1">Ver Detalhes</p>
+                            <p className="text-sm">Clique para ver os detalhes completos do orçamento e a análise de lucro.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
                       {/* Botão de Excluir (Apenas para Pendente) */}
                       {quote.status === 'pending' && (
                         <AlertDialog>
@@ -539,30 +573,6 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                           </AlertDialogContent>
                         </AlertDialog>
                       )}
-
-                      {/* Botão de Info (para todos os status) */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-background">
-                              <Info className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-card text-foreground border border-border/50 p-3 rounded-lg shadow-md max-w-xs">
-                            <p className="font-semibold mb-1">Detalhes do Orçamento</p>
-                            <p className="text-sm">ID: {quote.id.substring(0, 8)}</p>
-                            {quote.notes && <p className="text-sm mt-2">Obs: {quote.notes}</p>}
-                            <a 
-                              href={`/quote/view/${quote.id}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="text-xs text-primary hover:underline mt-2 block"
-                            >
-                              Ver Orçamento Completo
-                            </a>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
@@ -586,6 +596,18 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
           isProcessing={handleCloseSale.isPending}
         />
       )}
+
+      {/* Drawer de Detalhes do Agendamento/Venda */}
+      <SaleDetailsDrawer
+        isOpen={isDetailsDrawerOpen}
+        onClose={() => {
+          setIsDetailsDrawerOpen(false);
+          setSelectedQuoteId(null); // Limpa o ID ao fechar
+        }}
+        sale={saleDetails || null}
+        profitDetails={profitDetails}
+        isLoadingDetails={isLoadingDetails}
+      />
     </div>
   );
 };
