@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, Search, Info, Loader2, Filter, ListOrdered, BarChart, Pencil } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Info, Loader2, Filter, ListOrdered, BarChart, Pencil, Trash2, CreditCard, MoreVertical } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -13,6 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SaleDetailsDrawer } from '@/components/sales/SaleDetailsDrawer'; // Importar o Drawer
 import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details'; // Importar o hook
+import { ConfirmPaymentDialog } from '@/components/agenda/ConfirmPaymentDialog'; // Importar o diálogo de pagamento
+import { useQuoteActions } from '@/hooks/use-quote-actions'; // Importar useQuoteActions
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // IMPORT CORRIGIDO
 
 // Mapeamento de status do DB para rótulos de Venda
 type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
@@ -38,8 +41,8 @@ const AwaitingPaymentLabel = () => (
 const statusLabels: Record<QuoteStatus, { label: string | React.ReactNode; color: string }> = {
   closed: { label: 'Atendida', color: 'bg-success/20 text-success' },
   rejected: { label: 'Cancelada', color: 'bg-destructive/20 text-destructive' },
-  accepted: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' }, // CORRIGIDO AQUI
-  pending: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' }, // CORRIGIDO AQUI
+  accepted: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' },
+  pending: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' },
   awaiting_payment: { label: <AwaitingPaymentLabel />, color: 'bg-info/20 text-info' },
 };
 
@@ -55,9 +58,13 @@ const SalesPage = () => {
   const { user } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { handleCloseSale } = useQuoteActions(undefined, true); // Reutilizar a mutação de fechar venda
   const [searchTerm, setSearchTerm] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  
+  const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState(false);
+  const [saleToEditPayment, setSaleToEditPayment] = useState<Sale | null>(null);
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails } = useSaleProfitDetails(selectedSaleId);
@@ -101,6 +108,31 @@ const SalesPage = () => {
     },
   });
 
+  // Mutation para deletar a venda
+  const deleteSaleMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      
+      const { error } = await supabase
+        .from('quotes')
+        .delete()
+        .eq('id', saleId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
+      // Invalida outras queries relacionadas a orçamentos/agenda
+      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
+    },
+    onError: (err) => {
+      console.error("Erro ao excluir venda:", err);
+      // Adicionar toast de erro se necessário
+    },
+  });
+
   const handleStatusChange = (id: string, newStatus: QuoteStatus) => {
     updateSaleStatusMutation.mutate({ id, newStatus });
   };
@@ -113,6 +145,40 @@ const SalesPage = () => {
   const handleCloseDetailsDrawer = () => {
     setIsDrawerOpen(false);
     setSelectedSaleId(null); // Limpa o ID ao fechar
+  };
+
+  const handleEditSale = (saleId: string) => {
+    // Redireciona para a página de lançamento de venda com o ID para edição
+    navigate(`/sales/new?quoteId=${saleId}`);
+  };
+
+  const handleOpenPaymentDialog = (sale: Sale) => {
+    setSaleToEditPayment(sale);
+    setIsConfirmPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = async (paymentMethodId: string, installments: number | null) => {
+    if (!saleToEditPayment) return;
+
+    try {
+      await handleCloseSale.mutateAsync({
+        quoteId: saleToEditPayment.id,
+        paymentMethodId,
+        installments,
+      });
+      
+      // O onSuccess da mutação já invalida as queries
+      
+    } catch (error: any) {
+      // O erro já é tratado no useQuoteActions
+    } finally {
+      setIsConfirmPaymentDialogOpen(false);
+      setSaleToEditPayment(null);
+    }
+  };
+
+  const handleDeleteSale = (saleId: string) => {
+    deleteSaleMutation.mutate(saleId);
   };
 
   const filteredSales = sales?.filter(sale => 
@@ -245,7 +311,7 @@ const SalesPage = () => {
                 title="Em Aberto" 
                 count={summary.openSalesCount}
                 value={`R$ ${summary.openValue.toFixed(2)}`} 
-                color="text-primary-strong" // CORRIGIDO AQUI
+                color="text-primary-strong"
                 tooltip="Vendas lançadas, mas ainda não iniciadas ou em fase de negociação (status 'accepted' ou 'pending')."
               />
               <SummaryItem 
@@ -275,6 +341,11 @@ const SalesPage = () => {
                   filteredSales.map((sale) => {
                     const statusInfo = statusLabels[sale.status] || statusLabels.pending;
                     const isUpdating = updateSaleStatusMutation.isPending;
+                    const isDeleting = deleteSaleMutation.isPending && deleteSaleMutation.variables === sale.id;
+
+                    // Lógica de desabilitação
+                    const canEdit = sale.status === 'pending' || sale.status === 'accepted';
+                    const canChangePayment = sale.status === 'closed' || sale.status === 'awaiting_payment';
 
                     return (
                       <TableRow key={sale.id}>
@@ -325,6 +396,76 @@ const SalesPage = () => {
                           >
                             <Info className="h-4 w-4" />
                           </Button>
+                          
+                          {/* Dropdown de Ações */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-muted-foreground hover:bg-background"
+                                title="Mais ações"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56 bg-card" align="end">
+                              
+                              {/* 1. Alterar Forma de Pagamento */}
+                              <DropdownMenuItem 
+                                onClick={() => canChangePayment && handleOpenPaymentDialog(sale)}
+                                disabled={!canChangePayment || handleCloseSale.isPending}
+                                className={cn("cursor-pointer", !canChangePayment && "opacity-50 cursor-not-allowed")}
+                              >
+                                {handleCloseSale.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4 text-info" />}
+                                Alterar Forma de Pagamento
+                              </DropdownMenuItem>
+
+                              {/* 2. Editar */}
+                              <DropdownMenuItem 
+                                onClick={() => canEdit && handleEditSale(sale.id)}
+                                disabled={!canEdit}
+                                className={cn("cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+                              >
+                                <Pencil className="mr-2 h-4 w-4 text-primary" />
+                                Editar
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              {/* 3. Excluir (com AlertDialog) */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem 
+                                    onSelect={(e) => e.preventDefault()}
+                                    disabled={isDeleting}
+                                    className={cn("cursor-pointer text-destructive focus:text-destructive", isDeleting && "opacity-50 cursor-not-allowed")}
+                                  >
+                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-card">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação excluirá permanentemente a venda "{sale.sale_number || `#${sale.id.substring(0, 8)}`}" e todos os seus registros associados.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteSale(sale.id)} 
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      disabled={isDeleting}
+                                    >
+                                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -350,6 +491,17 @@ const SalesPage = () => {
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}
       />
+
+      {/* Diálogo de Confirmação de Pagamento (Reutilizado para Alterar Pagamento) */}
+      {saleToEditPayment && (
+        <ConfirmPaymentDialog
+          isOpen={isConfirmPaymentDialogOpen}
+          onClose={() => setIsConfirmPaymentDialogOpen(false)}
+          quote={saleToEditPayment}
+          onConfirm={handleConfirmPayment}
+          isProcessing={handleCloseSale.isPending}
+        />
+      )}
     </div>
   );
 };
