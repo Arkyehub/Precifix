@@ -55,26 +55,33 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
   const saleDate = sale ? new Date(sale.created_at) : null;
 
-  // Se estiver carregando e o Drawer estiver aberto, mostre o loader
-  if (isLoadingDetails && isOpen) {
+  // Se o Drawer estiver fechado, não renderiza nada
+  if (!isOpen) return null;
+
+  // Renderiza o estado de carregamento ou erro dentro do DrawerContent
+  const renderContent = () => {
+    if (isLoadingDetails) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Carregando detalhes do agendamento...</p>
+        </div>
+      );
+    }
+
+    if (!sale) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+          <XCircle className="h-8 w-8 text-destructive" />
+          <p className="mt-4 text-destructive font-semibold">Erro ao carregar detalhes.</p>
+          <p className="text-sm text-muted-foreground">O agendamento pode ter sido excluído ou o ID é inválido.</p>
+        </div>
+      );
+    }
+
+    // Conteúdo normal da venda/agendamento
     return (
-      <Drawer open={isOpen} onOpenChange={onClose} direction="right">
-        <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card">
-          <div className="flex flex-col items-center justify-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Carregando detalhes do agendamento...</p>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  // Se não estiver carregando e não houver dados, ou se o Drawer estiver fechado, retorne null
-  if (!sale || !isOpen) return null;
-
-  return (
-    <Drawer open={isOpen} onOpenChange={onClose} direction="right">
-      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card">
+      <>
         <DrawerHeader className="p-4 border-b border-border/50">
           <DrawerTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
@@ -214,6 +221,14 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
             )}
           </div>
         </ScrollArea>
+      </>
+    );
+  };
+
+  return (
+    <Drawer open={isOpen} onOpenChange={onClose} direction="right">
+      <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-sm md:max-w-md rounded-t-none bg-card flex flex-col">
+        {renderContent()}
       </DrawerContent>
     </Drawer>
   );
