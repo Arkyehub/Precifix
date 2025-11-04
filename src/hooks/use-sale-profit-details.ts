@@ -89,29 +89,39 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       const servicesSummary = quoteData.services_summary as { id: string }[];
       const serviceIds = servicesSummary.map(s => s.id).filter(Boolean);
       
-      // Se não houver IDs de serviço, retornamos os dados básicos para evitar o erro 400
-      if (serviceIds.length === 0) {
-        return {
-          quoteData: {
-            ...quoteData,
-            client_id: quoteData.client_id,
-            vehicle_id: quoteData.vehicle_id,
-          } as Sale,
-          serviceDetails: [] as ServiceDetails[],
-          productLinks: [] as ServiceProductLink[],
-          catalogProducts: [] as CatalogProduct[],
-          operationalCosts: [] as OperationalCost[],
-          productCostCalculationMethod: 'per-service', // Default se não houver serviços
-        };
-      }
+      let serviceDetails: ServiceDetails[] = [];
+      let productLinks: ServiceProductLink[] = [];
+      let catalogProducts: CatalogProduct[] = [];
 
-      // Fetch full service details (labor cost, other costs)
-      const { data: serviceDetails, error: serviceDetailsError } = await supabase
-        .from('services')
-        .select('id, labor_cost_per_hour, other_costs')
-        .in('id', serviceIds)
-        .eq('user_id', user.id);
-      if (serviceDetailsError) throw serviceDetailsError;
+      if (serviceIds.length > 0) {
+        // Fetch full service details (labor cost, other costs)
+        const { data: detailsData, error: serviceDetailsError } = await supabase
+          .from('services')
+          .select('id, labor_cost_per_hour, other_costs')
+          .in('id', serviceIds)
+          .eq('user_id', user.id);
+        if (serviceDetailsError) throw serviceDetailsError;
+        serviceDetails = detailsData as ServiceDetails[];
+
+        // Fetch product links
+        const { data: linksData, error: linksError } = await supabase
+          .from('service_product_links')
+          .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
+          .in('service_id', serviceIds);
+        if (linksError) throw linksError;
+        productLinks = linksData;
+
+        // Fetch catalog products
+        const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
+        if (productIds.length > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('product_catalog_items')
+            .select('id, name, size, price, type, dilution_ratio')
+            .in('id', productIds);
+          if (productsError) throw productsError;
+          catalogProducts = productsData;
+        }
+      }
 
       // Fetch global operational costs (to check for 'Produtos Gastos no Mês')
       const { data: operationalCosts, error: costsError } = await supabase
@@ -123,36 +133,13 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       const productsMonthlyCostItem = operationalCosts.find(c => c.description === 'Produtos Gastos no Mês');
       const productCostCalculationMethod = productsMonthlyCostItem ? 'monthly-average' : 'per-service';
 
-      let productLinks: ServiceProductLink[] = [];
-      let catalogProducts: CatalogProduct[] = [];
-
-      if (productCostCalculationMethod === 'per-service') {
-        // Fetch product links and catalog items only if needed
-        const { data: linksData, error: linksError } = await supabase
-          .from('service_product_links')
-          .select('service_id, product_id, usage_per_vehicle, dilution_ratio, container_size')
-          .in('service_id', serviceIds);
-        if (linksError) throw linksError;
-        productLinks = linksData;
-
-        const productIds = Array.from(new Set(linksData.map(l => l.product_id)));
-        if (productIds.length > 0) { // Proteção adicional
-          const { data: productsData, error: productsError } = await supabase
-            .from('product_catalog_items')
-            .select('id, name, size, price, type, dilution_ratio')
-            .in('id', productIds);
-          if (productsError) throw productsError;
-          catalogProducts = productsData;
-        }
-      }
-
       return {
         quoteData: {
           ...quoteData,
           client_id: quoteData.client_id,
           vehicle_id: quoteData.vehicle_id,
-        } as Sale, // Explicitly cast to Sale after ensuring all fields are present
-        serviceDetails: serviceDetails as ServiceDetails[],
+        } as Sale,
+        serviceDetails,
         productLinks,
         catalogProducts,
         operationalCosts,
@@ -166,7 +153,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
   const profitDetails = React.useMemo<SaleProfitDetails | null>(() => {
     if (!calculationData) return null;
 
-    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod } = calculationData;
+    const { quoteData, serviceDetails, productLinks, catalogProducts, productCostCalculationMethod } = calculationData;
     
     let totalProductsCost = 0;
     let totalLaborCost = 0;
