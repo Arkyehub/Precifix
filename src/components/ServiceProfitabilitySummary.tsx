@@ -72,8 +72,8 @@ export const ServiceProfitabilitySummary = ({ services, productCostCalculationMe
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">
-                    <div className="p-3 rounded-md bg-gradient-to-r from-info/10 to-info/5 border border-info/30"> {/* Alterado aqui */}
-                      <h5 className="font-semibold text-info mb-2">Detalhes do Lucro</h5> {/* Alterado aqui */}
+                    <div className="p-3 rounded-md bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30"> {/* Alterado para primary */}
+                      <h5 className="font-semibold text-primary mb-2">Detalhes do Lucro</h5> {/* Alterado para primary */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                         <span className="text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" /> Custo Mão de Obra/Hora:</span>
                         <span className="text-foreground text-right">R$ {service.labor_cost_per_hour.toFixed(2)}</span>
@@ -97,7 +97,7 @@ export const ServiceProfitabilitySummary = ({ services, productCostCalculationMe
                         <div className="col-span-2 border-t border-border/50 my-1"></div>
 
                         <span className="font-bold text-foreground">Custo Total:</span>
-                        <span className="font-bold text-foreground text-right">R$ {totalServiceCost.toFixed(2)}</span>
+                        <span className="font-bold text-primary-strong text-right">R$ {totalServiceCost.toFixed(2)}</span>
 
                         <span className="font-bold text-foreground">Valor Cobrado:</span>
                         <span className="font-bold text-primary text-right text-lg">R$ {chargedValue.toFixed(2)}</span>
