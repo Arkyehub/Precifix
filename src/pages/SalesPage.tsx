@@ -38,8 +38,8 @@ const AwaitingPaymentLabel = () => (
 const statusLabels: Record<QuoteStatus, { label: string | React.ReactNode; color: string }> = {
   closed: { label: 'Atendida', color: 'bg-success/20 text-success' },
   rejected: { label: 'Cancelada', color: 'bg-destructive/20 text-destructive' },
-  accepted: { label: 'Em Aberto', color: 'bg-accent/20 text-accent' },
-  pending: { label: 'Em Aberto', color: 'bg-accent/20 text-accent' }, // Mapear pending para Em Aberto também
+  accepted: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' }, // CORRIGIDO AQUI
+  pending: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' }, // CORRIGIDO AQUI
   awaiting_payment: { label: <AwaitingPaymentLabel />, color: 'bg-info/20 text-info' },
 };
 
@@ -245,7 +245,7 @@ const SalesPage = () => {
                 title="Em Aberto" 
                 count={summary.openSalesCount}
                 value={`R$ ${summary.openValue.toFixed(2)}`} 
-                color="text-accent"
+                color="text-primary-strong" // CORRIGIDO AQUI
                 tooltip="Vendas lançadas, mas ainda não iniciadas ou em fase de negociação (status 'accepted' ou 'pending')."
               />
               <SummaryItem 

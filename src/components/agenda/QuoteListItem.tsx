@@ -31,7 +31,7 @@ interface QuoteListItemProps {
 
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/10', border: 'border-success/50' },
-  pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/50' },
+  pending: { text: 'Pendente', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' }, // CORRIGIDO AQUI
   rejected: { text: 'Cancelados', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
 };
