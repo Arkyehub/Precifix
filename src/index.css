@@ -123,3 +123,18 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* FORÇAR LARGURA MÁXIMA PARA DRAWER LATERAL DIREITO */
+/* O vaul/shadcn usa data-vaul-drawer-direction="right" no elemento raiz do Drawer */
+[data-vaul-drawer-direction="right"] .vaul-drawer-content {
+  /* Sobrescreve a largura padrão de 100% que o vaul aplica */
+  width: 320px !important; /* Corresponde a w-80 */
+  max-width: 320px !important;
+}
+
+@media (min-width: 768px) { /* Corresponde a md: */
+  [data-vaul-drawer-direction="right"] .vaul-drawer-content {
+    width: 384px !important; /* Corresponde a md:w-96 */
+    max-width: 384px !important;
+  }
+}
