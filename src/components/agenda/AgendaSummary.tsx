@@ -79,7 +79,7 @@ export const AgendaSummary = ({ summary }: AgendaSummaryProps) => {
           count={summary.pending} 
           value={summary.pendingValue} 
           color="text-accent" 
-          valueColor="text-accent"
+          valueColor="text-primary-strong" // Alterado para primary-strong
         />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

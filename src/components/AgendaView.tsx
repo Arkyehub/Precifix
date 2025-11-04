@@ -14,7 +14,7 @@ import { SaleDetailsDrawer } from '@/components/sales/SaleDetailsDrawer';
 import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details';
 import { AgendaHeader } from '@/components/agenda/AgendaHeader';
 import { AgendaSummary } from '@/components/agenda/AgendaSummary';
-import { QuoteListItem } from '@/components/agenda/QuoteListItem';
+import { QuoteListItem } from '@/components/agenda/QuoteListItem'; // Importação correta
 
 interface Quote {
   id: string;
