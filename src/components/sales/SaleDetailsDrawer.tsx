@@ -2,17 +2,18 @@ import React from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2 } from 'lucide-react';
+import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2, XCircle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
 
-// Reutilizando a interface Sale
+// Reutilizando a interface Sale (que agora pode ser um Quote/Agendamento)
 interface Sale {
   id: string;
   sale_number: string | null;
   client_name: string;
+  vehicle: string; // Adicionado
   total_price: number;
   created_at: string;
   services_summary: { name: string; price: number; execution_time_minutes: number }[];
@@ -42,18 +43,34 @@ interface SaleDetailsDrawerProps {
 }
 
 const statusColors = {
-  closed: { text: 'Atendida', color: 'text-success', bg: 'bg-success/20' },
-  rejected: { text: 'Cancelada', color: 'text-destructive', bg: 'bg-destructive/20' },
-  accepted: { text: 'Em Aberto', color: 'text-accent', bg: 'bg-accent/20' },
-  pending: { text: 'Em Aberto', color: 'text-accent', bg: 'bg-accent/20' },
-  awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20' },
+  accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/20', icon: CheckCircle },
+  pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/20', icon: Clock },
+  rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', icon: XCircle },
+  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', icon: CheckCircle },
+  awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20', icon: DollarSign },
 };
 
 export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails }: SaleDetailsDrawerProps) => {
-  if (!sale) return null;
+  
+  const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
+  const saleDate = sale ? new Date(sale.created_at) : null;
 
-  const currentStatus = statusColors[sale.status] || statusColors.pending;
-  const saleDate = new Date(sale.created_at);
+  // Se estiver carregando e o Drawer estiver aberto, mostre o loader
+  if (isLoadingDetails && isOpen) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose} direction="right">
+        <DrawerContent className="fixed bottom-0 right-0 mt-0 h-full w-full max-w-md rounded-t-none bg-card">
+          <div className="flex flex-col items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Carregando detalhes do agendamento...</p>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Se não estiver carregando e não houver dados, ou se o Drawer estiver fechado, retorne null
+  if (!sale || !isOpen) return null;
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose} direction="right">
@@ -61,15 +78,18 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
         <DrawerHeader className="p-4 border-b border-border/50">
           <DrawerTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
-            Detalhes da Venda {sale.sale_number || `#${sale.id.substring(0, 8)}`}
+            Detalhes do Agendamento {sale.sale_number || `#${sale.id.substring(0, 8)}`}
           </DrawerTitle>
           <DrawerDescription className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
               Cliente: {sale.client_name}
             </span>
-            <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold", currentStatus.color, currentStatus.bg)}>
-              {currentStatus.text}
-            </span>
+            {currentStatus && (
+              <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1", currentStatus.color, currentStatus.bg)}>
+                <currentStatus.icon className="h-3 w-3" />
+                {currentStatus.text}
+              </span>
+            )}
           </DrawerDescription>
         </DrawerHeader>
         
@@ -83,8 +103,8 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 Informações Gerais
               </h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <p className="text-muted-foreground">Data da Venda:</p>
-                <p className="font-medium text-right">{format(saleDate, 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+                <p className="text-muted-foreground">Data de Criação:</p>
+                <p className="font-medium text-right">{format(saleDate!, 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
                 
                 {sale.service_date && (
                   <>
@@ -98,6 +118,9 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                     <p className="font-medium text-right">{sale.service_time}</p>
                   </>
                 )}
+                <p className="text-muted-foreground">Veículo:</p>
+                <p className="font-medium text-right">{sale.vehicle}</p>
+
                 <p className="text-muted-foreground">Valor Total:</p>
                 <p className="font-bold text-primary text-right text-xl">R$ {sale.total_price.toFixed(2)}</p>
               </div>
@@ -109,7 +132,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Car className="h-5 w-5 text-primary" />
-                Serviços Realizados
+                Serviços Contratados
               </h3>
               <div className="space-y-2">
                 {sale.services_summary.map((service, index) => (
@@ -132,12 +155,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 <DollarSign className="h-5 w-5 text-primary" />
                 Análise de Lucro
               </h3>
-              {isLoadingDetails ? (
-                <div className="flex items-center justify-center h-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <p className="ml-2 text-muted-foreground">Calculando custos...</p>
-                </div>
-              ) : profitDetails ? (
+              {profitDetails ? (
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="col-span-2 p-3 rounded-lg bg-mediumslateblue/10 border border-mediumslateblue/50">
                     <p className="text-mediumslateblue font-medium flex items-center gap-1">
