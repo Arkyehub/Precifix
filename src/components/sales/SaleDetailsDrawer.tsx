@@ -44,7 +44,7 @@ interface SaleDetailsDrawerProps {
 
 const statusColors = {
   accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/20', icon: CheckCircle },
-  pending: { text: 'Pendente', color: 'text-primary-strong', bg: 'bg-primary-strong/20', icon: Clock },
+  pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/20', icon: Clock },
   rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', icon: XCircle },
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', icon: CheckCircle },
   awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20', icon: DollarSign },
@@ -135,7 +135,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 <p className="font-medium text-right">{sale.vehicle}</p>
 
                 <p className="text-muted-foreground">Valor Total:</p>
-                <p className="font-bold text-primary-strong text-right text-xl">R$ {sale.total_price.toFixed(2)}</p>
+                <p className="font-bold text-primary text-right text-xl">R$ {sale.total_price.toFixed(2)}</p>
               </div>
             </div>
 
@@ -170,18 +170,18 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
               </h3>
               {profitDetails ? (
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="col-span-2 p-3 rounded-lg bg-primary-strong/10 border border-primary-strong/50"> {/* Alterado para primary-strong */}
-                    <p className="text-primary-strong font-medium flex items-center gap-1">
+                  <div className="col-span-2 p-3 rounded-lg bg-mediumslateblue/10 border border-mediumslateblue/50">
+                    <p className="text-mediumslateblue font-medium flex items-center gap-1">
                       <Package className="h-4 w-4" /> Custo de Produtos:
                     </p>
-                    <p className="font-bold text-primary-strong text-right">R$ {profitDetails.totalProductsCost.toFixed(2)}</p>
+                    <p className="font-bold text-mediumslateblue text-right">R$ {profitDetails.totalProductsCost.toFixed(2)}</p>
                   </div>
                   
-                  <div className="p-3 rounded-lg bg-primary-strong/10 border border-primary-strong/50"> {/* Alterado para primary-strong */}
-                    <p className="text-primary-strong font-medium flex items-center gap-1">
+                  <div className="p-3 rounded-lg bg-info/10 border border-info/50">
+                    <p className="text-info font-medium flex items-center gap-1">
                       <Clock className="h-4 w-4" /> Custo Mão de Obra:
                     </p>
-                    <p className="font-bold text-primary-strong text-right">R$ {profitDetails.totalLaborCost.toFixed(2)}</p>
+                    <p className="font-bold text-info text-right">R$ {profitDetails.totalLaborCost.toFixed(2)}</p>
                   </div>
                   
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/50">

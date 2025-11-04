@@ -27,24 +27,24 @@ interface DailySummary {
 }
 
 const statusColors = {
-  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20', compactBg: 'bg-success', compactText: 'text-white' }, // Aceito (Verde)
-  pending: { text: 'pendente', color: 'text-primary-strong', bg: 'bg-primary-strong/20', compactBg: 'bg-primary-strong', compactText: 'text-white' }, // Pendente (Laranja Forte)
-  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' }, // Cancelado (Vermelho)
-  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' }, // Concluído (Azul)
+  accepted: { text: 'aprovado', color: 'text-success', bg: 'bg-success/20', compactBg: 'bg-success', compactText: 'text-white' }, // Alterado para text-white
+  pending: { text: 'pendente', color: 'text-accent', bg: 'bg-accent/20', compactBg: 'bg-accent', compactText: 'text-white' }, // Alterado para text-white
+  rejected: { text: 'cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' }, // Alterado para text-white
+  closed: { text: 'concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' }, // Alterado para text-white
 };
 
 export const MonthlyCalendarView = () => {
   const { user } = useSession();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const isMobile = useIsMobile(); // Usar o hook de mobile
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
 
-  const start = startOfMonth(currentMonth);
-  const end = endOfMonth(currentMonth);
+  const startOfCurrentMonth = startOfMonth(currentMonth);
+  const endOfCurrentMonth = endOfMonth(currentMonth);
 
   // Fetch all quotes that have a service_date defined for the current month
   const { data: quotes, isLoading, error } = useQuery<Quote[]>({
-    queryKey: ['monthlyScheduledQuotes', user?.id, format(start, 'yyyy-MM')],
+    queryKey: ['monthlyScheduledQuotes', user?.id, format(currentMonth, 'yyyy-MM')],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -52,123 +52,134 @@ export const MonthlyCalendarView = () => {
         .select('id, status, service_date, total_price')
         .eq('user_id', user.id)
         .not('service_date', 'is', null)
-        .gte('service_date', format(start, 'yyyy-MM-dd'))
-        .lte('service_date', format(end, 'yyyy-MM-dd'));
+        .gte('service_date', format(startOfCurrentMonth, 'yyyy-MM-dd'))
+        .lte('service_date', format(endOfCurrentMonth, 'yyyy-MM-dd'));
       if (error) throw error;
       return data;
     },
     enabled: !!user,
   });
 
-  const quotesByDay = useMemo(() => {
-    const map = new Map<string, DailySummary>();
+  const calendarData = useMemo(() => {
+    const dataMap = new Map<string, DailySummary>();
+    const monthlySummary = {
+      total: 0,
+      accepted: 0,
+      pending: 0,
+      rejected: 0,
+      closed: 0, // Adicionado
+      totalValue: 0,
+      acceptedValue: 0,
+      pendingValue: 0,
+      rejectedValue: 0,
+      closedValue: 0, // Adicionado
+    };
+
     quotes?.forEach(quote => {
       if (!quote.service_date) return;
-      const dateKey = quote.service_date; // YYYY-MM-DD
 
-      const summary = map.get(dateKey) || {
-        total: 0,
-        accepted: 0,
-        pending: 0,
-        rejected: 0,
-        closed: 0,
-      };
+      const dateKey = quote.service_date; // YYYY-MM-DD
+      const summary = dataMap.get(dateKey) || { accepted: 0, pending: 0, rejected: 0, closed: 0, total: 0 };
 
       summary.total++;
-      if (quote.status === 'accepted') summary.accepted++;
-      if (quote.status === 'pending') summary.pending++;
-      if (quote.status === 'rejected') summary.rejected++;
-      if (quote.status === 'closed') summary.closed++;
+      monthlySummary.total++;
+      monthlySummary.totalValue += quote.total_price;
 
-      map.set(dateKey, summary);
+      if (quote.status === 'accepted') {
+        summary.accepted++;
+        monthlySummary.accepted++;
+        monthlySummary.acceptedValue += quote.total_price;
+      } else if (quote.status === 'pending') {
+        summary.pending++;
+        monthlySummary.pending++;
+        monthlySummary.pendingValue += quote.total_price;
+      } else if (quote.status === 'rejected') {
+        summary.rejected++;
+        monthlySummary.rejected++;
+        monthlySummary.rejectedValue += quote.total_price;
+      } else if (quote.status === 'closed') { // Novo status
+        summary.closed++;
+        monthlySummary.closed++;
+        monthlySummary.closedValue += quote.total_price;
+      }
+      dataMap.set(dateKey, summary);
     });
-    return map;
+
+    return { dataMap, monthlySummary };
   }, [quotes]);
 
   const daysInMonth = useMemo(() => {
-    const startDay = startOfMonth(currentMonth);
-    const endDay = endOfMonth(currentMonth);
-    const days = eachDayOfInterval({ start: startDay, end: endDay });
-
-    // Adicionar dias do mês anterior para preencher a primeira semana
-    const firstDayOfWeek = getDay(startDay); // 0 = Sunday, 1 = Monday
-    const startPadding = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Se for domingo, 6 dias antes (se a semana começar na segunda)
+    const start = startOfCurrentMonth;
+    const end = endOfCurrentMonth;
     
-    let paddedDays = [];
-    for (let i = 0; i < startPadding; i++) {
-      paddedDays.unshift(subDays(startDay, i + 1));
-    }
-    paddedDays = paddedDays.sort((a, b) => a.getTime() - b.getTime());
-    
-    // Adicionar os dias do mês atual
-    paddedDays.push(...days);
+    // Encontrar o primeiro dia da semana que contém o início do mês
+    const firstDayOfWeek = startOfMonth(start);
+    const startDay = subDays(firstDayOfWeek, getDay(firstDayOfWeek));
 
-    // Adicionar dias do próximo mês para preencher a última semana
-    const totalCells = Math.ceil(paddedDays.length / 7) * 7;
-    const endPadding = totalCells - paddedDays.length;
-    
-    for (let i = 0; i < endPadding; i++) {
-      paddedDays.push(addDays(endDay, i + 1));
-    }
+    // Encontrar o último dia da semana que contém o fim do mês
+    const lastDayOfWeek = endOfMonth(end);
+    const endDay = addDays(lastDayOfWeek, 6 - getDay(lastDayOfWeek));
 
-    return paddedDays;
-  }, [currentMonth]);
+    return eachDayOfInterval({ start: startDay, end: endDay });
+  }, [currentMonth, startOfCurrentMonth, endOfCurrentMonth]);
 
-  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
+  };
 
   const handleDayClick = (date: Date) => {
+    // Navegar para a página de agenda diária, passando a data como parâmetro
     navigate(`/agenda/daily?date=${format(date, 'yyyy-MM-dd')}`);
   };
 
-  const renderDayCell = (date: Date) => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    const summary = quotesByDay.get(dateKey);
-    const isCurrentMonth = isSameMonth(date, currentMonth);
-    const isTodayDate = isToday(date);
-
+  if (isLoading) {
     return (
-      <div
-        key={dateKey}
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Carregando calendário...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-destructive">Erro ao carregar dados do calendário: {error.message}</p>;
+  }
+
+  const { dataMap, monthlySummary } = calendarData;
+
+  // Componente auxiliar para renderizar o status (modo detalhado)
+  const StatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
+    if (count === 0) return null;
+    const status = statusColors[statusKey];
+    return (
+      <div 
         className={cn(
-          "p-2 border border-border/50 h-24 flex flex-col cursor-pointer transition-colors",
-          isCurrentMonth ? "bg-background hover:bg-muted/50" : "bg-muted/30 text-muted-foreground",
-          isTodayDate && "border-2 border-primary shadow-md"
+          "flex items-center justify-center px-2 py-1 rounded-md text-xs font-bold leading-none", 
+          status.compactBg, 
+          status.compactText // Usando a cor de texto compacta (branca)
         )}
-        onClick={() => handleDayClick(date)}
       >
-        <span className={cn("text-sm font-semibold", isTodayDate && "text-primary")}>
-          {format(date, 'd')}
-        </span>
-        
-        {summary && summary.total > 0 && (
-          <div className="mt-1 space-y-0.5 overflow-hidden">
-            {summary.closed > 0 && (
-              <div className={cn("text-xs font-medium px-1 rounded-sm flex items-center justify-between", statusColors.closed.bg, statusColors.closed.color)}>
-                <span className="truncate">Concluídos</span>
-                <span>{summary.closed}</span>
-              </div>
-            )}
-            {summary.accepted > 0 && (
-              <div className={cn("text-xs font-medium px-1 rounded-sm flex items-center justify-between", statusColors.accepted.bg, statusColors.accepted.color)}>
-                <span className="truncate">Aceitos</span>
-                <span>{summary.accepted}</span>
-              </div>
-            )}
-            {summary.pending > 0 && (
-              <div className={cn("text-xs font-medium px-1 rounded-sm flex items-center justify-between", statusColors.pending.bg, statusColors.pending.color)}>
-                <span className="truncate">Pendentes</span>
-                <span>{summary.pending}</span>
-              </div>
-            )}
-            {summary.rejected > 0 && (
-              <div className={cn("text-xs font-medium px-1 rounded-sm flex items-center justify-between", statusColors.rejected.bg, statusColors.rejected.color)}>
-                <span className="truncate">Cancelados</span>
-                <span>{summary.rejected}</span>
-              </div>
-            )}
-          </div>
+        {count} {status.text}
+      </div>
+    );
+  };
+
+  // Componente auxiliar para renderizar o status compacto (a caixa arredondada)
+  const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
+    if (count === 0) return null;
+    const status = statusColors[statusKey];
+    
+    // Usar as classes compactBg e compactText para o fundo e a cor do texto
+    return (
+      <div 
+        className={cn(
+          "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", 
+          status.compactBg, 
+          status.compactText
         )}
+        title={`${count} ${status.text}`}
+      >
+        {count}
       </div>
     );
   };
@@ -181,47 +192,135 @@ export const MonthlyCalendarView = () => {
             <CalendarCheck className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-foreground">Agenda Mensal</CardTitle>
+            <CardTitle className="text-foreground">Calendário de Agendamentos</CardTitle>
             <CardDescription>
-              Visualize seus agendamentos e vendas por mês.
+              Visualize o resumo mensal e os agendamentos por dia.
             </CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between mb-4 p-2 rounded-lg bg-muted/50 border border-border/50">
-          <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-            <ArrowLeft className="h-4 w-4" />
+      <CardContent className="space-y-6">
+        {/* Navegação Mensal */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/50">
+          <Button variant="ghost" size="icon" onClick={() => handleMonthChange('prev')}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <h3 className="text-xl font-bold text-foreground">
             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
           </h3>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-            <ArrowRight className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={() => handleMonthChange('next')}>
+            <ArrowRight className="h-5 w-5" />
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-2 text-muted-foreground">Carregando agendamentos...</p>
+        {/* Resumo do Período */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-muted-foreground">Resumo do período</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4"> {/* Alterado para 5 colunas */}
+            <SummaryBox title="Total" count={monthlySummary.total} value={monthlySummary.totalValue} color="text-foreground" valueColor="text-primary-strong" />
+            <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-info" valueColor="text-info" /> {/* Adicionado Concluídos */}
+            <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-success" valueColor="text-success" />
+            <SummaryBox title="Pendentes" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-accent" valueColor="text-accent" />
+            <SummaryBox title="Cancelados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" /> {/* Nomenclatura atualizada */}
           </div>
-        ) : error ? (
-          <p className="text-destructive">Erro ao carregar agendamentos: {error.message}</p>
-        ) : (
-          <div className="grid grid-cols-7 border border-border/50 rounded-lg overflow-hidden">
-            {/* Cabeçalho dos dias da semana */}
-            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(day => (
-              <div key={day} className="p-2 text-center text-sm font-bold text-primary-strong bg-muted border-b border-border/50">
-                {day}
-              </div>
-            ))}
+        </div>
 
-            {/* Células do calendário */}
-            {daysInMonth.map(renderDayCell)}
-          </div>
-        )}
+        {/* Calendário */}
+        <div className="grid grid-cols-7 border border-border/50 rounded-lg overflow-hidden">
+          {/* Cabeçalho dos dias da semana */}
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+            <div key={day} className="p-2 text-center text-sm font-semibold text-muted-foreground bg-muted/50 border-b border-border/50">
+              {day}
+            </div>
+          ))}
+
+          {/* Células do Calendário */}
+          {daysInMonth.map((date, index) => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const summary = dataMap.get(dateKey);
+            const isCurrentMonth = isSameMonth(date, currentMonth);
+            const isDayToday = isToday(date);
+            const hasQuotes = !!summary && summary.total > 0;
+
+            const statusList = [
+              { key: 'closed', count: summary?.closed || 0, status: statusColors.closed },
+              { key: 'accepted', count: summary?.accepted || 0, status: statusColors.accepted },
+              { key: 'pending', count: summary?.pending || 0, status: statusColors.pending },
+              { key: 'rejected', count: summary?.rejected || 0, status: statusColors.rejected },
+            ].filter(s => s.count > 0);
+
+            // Lógica de visualização:
+            // 1. Se for mobile, sempre usa o modo compacto.
+            // 2. Se não for mobile, usa o modo compacto se houver mais de 2 status ativos.
+            const useCompactView = isMobile || statusList.length > 2;
+
+            // Dividir a lista de status em duas linhas (2 em cima, 2 em baixo)
+            const firstRow = statusList.slice(0, 2);
+            const secondRow = statusList.slice(2, 4);
+
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "h-32 p-2 border border-border/50 cursor-pointer transition-colors flex flex-col", // Adicionado flex flex-col
+                  isCurrentMonth ? 'bg-background hover:bg-muted/50' : 'bg-muted/20 text-muted-foreground/70',
+                  isDayToday && 'border-2 border-primary shadow-inner'
+                )}
+                onClick={() => handleDayClick(date)}
+              >
+                <div className={cn("text-lg font-bold mb-1", !isCurrentMonth && 'text-muted-foreground/50')}>
+                  {format(date, 'd')}
+                </div>
+                
+                {hasQuotes && (
+                  <div className="flex flex-col gap-1 mt-auto">
+                    {useCompactView ? (
+                      <>
+                        {/* Primeira linha: 2 indicadores */}
+                        <div className="flex gap-1 justify-start">
+                          {firstRow.map(s => (
+                            <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                          ))}
+                        </div>
+                        {/* Segunda linha: 2 indicadores */}
+                        {secondRow.length > 0 && (
+                          <div className="flex gap-1 justify-start">
+                            {secondRow.map(s => (
+                              <CompactStatusPill key={s.key} count={s.count} statusKey={s.key as keyof typeof statusColors} />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <StatusPill count={summary?.closed || 0} statusKey="closed" />
+                        <StatusPill count={summary?.accepted || 0} statusKey="accepted" />
+                        <StatusPill count={summary?.pending || 0} statusKey="pending" />
+                        <StatusPill count={summary?.rejected || 0} statusKey="rejected" />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
 };
+
+interface SummaryBoxProps {
+  title: string;
+  count: number;
+  value: number;
+  color: string;
+  valueColor: string;
+}
+
+const SummaryBox = ({ title, count, value, color, valueColor }: SummaryBoxProps) => (
+  <div className="p-4 rounded-lg border bg-background/50 shadow-sm">
+    <h5 className={cn("text-sm font-medium", color)}>{title} ({count})</h5>
+    <p className={cn("text-xl font-bold mt-1", valueColor)}>R$ {value.toFixed(2)}</p>
+  </div>
+);
