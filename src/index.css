@@ -14,8 +14,8 @@ All colors MUST be HSL.
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 45 100% 51%; /* Amarelo/Laranja Principal */
+    --primary-foreground: 0 0% 9%; /* Texto escuro sobre o amarelo */
     --primary-glow: 43 100% 65%;
     --primary-strong: 33 100% 50%; /* Laranja mais forte: #FF8C00 */
     --secondary: 0 0% 96.1%;
@@ -40,8 +40,8 @@ All colors MUST be HSL.
     
     --sidebar-background: 0 0% 94%; /* Alterado para um cinza um pouco mais escuro */
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary: 45 100% 51%; /* Usar o amarelo/laranja na sidebar */
+    --sidebar-primary-foreground: 0 0% 9%; /* Texto escuro sobre o amarelo */
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
@@ -67,8 +67,8 @@ All colors MUST be HSL.
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 45 100% 51%; /* Amarelo/Laranja Principal */
+    --primary-foreground: 0 0% 9%; /* Texto escuro sobre o amarelo */
     --primary-glow: 43 100% 65%;
     --primary-strong: 33 100% 50%; /* Laranja mais forte para o tema escuro: #FF8C00 */
     --secondary: 0 0% 14.9%;
@@ -92,8 +92,8 @@ All colors MUST be HSL.
     --shadow-glow: 0 0 40px hsl(45 100% 51% / 0.25);
     --sidebar-background: 240 5.9% 8%; /* Alterado para um cinza ligeiramente mais escuro */
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 45 100% 51%;
-    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-primary: 45 100% 51%; /* Usar o amarelo/laranja na sidebar */
+    --sidebar-primary-foreground: 0 0% 9%; /* Texto escuro sobre o amarelo */
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
