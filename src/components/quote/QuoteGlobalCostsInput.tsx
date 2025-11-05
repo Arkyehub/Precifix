@@ -31,7 +31,7 @@ export const QuoteGlobalCostsInput = ({
   };
 
   return (
-    <div className="space-y-2 md:col-span-2">
+    <div className="space-y-2">
       <Label htmlFor="other-costs-global" className="text-sm">Outros Custos Globais (R$)</Label>
       <Input
         id="other-costs-global"

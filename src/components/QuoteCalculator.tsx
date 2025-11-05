@@ -11,7 +11,6 @@ import { QuoteServiceFormDialog, QuotedService } from './QuoteServiceFormDialog'
 import { PaymentMethod } from './PaymentMethodFormDialog';
 import { QuoteServiceSelection } from '@/components/quote/QuoteServiceSelection';
 import { QuoteSelectedServicesList } from '@/components/quote/QuoteSelectedServicesList';
-import { QuoteGlobalCostsInput } from '@/components/quote/QuoteGlobalCostsInput';
 import { QuoteDiscountSection } from '@/components/quote/QuoteDiscountSection';
 import { QuotePaymentMethodSection } from '@/components/quote/QuotePaymentMethodSection';
 import { QuoteCalculationSummary } from '@/components/quote/QuoteCalculationSummary';
@@ -20,7 +19,7 @@ import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { QuoteClientSection } from '@/components/quote/QuoteClientSection'; // Adicionado importação
-import { QuoteCommissionSection } from '@/components/quote/QuoteCommissionSection'; // NOVO: Importar componente de comissão
+import { QuoteCostInputs } from '@/components/quote/QuoteCostInputs'; // NOVO: Importar componente de agrupamento de custos
 
 interface Service {
   id: string;
@@ -215,7 +214,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       // 2. Serviços
       const servicesFromQuote: QuotedService[] = quoteToEdit.services_summary.map(s => {
         // Tenta encontrar o serviço original no catálogo para preencher os custos
-        const originalService = allServices.find(as => as.id === s.id);
+        const originalService = allServices?.find(as => as.id === s.id);
         
         return {
           ...s,
@@ -484,10 +483,10 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const totalOtherCosts = quotedServices.reduce((sum, service) => 
     sum + (service.quote_other_costs ?? service.other_costs), 0);
 
-  // --- DEFINIÇÕES DE VALORES TOTAIS (MOVIDAS PARA CIMA) ---
+  // --- DEFINIÇÕES DE VALORES TOTAIS ---
   const totalServiceValue = quotedServices.reduce((sum, service) => 
     sum + (service.quote_price ?? service.price), 0);
-  // ---------------------------------------------------------
+  // ------------------------------------
 
   // Lógica de cálculo da Comissão
   useEffect(() => {
@@ -501,7 +500,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       newCalculatedCommission = totalServiceValue * (parsedCommissionValue / 100);
     }
     setCalculatedCommission(newCalculatedCommission);
-  }, [commissionValueInput, commissionType, totalServiceValue]);
+  }, [commissionValueInput, commissionType, totalServiceValue]); // totalServiceValue agora está definido
 
   // Custo Total da Operação (incluindo a comissão como custo)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal + calculatedCommission;
@@ -639,13 +638,10 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             onDeleteServiceFromQuote={handleDeleteServiceFromQuote} // Passar o novo handler
           />
 
-          <QuoteGlobalCostsInput
+          {/* NOVO COMPONENTE DE AGRUPAMENTO DE CUSTOS */}
+          <QuoteCostInputs
             otherCostsGlobal={otherCostsGlobal}
             onOtherCostsGlobalChange={setOtherCostsGlobal}
-          />
-          
-          {/* NOVO: Seção de Comissão */}
-          <QuoteCommissionSection
             commissionValueInput={commissionValueInput}
             onCommissionValueInputChange={setCommissionValueInput}
             onCommissionValueInputBlur={(value) => {
@@ -657,6 +653,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             onCommissionTypeChange={setCommissionType}
             calculatedCommission={calculatedCommission}
           />
+          {/* FIM NOVO COMPONENTE */}
 
           {/* NOVO LAYOUT: Forma de Pagamento (Esquerda) e Desconto (Direita) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
