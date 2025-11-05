@@ -484,6 +484,11 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const totalOtherCosts = quotedServices.reduce((sum, service) => 
     sum + (service.quote_other_costs ?? service.other_costs), 0);
 
+  // --- DEFINIÇÕES DE VALORES TOTAIS (MOVIDAS PARA CIMA) ---
+  const totalServiceValue = quotedServices.reduce((sum, service) => 
+    sum + (service.quote_price ?? service.price), 0);
+  // ---------------------------------------------------------
+
   // Lógica de cálculo da Comissão
   useEffect(() => {
     const parsedCommissionValue = parseFloat(commissionValueInput.replace(',', '.')) || 0;
@@ -500,9 +505,6 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
 
   // Custo Total da Operação (incluindo a comissão como custo)
   const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal + calculatedCommission;
-
-  const totalServiceValue = quotedServices.reduce((sum, service) => 
-    sum + (service.quote_price ?? service.price), 0);
 
   useEffect(() => {
     const parsedDiscountValue = parseFloat(discountValueInput.replace(',', '.')) || 0;
@@ -698,6 +700,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
             totalLaborCost={totalLaborCost}
             totalOtherCosts={totalOtherCosts}
             otherCostsGlobal={otherCostsGlobal}
+            calculatedCommission={calculatedCommission}
             totalCost={totalCost}
             totalServiceValue={totalServiceValue}
             currentProfitMarginPercentage={currentProfitMarginPercentage}
@@ -751,6 +754,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           isClientRequired={isClientRequired} // Passar a nova prop
           addressNumber={addressNumber} // NOVO: Passado para o gerador
           complement={complement} // NOVO: Passado para o gerador
+          calculatedCommission={calculatedCommission} // NOVO
+          commissionType={commissionType} // NOVO
+          commissionValueInput={commissionValueInput} // NOVO
         />
       )}
 
