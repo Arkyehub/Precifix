@@ -38,6 +38,9 @@ interface QuoteGeneratorProps {
   isClientRequired: boolean; // Nova prop
   addressNumber: string; // NOVO: Prop para número do endereço
   complement: string; // NOVO: Prop para complemento
+  calculatedCommission: number; // NOVO
+  commissionType: 'amount' | 'percentage'; // NOVO
+  commissionValueInput: string; // NOVO
 }
 
 const getTodayDateString = () => {
@@ -72,6 +75,9 @@ export const QuoteGenerator = ({
   isClientRequired, // Usar a nova prop
   addressNumber, // NOVO
   complement, // NOVO
+  calculatedCommission, // NOVO
+  commissionType, // NOVO
+  commissionValueInput, // NOVO
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const [searchParams] = useSearchParams(); // Inicializar useSearchParams
@@ -188,6 +194,9 @@ export const QuoteGenerator = ({
     serviceDate: localServiceDate,
     serviceTime: isTimeDefined ? localServiceTime : '',
     isClientRequired,
+    calculatedCommission, // NOVO
+    commissionType, // NOVO
+    commissionValueInput, // NOVO
   };
 
   // Lógica de validação ajustada:

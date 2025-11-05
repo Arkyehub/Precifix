@@ -23,6 +23,8 @@ interface Sale {
   notes: string | null;
   client_id: string | null; // Adicionado
   vehicle_id: string | null; // Adicionado
+  commission_value: number | null; // NOVO
+  commission_type: 'amount' | 'percentage' | null; // NOVO
 }
 
 interface OperationalCost {
@@ -59,6 +61,7 @@ export interface SaleProfitDetails {
   totalProductsCost: number;
   totalLaborCost: number;
   totalOtherCosts: number;
+  calculatedCommission: number; // NOVO
   totalCost: number;
   netProfit: number;
   profitMarginPercentage: number;
@@ -77,7 +80,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       // Fetch the sale details (we need the full quote record for service details)
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle')
+        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle, commission_value, commission_type') // Incluindo comissão
         .eq('id', saleId)
         .single();
       
@@ -146,6 +149,8 @@ export const useSaleProfitDetails = (saleId: string | null) => {
           ...quoteData,
           client_id: quoteData.client_id,
           vehicle_id: quoteData.vehicle_id,
+          commission_value: quoteData.commission_value, // NOVO
+          commission_type: quoteData.commission_type, // NOVO
         } as Sale,
         serviceDetails,
         productLinks,
@@ -161,7 +166,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
   const profitDetails = React.useMemo<SaleProfitDetails | null>(() => {
     if (!calculationData || !calculationData.quoteData) return null;
 
-    const { quoteData, serviceDetails, productLinks, catalogProducts, productCostCalculationMethod } = calculationData;
+    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod } = calculationData;
     
     let totalProductsCost = 0;
     let totalLaborCost = 0;
@@ -212,9 +217,26 @@ export const useSaleProfitDetails = (saleId: string | null) => {
         });
       }
     });
+    
+    // D. Global Other Costs (se houver) - Não incluído aqui, pois o QuoteCalculator não salva o valor global no DB.
+    // O QuoteCalculator salva apenas os custos por serviço. O custo global é um valor temporário.
+    // Para fins de análise de lucro, vamos considerar apenas os custos que podem ser rastreados por serviço (produtos, mão de obra, outros custos).
 
-    // O cálculo de custo total agora é mais robusto, mesmo que os serviços originais tenham sido excluídos.
-    const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts;
+    // E. Comissão (Calculada sobre o total_price)
+    let calculatedCommission = 0;
+    const commissionValue = quoteData.commission_value || 0;
+    const commissionType = quoteData.commission_type || 'amount';
+
+    if (commissionValue > 0) {
+      if (commissionType === 'percentage') {
+        calculatedCommission = totalServiceValue * (commissionValue / 100);
+      } else {
+        calculatedCommission = commissionValue;
+      }
+    }
+
+    // Custo Total da Operação (incluindo a comissão como custo)
+    const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + calculatedCommission;
     const netProfit = totalServiceValue - totalCost;
     const profitMarginPercentage = totalServiceValue > 0 ? (netProfit / totalServiceValue) * 100 : 0;
 
@@ -222,6 +244,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       totalProductsCost,
       totalLaborCost,
       totalOtherCosts,
+      calculatedCommission, // NOVO
       totalCost,
       netProfit,
       profitMarginPercentage,

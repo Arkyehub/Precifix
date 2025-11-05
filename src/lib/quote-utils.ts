@@ -42,6 +42,9 @@ export interface QuoteData {
   serviceDate: string;
   serviceTime: string;
   isClientRequired: boolean;
+  calculatedCommission: number; // NOVO
+  commissionType: 'amount' | 'percentage'; // NOVO
+  commissionValueInput: string; // NOVO
 }
 
 export interface QuotePayload {
@@ -71,6 +74,8 @@ export interface QuotePayload {
   sale_number?: string;
   payment_method_id?: string;
   installments?: number;
+  commission_value?: number; // NOVO
+  commission_type?: 'amount' | 'percentage'; // NOVO
 }
 
 // --- UTILS DE IMAGEM ---
@@ -165,6 +170,8 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     service_date: quoteData.serviceDate,
     service_time: quoteData.serviceTime,
     is_sale: isSale,
+    commission_value: quoteData.calculatedCommission, // NOVO
+    commission_type: quoteData.commissionType, // NOVO
     // sale_number, payment_method_id, installments são adicionados na mutação
   };
 };
@@ -185,6 +192,7 @@ export const createQuotePdfBlob = async ({
   clientDetails,
   serviceDate,
   serviceTime,
+  calculatedCommission, // NOVO
 }: QuoteData): Promise<Blob> => {
   const doc = new jsPDF();
   let yPosition = 20;
@@ -319,6 +327,16 @@ export const createQuotePdfBlob = async ({
     doc.text("Desconto Aplicado:", 15, yPosition);
     doc.setFont(undefined, 'normal');
     doc.text(`- R$ ${calculatedDiscount.toFixed(2)}`, 160, yPosition, { align: 'right' });
+    yPosition += 10;
+  }
+  
+  if (calculatedCommission > 0) {
+    if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text("Comissão (Custo):", 15, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(`R$ ${calculatedCommission.toFixed(2)}`, 160, yPosition, { align: 'right' });
     yPosition += 10;
   }
 

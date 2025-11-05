@@ -28,6 +28,7 @@ interface SaleProfitDetails {
   totalProductsCost: number;
   totalLaborCost: number;
   totalOtherCosts: number;
+  calculatedCommission: number; // NOVO
   totalCost: number;
   netProfit: number;
   profitMarginPercentage: number;
@@ -190,6 +191,16 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                     </p>
                     <p className="font-bold text-destructive text-right">R$ {profitDetails.totalOtherCosts.toFixed(2)}</p>
                   </div>
+                  
+                  {/* NOVO: Comissão */}
+                  {profitDetails.calculatedCommission > 0 && (
+                    <div className="col-span-2 p-3 rounded-lg bg-destructive/10 border border-destructive/50">
+                      <p className="text-destructive font-medium flex items-center gap-1">
+                        <Users className="h-4 w-4" /> Comissão (Custo):
+                      </p>
+                      <p className="font-bold text-destructive text-right">R$ {profitDetails.calculatedCommission.toFixed(2)}</p>
+                    </div>
+                  )}
 
                   <div className="col-span-2 p-3 rounded-lg bg-muted/50 border border-border/50">
                     <p className="font-bold text-foreground">Custo Total da Operação:</p>

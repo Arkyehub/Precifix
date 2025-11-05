@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Percent, Clock, Target } from "lucide-react";
+import { TrendingUp, DollarSign, Clock, Target } from "lucide-react";
 import { formatMinutesToHHMM } from "@/lib/cost-calculations";
 
 interface QuoteCalculationSummaryProps {
@@ -10,6 +10,7 @@ interface QuoteCalculationSummaryProps {
   totalLaborCost: number;
   totalOtherCosts: number;
   otherCostsGlobal: number;
+  calculatedCommission: number; // NOVO
   totalCost: number;
   totalServiceValue: number;
   currentProfitMarginPercentage: number;
@@ -31,6 +32,7 @@ export const QuoteCalculationSummary = ({
   totalLaborCost,
   totalOtherCosts,
   otherCostsGlobal,
+  calculatedCommission, // NOVO
   totalCost,
   totalServiceValue,
   currentProfitMarginPercentage,
@@ -74,6 +76,12 @@ export const QuoteCalculationSummary = ({
       <div className="flex justify-between items-center text-sm">
         <span className="text-muted-foreground">Outros Custos Globais:</span>
         <span className="font-medium text-foreground">R$ {otherCostsGlobal.toFixed(2)}</span>
+      </div>
+      
+      {/* NOVO: Comissão */}
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-muted-foreground font-bold text-destructive">Comissão (Custo):</span>
+        <span className="font-bold text-destructive">R$ {calculatedCommission.toFixed(2)}</span>
       </div>
 
       {/* Custo Total da Operação */}

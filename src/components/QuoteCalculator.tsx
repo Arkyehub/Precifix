@@ -20,6 +20,7 @@ import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { QuoteClientSection } from '@/components/quote/QuoteClientSection'; // Adicionado importação
+import { QuoteCommissionSection } from '@/components/quote/QuoteCommissionSection'; // NOVO: Importar componente de comissão
 
 interface Service {
   id: string;
@@ -68,6 +69,8 @@ interface QuoteDataForEdit {
   notes: string | null;
   service_date: string | null;
   service_time: string | null;
+  commission_value?: number; // NOVO
+  commission_type?: 'amount' | 'percentage'; // NOVO
 }
 
 interface QuoteCalculatorProps {
@@ -95,6 +98,11 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const [discountValueInput, setDiscountValueInput] = useState('0,00');
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
   const [calculatedDiscount, setCalculatedDiscount] = useState(0);
+
+  // NOVOS ESTADOS PARA COMISSÃO
+  const [commissionValueInput, setCommissionValueInput] = useState('0,00');
+  const [commissionType, setCommissionType] = useState<'amount' | 'percentage'>('amount');
+  const [calculatedCommission, setCalculatedCommission] = useState(0);
 
   const [isServiceFormDialogOpen, setIsServiceFormDialogOpen] = useState(false);
   const [serviceToEditInDialog, setServiceToEditInDialog] = useState<QuotedService | null>(null);
@@ -178,7 +186,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       if (!quoteIdToEdit || !user) return null;
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_id, client_name, vehicle_id, vehicle, total_price, services_summary, notes, service_date, service_time')
+        .select('id, client_id, client_name, vehicle_id, vehicle, total_price, services_summary, notes, service_date, service_time, commission_value, commission_type')
         .eq('id', quoteIdToEdit)
         .eq('user_id', user.id)
         .single();
@@ -237,7 +245,13 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       setIsTimeDefined(!!quoteToEdit.service_time);
       setObservations(quoteToEdit.notes || '');
 
-      // 4. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
+      // 4. Comissão
+      const commissionValue = quoteToEdit.commission_value || 0;
+      const commissionType = quoteToEdit.commission_type || 'amount';
+      setCommissionValueInput(commissionValue.toFixed(2).replace('.', ','));
+      setCommissionType(commissionType);
+      
+      // 5. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
       
       toast({
         title: "Orçamento carregado para edição",
@@ -470,7 +484,22 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const totalOtherCosts = quotedServices.reduce((sum, service) => 
     sum + (service.quote_other_costs ?? service.other_costs), 0);
 
-  const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal;
+  // Lógica de cálculo da Comissão
+  useEffect(() => {
+    const parsedCommissionValue = parseFloat(commissionValueInput.replace(',', '.')) || 0;
+    let newCalculatedCommission = 0;
+
+    if (commissionType === 'amount') {
+      newCalculatedCommission = parsedCommissionValue;
+    } else {
+      // A comissão é calculada sobre o valor total do serviço (antes do desconto)
+      newCalculatedCommission = totalServiceValue * (parsedCommissionValue / 100);
+    }
+    setCalculatedCommission(newCalculatedCommission);
+  }, [commissionValueInput, commissionType, totalServiceValue]);
+
+  // Custo Total da Operação (incluindo a comissão como custo)
+  const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal + calculatedCommission;
 
   const totalServiceValue = quotedServices.reduce((sum, service) => 
     sum + (service.quote_price ?? service.price), 0);
@@ -611,6 +640,20 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
           <QuoteGlobalCostsInput
             otherCostsGlobal={otherCostsGlobal}
             onOtherCostsGlobalChange={setOtherCostsGlobal}
+          />
+          
+          {/* NOVO: Seção de Comissão */}
+          <QuoteCommissionSection
+            commissionValueInput={commissionValueInput}
+            onCommissionValueInputChange={setCommissionValueInput}
+            onCommissionValueInputBlur={(value) => {
+              const rawValue = value.replace(',', '.');
+              const parsedValue = parseFloat(rawValue) || 0;
+              setCommissionValueInput(parsedValue.toFixed(2).replace('.', ','));
+            }}
+            commissionType={commissionType}
+            onCommissionTypeChange={setCommissionType}
+            calculatedCommission={calculatedCommission}
           />
 
           {/* NOVO LAYOUT: Forma de Pagamento (Esquerda) e Desconto (Direita) */}
