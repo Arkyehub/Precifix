@@ -49,7 +49,10 @@ const checkDuplicity = async (payload: QuotePayload, user: any, excludeId?: stri
 
     const { data: existingQuotes, error: checkError } = await query;
 
-    if (checkError) throw checkError;
+    if (checkError) {
+      // Lançar um erro padronizado
+      throw new Error(`Erro ao verificar duplicidade: ${checkError.message}`);
+    }
 
     if (existingQuotes && existingQuotes.length > 0) {
       const existingStatus = existingQuotes[0].status;
@@ -79,7 +82,8 @@ const uploadPdfToStorage = async (pdfBlob: Blob, fileName: string, userId: strin
       description: uploadError.message,
       variant: "destructive",
     });
-    throw uploadError;
+    // Lançar um erro padronizado
+    throw new Error(`Erro ao fazer upload do PDF: ${uploadError.message}`);
   }
 
   const { data: publicUrlData } = supabase.storage
@@ -111,7 +115,15 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       await checkDuplicity(quoteData, user);
 
       // Se for uma venda (is_sale: true), gera o sale_number sequencial
-      let saleNumber = quoteData.is_sale ? (await supabase.rpc('get_next_sale_number')).data : null;
+      let saleNumber = null;
+      if (quoteData.is_sale) {
+        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
+        if (saleNumberError) {
+          // Lançar um erro padronizado
+          throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
+        }
+        saleNumber = newSaleNumber;
+      }
 
       const { data, error } = await supabase
         .from('quotes')
@@ -122,7 +134,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        // Lançar um erro padronizado
+        throw new Error(`Erro ao salvar orçamento/venda: ${error.message}`);
+      }
       return data;
     },
     onSuccess: (data, variables) => {
@@ -141,6 +156,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       }
     },
     onError: (err) => {
+      // O erro já deve ser um objeto Error aqui, mas garantimos que a mensagem seja exibida
       toast({
         title: "Erro ao salvar orçamento/venda",
         description: err.message,
@@ -162,7 +178,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         .eq('user_id', user.id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        // Lançar um erro padronizado
+        throw new Error(`Erro ao atualizar orçamento: ${error.message}`);
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -206,7 +225,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       let saleNumber = existingQuote?.sale_number;
       if (!saleNumber) {
         const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
-        if (saleNumberError) throw saleNumberError;
+        if (saleNumberError) {
+          // Lançar um erro padronizado
+          throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
+        }
         saleNumber = newSaleNumber;
       }
 
@@ -225,7 +247,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         .select('service_date')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // Lançar um erro padronizado
+        throw new Error(`Erro ao finalizar venda: ${error.message}`);
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -265,7 +290,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     try {
       await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
     } catch (error: any) {
+      // Se o erro for um objeto Error (como garantimos acima), ele será propagado
       console.error("Erro ao atualizar orçamento:", error);
+      throw error; // Propagar o erro para o TanStack Query
     }
   };
 
@@ -315,6 +342,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       });
     } catch (error: any) {
       // Erro já tratado nas mutações/uploadPdfToStorage
+      // Se for um erro de TanStack Query, ele já foi tratado no onError da mutação.
+      // Se for um erro de upload, ele já foi toastado e relançado como Error.
+      // Não precisamos de um toast genérico aqui, pois o erro já foi tratado.
     }
   };
 
