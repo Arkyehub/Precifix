@@ -113,7 +113,10 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   const [manualVehicleInput, setManualVehicleInput] = useState(''); // NOVO ESTADO PARA VEÍCULO MANUAL
 
   // ESTADO LOCAL PARA O NOME DO CLIENTE (PERMITE DIGITAÇÃO)
-  const [clientNameInput, setClientNameInput] = useState('');
+  // Inicializa como 'Consumidor Final' se for venda rápida e não estiver editando
+  const [clientNameInput, setClientNameInput] = useState(
+    isSale && !quoteIdToEdit ? 'Consumidor Final' : ''
+  );
 
   // Novos estados para endereço detalhado
   const [addressNumber, setAddressNumber] = useState('');
@@ -209,6 +212,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       // Se for edição de um orçamento sem cliente/veículo vinculado (venda rápida antiga), preenche o manual
       if (!quoteToEdit.client_id && quoteToEdit.vehicle) {
         setManualVehicleInput(quoteToEdit.vehicle);
+        setIsClientRequired(false); // Se não tem client_id, assume que é venda rápida
+      } else {
+        setIsClientRequired(true);
       }
       
       // 2. Serviços
@@ -439,7 +445,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
     );
     toast({
       title: "Serviço atualizado para o orçamento!",
-      description: `${updatedService.name} foi configurado para este orçamento.`,
+      description: `${updatedService.name} foi configurado para este serviço no orçamento.`,
     });
   };
 
@@ -502,9 +508,6 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
     setCalculatedCommission(newCalculatedCommission);
   }, [commissionValueInput, commissionType, totalServiceValue]); // totalServiceValue agora está definido
 
-  // Custo Total da Operação (incluindo a comissão como custo)
-  const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal + calculatedCommission;
-
   useEffect(() => {
     const parsedDiscountValue = parseFloat(discountValueInput.replace(',', '.')) || 0;
     let newCalculatedDiscount = 0;
@@ -518,6 +521,9 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   }, [discountValueInput, discountType, totalServiceValue]);
 
   const valueAfterDiscount = totalServiceValue - calculatedDiscount;
+
+  // Custo Total da Operação (incluindo a comissão como custo)
+  const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + otherCostsGlobal + calculatedCommission;
 
   useEffect(() => {
     if (!selectedPaymentMethodId || !paymentMethods || valueAfterDiscount <= 0) {

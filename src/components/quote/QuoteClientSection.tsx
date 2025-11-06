@@ -241,8 +241,9 @@ export const QuoteClientSection = ({
                 id="client-required"
                 checked={isClientRequired}
                 onCheckedChange={(checked) => {
-                  setIsClientRequired(checked as boolean);
-                  if (!checked) {
+                  const required = checked as boolean;
+                  setIsClientRequired(required);
+                  if (!required) {
                     // Limpar dados do cliente se não for obrigatório
                     handleClientDeselect();
                     setClientNameInput('Consumidor Final'); // Define nome padrão para venda rápida
@@ -261,7 +262,7 @@ export const QuoteClientSection = ({
       </div>
 
       {/* Conteúdo do Cliente (Condicional) */}
-      {isClientRequired && (
+      {isClientRequired ? (
         <>
           <div className="md:col-span-2">
             <ClientAutocomplete
@@ -389,23 +390,35 @@ export const QuoteClientSection = ({
             )}
           </div>
         </>
-      )}
-      
-      {/* NOVO: Campo de Veículo Manual para Venda Rápida */}
-      {!isClientRequired && isSale && (
-        <div className="md:col-span-2 space-y-2 pt-4 border-t border-border/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Car className="h-4 w-4 text-primary" />
-            <Label className="text-sm font-medium">Veículo (Venda Rápida)</Label>
+      ) : (
+        // Modo Venda Rápida (isClientRequired = false)
+        <>
+          <div className="md:col-span-2 space-y-2">
+            <Label htmlFor="clientName">Nome do Cliente</Label>
+            <Input
+              id="clientName"
+              value={clientNameInput}
+              onChange={(e) => setClientNameInput(e.target.value)}
+              placeholder="Consumidor Final"
+              className="bg-background/50"
+              disabled={true} // Desabilitar o input, pois é preenchido automaticamente
+            />
           </div>
-          <Input
-            id="manualVehicle"
-            value={manualVehicleInput}
-            onChange={(e) => setManualVehicleInput(e.target.value)}
-            placeholder="Ex: Carro Pequeno, Moto, etc."
-            className="bg-background/50"
-          />
-        </div>
+          
+          <div className="md:col-span-2 space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Car className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">Veículo (Venda Rápida) *</Label>
+            </div>
+            <Input
+              id="manualVehicle"
+              value={manualVehicleInput}
+              onChange={(e) => setManualVehicleInput(e.target.value)}
+              placeholder="Ex: Carro Pequeno, Moto, etc."
+              className="bg-background/50"
+            />
+          </div>
+        </>
       )}
 
       {/* Observações (Movidas para o final do QuoteCalculator) */}

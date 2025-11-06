@@ -206,9 +206,12 @@ export const QuoteGenerator = ({
 
   const isClientDataValid = isClientRequired 
     ? (clientNameInput.trim() !== '' && !!selectedClient?.id && !!selectedVehicleId)
-    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== '');
+    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== ''); // Venda Rápida: Nome (Consumidor Final) e Veículo Manual são necessários
 
-  const isQuoteValid = isBaseValid && isClientDataValid;
+  // Ajuste para venda rápida: se não for obrigatório, o nome é preenchido automaticamente como 'Consumidor Final'
+  const isQuickSaleValid = isSale && !isClientRequired && clientNameInput === 'Consumidor Final' && manualVehicleInput.trim() !== '';
+
+  const isQuoteValid = isBaseValid && (isClientDataValid || isQuickSaleValid);
 
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8 || !isClientRequired;
 
@@ -249,6 +252,7 @@ export const QuoteGenerator = ({
         errors.push("Selecione o veículo do cliente.");
       }
     } else {
+      // Venda Rápida
       if (clientNameInput.trim() === '') {
         errors.push("Informe o nome do cliente (ou 'Consumidor Final').");
       }
