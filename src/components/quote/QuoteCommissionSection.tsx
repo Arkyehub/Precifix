@@ -48,9 +48,12 @@ export const QuoteCommissionSection = ({
           </SelectContent>
         </Select>
       </div>
-      {calculatedCommission > 0 && (
-        <p className="text-sm text-muted-foreground mt-2">Comissão aplicada: R$ {calculatedCommission.toFixed(2)}</p>
-      )}
+      {/* Espaçador para alinhar com a descrição do Custos Globais */}
+      <div className="h-10"> 
+        {calculatedCommission > 0 && (
+          <p className="text-sm text-muted-foreground mt-2">Comissão aplicada: R$ {calculatedCommission.toFixed(2)}</p>
+        )}
+      </div>
     </div>
   );
 };

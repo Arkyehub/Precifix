@@ -25,18 +25,22 @@ export const QuoteCostInputs = ({
 }: QuoteCostInputsProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border/50">
-      <QuoteGlobalCostsInput
-        otherCostsGlobal={otherCostsGlobal}
-        onOtherCostsGlobalChange={onOtherCostsGlobalChange}
-      />
-      <QuoteCommissionSection
-        commissionValueInput={commissionValueInput}
-        onCommissionValueInputChange={onCommissionValueInputChange}
-        onCommissionValueInputBlur={onCommissionValueInputBlur}
-        commissionType={commissionType}
-        onCommissionTypeChange={onCommissionTypeChange}
-        calculatedCommission={calculatedCommission}
-      />
+      <div className="flex flex-col"> {/* Adicionado flex-col para garantir que o conteúdo ocupe o espaço */}
+        <QuoteGlobalCostsInput
+          otherCostsGlobal={otherCostsGlobal}
+          onOtherCostsGlobalChange={onOtherCostsGlobalChange}
+        />
+      </div>
+      <div className="flex flex-col"> {/* Adicionado flex-col para garantir que o conteúdo ocupe o espaço */}
+        <QuoteCommissionSection
+          commissionValueInput={commissionValueInput}
+          onCommissionValueInputChange={onCommissionValueInputChange}
+          onCommissionValueInputBlur={onCommissionValueInputBlur}
+          commissionType={commissionType}
+          onCommissionTypeChange={onCommissionTypeChange}
+          calculatedCommission={calculatedCommission}
+        />
+      </div>
     </div>
   );
 };

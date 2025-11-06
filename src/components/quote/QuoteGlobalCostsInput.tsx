@@ -42,7 +42,10 @@ export const QuoteGlobalCostsInput = ({
         className="bg-background"
         placeholder="0,00"
       />
-      <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
+      {/* Contêiner de altura fixa (h-10) para a descrição */}
+      <div className="h-10">
+        <p className="text-xs text-muted-foreground">Custos adicionais que se aplicam a todo o orçamento, não a um serviço específico.</p>
+      </div>
     </div>
   );
 };
