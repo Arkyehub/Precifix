@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { calculateProductCost, ProductForCalculation } from '@/lib/cost-calculations';
+import { PaymentMethod } from '@/components/PaymentMethodFormDialog'; // Importar PaymentMethod
 
 interface Sale {
   id: string;
@@ -25,6 +26,8 @@ interface Sale {
   vehicle_id: string | null; // Adicionado
   commission_value: number | null; // NOVO
   commission_type: 'amount' | 'percentage' | null; // NOVO
+  payment_method_id: string | null; // NOVO
+  installments: number | null; // NOVO
 }
 
 interface OperationalCost {
@@ -66,6 +69,7 @@ export interface SaleProfitDetails {
   netProfit: number;
   profitMarginPercentage: number;
   totalExecutionTime: number;
+  paymentFee: number; // NOVO
 }
 
 export const useSaleProfitDetails = (saleId: string | null) => {
@@ -80,7 +84,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       // Fetch the sale details (we need the full quote record for service details)
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle, commission_value, commission_type') // Incluindo comissão
+        .select('services_summary, total_price, client_id, vehicle_id, notes, service_date, service_time, id, sale_number, client_name, created_at, status, vehicle, commission_value, commission_type, payment_method_id, installments') // Incluindo comissão e pagamento
         .eq('id', saleId)
         .single();
       
@@ -98,6 +102,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       let serviceDetails: ServiceDetails[] = [];
       let productLinks: ServiceProductLink[] = [];
       let catalogProducts: CatalogProduct[] = [];
+      let paymentMethods: PaymentMethod[] = [];
 
       if (serviceIds.length > 0) {
         // Fetch full service details (labor cost, other costs)
@@ -134,6 +139,17 @@ export const useSaleProfitDetails = (saleId: string | null) => {
         }
       }
 
+      // Fetch payment methods with installments (if payment method is set)
+      if (quoteData.payment_method_id) {
+        const { data: methodsData, error: methodsError } = await supabase
+          .from('payment_methods')
+          .select('*, installments:payment_method_installments(*)')
+          .eq('user_id', user.id)
+          .eq('id', quoteData.payment_method_id);
+        if (methodsError) throw methodsError;
+        paymentMethods = methodsData;
+      }
+
       // Fetch global operational costs (to check for 'Produtos Gastos no Mês')
       const { data: operationalCosts, error: costsError } = await supabase
         .from('operational_costs')
@@ -151,12 +167,15 @@ export const useSaleProfitDetails = (saleId: string | null) => {
           vehicle_id: quoteData.vehicle_id,
           commission_value: quoteData.commission_value, // NOVO
           commission_type: quoteData.commission_type, // NOVO
+          payment_method_id: quoteData.payment_method_id, // NOVO
+          installments: quoteData.installments, // NOVO
         } as Sale,
         serviceDetails,
         productLinks,
         catalogProducts,
         operationalCosts,
         productCostCalculationMethod,
+        paymentMethods, // NOVO
       };
     },
     enabled: !!saleId && !!user,
@@ -166,7 +185,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
   const profitDetails = React.useMemo<SaleProfitDetails | null>(() => {
     if (!calculationData || !calculationData.quoteData) return null;
 
-    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod } = calculationData;
+    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod, paymentMethods } = calculationData;
     
     let totalProductsCost = 0;
     let totalLaborCost = 0;
@@ -218,10 +237,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       }
     });
     
-    // D. Global Other Costs (se houver) - Não incluído aqui, pois o QuoteCalculator não salva o valor global no DB.
-    // O QuoteCalculator salva apenas os custos por serviço. O custo global é um valor temporário.
-    // Para fins de análise de lucro, vamos considerar apenas os custos que podem ser rastreados por serviço (produtos, mão de obra, outros custos).
-
     // E. Comissão (Calculada sobre o total_price)
     let calculatedCommission = 0;
     const commissionValue = quoteData.commission_value || 0;
@@ -235,20 +250,39 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       }
     }
 
+    // F. Taxa de Pagamento
+    let paymentFee = 0;
+    const currentPaymentMethod = paymentMethods.find(pm => pm.id === quoteData.payment_method_id);
+    
+    if (currentPaymentMethod) {
+      if (currentPaymentMethod.type === 'debit_card') {
+        paymentFee = totalServiceValue * (currentPaymentMethod.rate / 100);
+      } else if (currentPaymentMethod.type === 'credit_card') {
+        const rateToApply = quoteData.installments 
+          ? currentPaymentMethod.installments?.find(inst => inst.installments === quoteData.installments)?.rate || 0
+          : currentPaymentMethod.installments?.find(inst => inst.installments === 1)?.rate || 0;
+        paymentFee = totalServiceValue * (rateToApply / 100);
+      }
+    }
+
     // Custo Total da Operação (incluindo a comissão como custo)
     const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + calculatedCommission;
-    const netProfit = totalServiceValue - totalCost;
-    const profitMarginPercentage = totalServiceValue > 0 ? (netProfit / totalServiceValue) * 100 : 0;
+    
+    // Lucro Líquido (Valor Total - Taxa de Pagamento - Custo Total)
+    const finalPriceWithFee = totalServiceValue - paymentFee;
+    const netProfit = finalPriceWithFee - totalCost;
+    const profitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
 
     return {
       totalProductsCost,
       totalLaborCost,
       totalOtherCosts,
-      calculatedCommission, // NOVO
+      calculatedCommission,
       totalCost,
       netProfit,
       profitMarginPercentage,
       totalExecutionTime,
+      paymentFee, // NOVO
     };
   }, [calculationData]);
 
@@ -257,5 +291,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     profitDetails,
     isLoadingDetails,
     queryError, // Retornar o erro da query para debug
+    paymentMethodDetails: calculationData?.paymentMethods.find(pm => pm.id === calculationData.quoteData.payment_method_id), // NOVO
   };
 };

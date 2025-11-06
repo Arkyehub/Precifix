@@ -2,11 +2,12 @@ import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2, XCircle, CheckCircle } from 'lucide-react';
+import { FileText, Clock, DollarSign, Car, Users, Tag, Package, Percent, Receipt, Loader2, XCircle, CheckCircle, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatMinutesToHHMM } from '@/lib/cost-calculations';
+import { PaymentMethod } from '../PaymentMethodFormDialog'; // Importar PaymentMethod
 
 // Reutilizando a interface Sale (que agora pode ser um Quote/Agendamento)
 interface Sale {
@@ -21,6 +22,10 @@ interface Sale {
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
+  commission_value: number | null; // NOVO
+  commission_type: 'amount' | 'percentage' | null; // NOVO
+  payment_method_id: string | null; // NOVO
+  installments: number | null; // NOVO
 }
 
 // Interface para os detalhes de custo e lucro (calculados no hook)
@@ -33,6 +38,7 @@ interface SaleProfitDetails {
   netProfit: number;
   profitMarginPercentage: number;
   totalExecutionTime: number;
+  paymentFee: number; // NOVO
 }
 
 interface SaleDetailsDrawerProps {
@@ -41,6 +47,7 @@ interface SaleDetailsDrawerProps {
   sale: Sale | null;
   profitDetails: SaleProfitDetails | null;
   isLoadingDetails: boolean;
+  paymentMethodDetails?: PaymentMethod; // NOVO: Detalhes da forma de pagamento
 }
 
 const statusColors = {
@@ -51,13 +58,8 @@ const statusColors = {
   awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20', icon: DollarSign },
 };
 
-export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails }: SaleDetailsDrawerProps) => {
+export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails, paymentMethodDetails }: SaleDetailsDrawerProps) => {
   
-  // Usar o hook novamente para acessar o erro da query, se necessário
-  // Nota: O hook useSaleProfitDetails já está sendo chamado no componente pai (AgendaView/SalesPage)
-  // e os resultados (sale, profitDetails, isLoadingDetails) estão sendo passados via props.
-  // Se o erro for na query inicial, o sale será null.
-
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
   const saleDate = sale ? new Date(sale.created_at) : null;
 
@@ -70,7 +72,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
       return (
         <div className="flex flex-col items-center justify-center h-full">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">Carregando detalhes do agendamento...</p>
+          <p className="mt-4 text-muted-foreground">Carregando detalhes da venda...</p>
         </div>
       );
     }
@@ -92,7 +94,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
         <SheetHeader className="p-4 border-b border-border/50">
           <SheetTitle className="flex items-center gap-2 text-xl font-bold">
             <FileText className="h-6 w-6 text-primary" />
-            Detalhes do Agendamento {sale.sale_number || `#${sale.id.substring(0, 8)}`}
+            Detalhes da Venda {sale.sale_number || `#${sale.id.substring(0, 8)}`}
           </SheetTitle>
           <SheetDescription className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
@@ -139,6 +141,37 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 <p className="font-bold text-primary text-right text-xl">R$ {sale.total_price.toFixed(2)}</p>
               </div>
             </div>
+
+            {/* NOVO: Seção de Pagamento */}
+            {sale.status === 'closed' && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    Detalhes do Pagamento
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <p className="text-muted-foreground">Forma de Pagamento:</p>
+                    <p className="font-medium text-right">{paymentMethodDetails?.name || 'N/A'}</p>
+                    
+                    {sale.installments && sale.installments > 1 && (
+                      <>
+                        <p className="text-muted-foreground">Parcelas:</p>
+                        <p className="font-medium text-right">{sale.installments}x</p>
+                      </>
+                    )}
+
+                    {profitDetails && profitDetails.paymentFee > 0 && (
+                      <>
+                        <p className="text-muted-foreground font-bold text-destructive">Custo da Taxa de Pagamento:</p>
+                        <p className="font-bold text-destructive text-right">- R$ {profitDetails.paymentFee.toFixed(2)}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 
@@ -202,6 +235,8 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                     </div>
                   )}
 
+                  <div className="col-span-2 border-t border-border/50 pt-2"></div>
+
                   <div className="col-span-2 p-3 rounded-lg bg-muted/50 border border-border/50">
                     <p className="font-bold text-foreground">Custo Total da Operação:</p>
                     <p className="font-bold text-primary-strong text-right text-xl">R$ {profitDetails.totalCost.toFixed(2)}</p>
@@ -244,7 +279,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="flex flex-col">
+      <SheetContent className="sm:max-w-[500px] flex flex-col">
         {renderContent()}
       </SheetContent>
     </Sheet>
