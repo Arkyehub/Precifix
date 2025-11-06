@@ -102,7 +102,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       let serviceDetails: ServiceDetails[] = [];
       let productLinks: ServiceProductLink[] = [];
       let catalogProducts: CatalogProduct[] = [];
-      let paymentMethods: PaymentMethod[] = [];
+      let paymentMethod: PaymentMethod | undefined = undefined; // Alterado para buscar um único objeto
 
       if (serviceIds.length > 0) {
         // Fetch full service details (labor cost, other costs)
@@ -137,15 +137,16 @@ export const useSaleProfitDetails = (saleId: string | null) => {
         }
       }
 
-      // Fetch payment methods with installments (if payment method is set)
+      // Fetch payment method with installments (if payment method is set)
       if (quoteData.payment_method_id) {
         const { data: methodsData, error: methodsError } = await supabase
           .from('payment_methods')
           .select('*, installments:payment_method_installments(*)')
           .eq('user_id', user.id)
-          .eq('id', quoteData.payment_method_id);
-        if (methodsError) throw methodsError;
-        paymentMethods = methodsData;
+          .eq('id', quoteData.payment_method_id)
+          .single(); // Usar single() para buscar um único objeto
+        if (methodsError && (methodsError as any).code !== 'PGRST116') throw methodsError;
+        paymentMethod = methodsData as PaymentMethod;
       }
 
       // Fetch global operational costs (to check for 'Produtos Gastos no Mês')
@@ -173,7 +174,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
         catalogProducts,
         operationalCosts,
         productCostCalculationMethod,
-        paymentMethods, // NOVO
+        paymentMethod, // Alterado para um único objeto
       };
     },
     enabled: !!saleId && !!user,
@@ -183,7 +184,7 @@ export const useSaleProfitDetails = (saleId: string | null) => {
   const profitDetails = React.useMemo<SaleProfitDetails | null>(() => {
     if (!calculationData || !calculationData.quoteData) return null;
 
-    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod, paymentMethods } = calculationData;
+    const { quoteData, serviceDetails, productLinks, catalogProducts, operationalCosts, productCostCalculationMethod, paymentMethod } = calculationData;
     
     let totalProductsCost = 0;
     let totalLaborCost = 0;
@@ -250,15 +251,14 @@ export const useSaleProfitDetails = (saleId: string | null) => {
 
     // F. Taxa de Pagamento
     let paymentFee = 0;
-    const currentPaymentMethod = paymentMethods.find(pm => pm.id === quoteData.payment_method_id);
     
-    if (currentPaymentMethod) {
-      if (currentPaymentMethod.type === 'debit_card') {
-        paymentFee = totalServiceValue * (currentPaymentMethod.rate / 100);
-      } else if (currentPaymentMethod.type === 'credit_card') {
+    if (paymentMethod) {
+      if (paymentMethod.type === 'debit_card') {
+        paymentFee = totalServiceValue * (paymentMethod.rate / 100);
+      } else if (paymentMethod.type === 'credit_card') {
         const rateToApply = quoteData.installments 
-          ? currentPaymentMethod.installments?.find(inst => inst.installments === quoteData.installments)?.rate || 0
-          : currentPaymentMethod.installments?.find(inst => inst.installments === 1)?.rate || 0;
+          ? paymentMethod.installments?.find(inst => inst.installments === quoteData.installments)?.rate || 0
+          : paymentMethod.installments?.find(inst => inst.installments === 1)?.rate || 0;
         paymentFee = totalServiceValue * (rateToApply / 100);
       }
     }
@@ -289,6 +289,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
     profitDetails,
     isLoadingDetails,
     queryError, // Retornar o erro da query para debug
-    paymentMethodDetails: calculationData?.paymentMethods.find(pm => pm.id === calculationData.quoteData.payment_method_id), // NOVO
+    paymentMethodDetails: calculationData?.paymentMethod, // Retornar o objeto único
   };
 };
