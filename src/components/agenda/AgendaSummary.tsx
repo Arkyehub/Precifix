@@ -49,6 +49,9 @@ const SummaryCard = ({ title, count, value, color, valueColor }: SummaryCardProp
 );
 
 export const AgendaSummary = ({ summary }: AgendaSummaryProps) => {
+  const openCount = summary.accepted + summary.pending;
+  const openValue = summary.acceptedValue + summary.pendingValue;
+
   return (
     <div className="space-y-4 pt-4 border-t border-border/50">
       <h4 className="text-lg font-semibold text-foreground">Resumo da Agenda (Dia)</h4>
@@ -68,21 +71,12 @@ export const AgendaSummary = ({ summary }: AgendaSummaryProps) => {
           valueColor="text-info"
         />
         <SummaryCard 
-          title="Aceitos" 
-          count={summary.accepted} 
-          value={summary.acceptedValue} 
-          color="text-success" 
-          valueColor="text-success"
-        />
-        <SummaryCard 
-          title="Pendentes" 
-          count={summary.pending} 
-          value={summary.pendingValue} 
-          color="text-primary" 
+          title="Em Aberto" 
+          count={openCount} 
+          value={openValue} 
+          color="text-primary-strong" 
           valueColor="text-primary-strong" // Usar primary-strong para o valor
         />
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <SummaryCard 
           title="Cancelados"
           count={summary.rejected} 
