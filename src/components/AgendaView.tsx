@@ -50,7 +50,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
 
-  const { saleDetails, profitDetails, isLoadingDetails } = useSaleProfitDetails(selectedQuoteId);
+  const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedQuoteId); // Adicionado paymentMethodDetails
 
   useEffect(() => {
     setSelectedDate(initialDate);
@@ -367,6 +367,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
         sale={saleDetails || null}
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}
+        paymentMethodDetails={paymentMethodDetails}
       />
     </div>
   );
