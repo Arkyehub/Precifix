@@ -202,7 +202,13 @@ export const QuoteClientSection = ({
           <Checkbox
             id="define-time"
             checked={isTimeDefined}
-            onCheckedChange={(checked) => setIsTimeDefined(checked as boolean)}
+            onCheckedChange={(checked) => {
+              const isChecked = checked as boolean;
+              setIsTimeDefined(isChecked);
+              if (!isChecked) {
+                setServiceTime(''); // Limpa o tempo se desmarcado
+              }
+            }}
           />
           <Label htmlFor="define-time" className="text-sm text-muted-foreground">Definir hora</Label>
           <Input

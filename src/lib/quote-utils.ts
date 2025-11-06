@@ -69,7 +69,7 @@ export interface QuotePayload {
   notes?: string;
   valid_until: string;
   service_date: string;
-  service_time: string;
+  service_time: string | null; // Alterado para aceitar null
   is_sale: boolean;
   sale_number?: string;
   payment_method_id?: string;
@@ -146,6 +146,9 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     finalClientState = undefined;
     finalClientZipCode = undefined;
   }
+  
+  // CORREÇÃO: Converte string vazia para null para o Supabase
+  const finalServiceTime = quoteData.serviceTime.trim() === '' ? null : quoteData.serviceTime;
 
   return {
     client_name: finalClientName,
@@ -168,7 +171,7 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     notes: quoteData.observations,
     valid_until: validUntilString,
     service_date: quoteData.serviceDate,
-    service_time: quoteData.serviceTime,
+    service_time: finalServiceTime, // Usando o valor corrigido
     is_sale: isSale,
     commission_value: quoteData.calculatedCommission, // NOVO
     commission_type: quoteData.commissionType, // NOVO
