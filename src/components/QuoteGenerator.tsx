@@ -204,14 +204,18 @@ export const QuoteGenerator = ({
     && finalPrice > 0.01 
     && !!localServiceDate;
 
+  // Validação para cliente obrigatório
   const isClientDataValid = isClientRequired 
     ? (clientNameInput.trim() !== '' && !!selectedClient?.id && !!selectedVehicleId)
-    : (clientNameInput.trim() !== '' && manualVehicleInput.trim() !== ''); // Venda Rápida: Nome (Consumidor Final) e Veículo Manual são necessários
+    : true; // Se não for obrigatório, esta parte é sempre true
 
-  // Ajuste para venda rápida: se não for obrigatório, o nome é preenchido automaticamente como 'Consumidor Final'
-  const isQuickSaleValid = isSale && !isClientRequired && clientNameInput === 'Consumidor Final' && manualVehicleInput.trim() !== '';
+  // Validação para venda rápida (cliente não obrigatório)
+  const isQuickSaleValid = isSale && !isClientRequired 
+    ? (clientNameInput === 'Consumidor Final' && manualVehicleInput.trim() !== '')
+    : true; // Se não for venda rápida ou se for obrigatório, esta parte é sempre true
 
-  const isQuoteValid = isBaseValid && (isClientDataValid || isQuickSaleValid);
+  // A validação final combina a base, a validação de cliente obrigatório E a validação de venda rápida
+  const isQuoteValid = isBaseValid && isClientDataValid && isQuickSaleValid;
 
   const isWhatsAppDisabled = !isQuoteValid || isSendingWhatsApp || rawPhoneNumber.replace(/\D/g, '').length < 8 || !isClientRequired;
 
@@ -252,9 +256,10 @@ export const QuoteGenerator = ({
         errors.push("Selecione o veículo do cliente.");
       }
     } else {
-      // Venda Rápida
+      // Venda Rápida (Cliente não obrigatório)
       if (clientNameInput.trim() === '') {
-        errors.push("Informe o nome do cliente (ou 'Consumidor Final').");
+        // Este erro não deve ocorrer se o checkbox for desmarcado, pois o nome é preenchido automaticamente.
+        errors.push("Erro interno: Nome do cliente não preenchido automaticamente.");
       }
       if (manualVehicleInput.trim() === '') {
         errors.push("Informe o veículo (Ex: 'Carro Pequeno').");
