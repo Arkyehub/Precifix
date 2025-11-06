@@ -59,6 +59,22 @@ const statusColors = {
   awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20', icon: DollarSign },
 };
 
+// Componente auxiliar para exibir um item de custo
+const CostItem = ({ label, value, icon: Icon, isNegative = false, isTotal = false }: { label: string, value: number, icon: React.ElementType, isNegative?: boolean, isTotal?: boolean }) => (
+  <div className={cn("flex justify-between items-center", isTotal ? "pt-2 border-t border-border/50" : "text-sm")}>
+    <span className={cn("flex items-center gap-2", isTotal ? "font-bold text-foreground" : "text-muted-foreground")}>
+      <Icon className={cn("h-4 w-4", isTotal ? "text-primary" : "text-muted-foreground")} />
+      {label}
+    </span>
+    <span className={cn(
+      "font-medium",
+      isTotal ? "text-lg text-primary-strong font-bold" : (isNegative ? "text-destructive" : "text-foreground")
+    )}>
+      {isNegative && value > 0 ? '- ' : ''}R$ {Math.abs(value).toFixed(2)}
+    </span>
+  </div>
+);
+
 export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails, paymentMethodDetails }: SaleDetailsDrawerProps) => {
   
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
@@ -149,7 +165,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
               </div>
             </div>
 
-            {/* NOVO: Seção de Pagamento */}
+            {/* Seção de Pagamento (Apenas se Concluído) */}
             {sale.status === 'closed' && (
               <>
                 <Separator />
@@ -166,13 +182,6 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                       <>
                         <p className="text-muted-foreground">Parcelas:</p>
                         <p className="font-medium text-right">{sale.installments}x</p>
-                      </>
-                    )}
-
-                    {profitDetails && profitDetails.paymentFee > 0 && (
-                      <>
-                        <p className="text-muted-foreground font-bold text-destructive">Custo da Taxa de Pagamento:</p>
-                        <p className="font-bold text-destructive text-right">- R$ {profitDetails.paymentFee.toFixed(2)}</p>
                       </>
                     )}
                   </div>
@@ -203,60 +212,47 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
 
             <Separator />
 
-            {/* Seção de Análise de Lucro */}
+            {/* Seção de Análise de Lucro - REESTRUTURADA */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-primary" />
                 Análise de Lucro
               </h3>
               {profitDetails ? (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="col-span-2 p-3 rounded-lg bg-mediumslateblue/10 border border-mediumslateblue/50">
-                    <p className="text-mediumslateblue font-medium flex items-center gap-1">
-                      <Package className="h-4 w-4" /> Custo de Produtos:
-                    </p>
-                    <p className="font-bold text-mediumslateblue text-right">R$ {profitDetails.totalProductsCost.toFixed(2)}</p>
-                  </div>
+                <div className="space-y-2">
                   
-                  <div className="p-3 rounded-lg bg-info/10 border border-info/50">
-                    <p className="text-info font-medium flex items-center gap-1">
-                      <Clock className="h-4 w-4" /> Custo Mão de Obra:
-                    </p>
-                    <p className="font-bold text-info text-right">R$ {profitDetails.totalLaborCost.toFixed(2)}</p>
+                  {/* CUSTOS */}
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border/50 space-y-1">
+                    <h4 className="text-sm font-bold text-foreground mb-2">Custos Operacionais</h4>
+                    
+                    <CostItem label="Custo de Produtos" value={profitDetails.totalProductsCost} icon={Package} />
+                    <CostItem label="Custo Mão de Obra" value={profitDetails.totalLaborCost} icon={Clock} />
+                    <CostItem label="Outros Custos" value={profitDetails.totalOtherCosts} icon={Receipt} />
+                    
+                    {profitDetails.calculatedCommission > 0 && (
+                      <CostItem label="Comissão (Custo)" value={profitDetails.calculatedCommission} icon={Users} isNegative={true} />
+                    )}
+                    
+                    {profitDetails.paymentFee > 0 && (
+                      <CostItem label="Taxa de Pagamento (Custo)" value={profitDetails.paymentFee} icon={CreditCard} isNegative={true} />
+                    )}
+
+                    <CostItem label="Custo Total da Operação" value={profitDetails.totalCost} icon={DollarSign} isTotal={true} />
                   </div>
-                  
-                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/50">
-                    <p className="text-destructive font-medium flex items-center gap-1">
-                      <Receipt className="h-4 w-4" /> Outros Custos:
-                    </p>
-                    <p className="font-bold text-destructive text-right">R$ {profitDetails.totalOtherCosts.toFixed(2)}</p>
-                  </div>
-                  
-                  {/* NOVO: Comissão */}
-                  {profitDetails.calculatedCommission > 0 && (
-                    <div className="col-span-2 p-3 rounded-lg bg-destructive/10 border border-destructive/50">
-                      <p className="text-destructive font-medium flex items-center gap-1">
-                        <Users className="h-4 w-4" /> Comissão (Custo):
-                      </p>
-                      <p className="font-bold text-destructive text-right">R$ {profitDetails.calculatedCommission.toFixed(2)}</p>
+
+                  {/* LUCRO LÍQUIDO (Ênfase) */}
+                  <div className="p-4 rounded-lg bg-success/10 border border-success/50 shadow-md mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-success flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" /> Lucro Líquido:
+                      </span>
+                      <span className="font-bold text-success text-right text-2xl">R$ {profitDetails.netProfit.toFixed(2)}</span>
                     </div>
-                  )}
-
-                  <div className="col-span-2 border-t border-border/50 pt-2"></div>
-
-                  <div className="col-span-2 p-3 rounded-lg bg-muted/50 border border-border/50">
-                    <p className="font-bold text-foreground">Custo Total da Operação:</p>
-                    <p className="font-bold text-primary-strong text-right text-xl">R$ {profitDetails.totalCost.toFixed(2)}</p>
-                  </div>
-
-                  <div className="col-span-2 p-3 rounded-lg bg-success/10 border border-success/50">
-                    <p className="font-bold text-success flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" /> Lucro Líquido:
-                    </p>
-                    <p className="font-bold text-success text-right text-xl">R$ {profitDetails.netProfit.toFixed(2)}</p>
-                    <p className="font-bold text-purple-500 flex items-center justify-end gap-1 mt-1">
-                      <Percent className="h-4 w-4" /> Margem Real: {profitDetails.profitMarginPercentage.toFixed(1)}%
-                    </p>
+                    <div className="flex justify-end items-center mt-1">
+                      <span className="font-bold text-purple-500 flex items-center gap-1 text-sm">
+                        <Percent className="h-4 w-4" /> Margem Real: {profitDetails.profitMarginPercentage.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : (
