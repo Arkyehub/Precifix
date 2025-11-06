@@ -33,6 +33,75 @@ const statusColors = {
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' }, // Alterado para text-white
 };
 
+// Componente auxiliar para renderizar o status (modo detalhado)
+const StatusPill = ({ count, statusKey, summaryColors }: { count: number, statusKey: keyof typeof statusColors, summaryColors: ReturnType<typeof getDailySummaryColors> }) => {
+  if (count === 0) return null;
+  const status = statusColors[statusKey];
+  
+  // Para 'pending' e 'accepted', usamos o mesmo rótulo 'Em Aberto'.
+  // Para evitar duplicidade, só renderizamos se for 'pending' OU se for 'accepted' e 'pending' for 0.
+  if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null;
+  if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null;
+
+  // Se for 'pending' ou 'accepted', somamos as contagens para exibir o total 'Em Aberto'
+  let displayCount = count;
+  if (statusKey === 'pending' || statusKey === 'accepted') {
+    displayCount = summaryColors.pending.count + summaryColors.accepted.count;
+    if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null; // Evita duplicidade
+    if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null; // Evita duplicidade
+  }
+
+  return (
+    <div 
+      className={cn(
+        "flex items-center justify-center px-2 py-1 rounded-md text-xs font-bold leading-none", 
+        status.compactBg, 
+        status.compactText // Usando a cor de texto compacta (branca)
+      )}
+    >
+      {displayCount} {status.text}
+    </div>
+  );
+};
+
+// Componente auxiliar para renderizar o status compacto (a caixa arredondada)
+const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
+  if (count === 0) return null;
+  const status = statusColors[statusKey];
+  
+  // Usar as classes compactBg e compactText para o fundo e a cor do texto
+  return (
+    <div 
+      className={cn(
+        "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", 
+        status.compactBg, 
+        status.compactText
+      )}
+      title={`${count} ${status.text}`}
+    >
+      {count}
+    </div>
+  );
+};
+
+// Mapeamento de status para o dia atual (usado dentro do loop)
+const getDailySummaryColors = (summary: DailySummary | undefined) => {
+  if (!summary) return {
+    accepted: { count: 0, status: statusColors.accepted },
+    pending: { count: 0, status: statusColors.pending },
+    rejected: { count: 0, status: statusColors.rejected },
+    closed: { count: 0, status: statusColors.closed },
+  };
+
+  return {
+    accepted: { count: summary.accepted, status: statusColors.accepted },
+    pending: { count: summary.pending, status: statusColors.pending },
+    rejected: { count: summary.rejected, status: statusColors.rejected },
+    closed: { count: summary.closed, status: statusColors.closed },
+  };
+};
+
+
 export const MonthlyCalendarView = () => {
   const { user } = useSession();
   const navigate = useNavigate();
@@ -147,74 +216,6 @@ export const MonthlyCalendarView = () => {
 
   const { dataMap, monthlySummary } = calendarData;
 
-  // Componente auxiliar para renderizar o status (modo detalhado)
-  const StatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
-    if (count === 0) return null;
-    const status = statusColors[statusKey];
-    
-    // Para 'pending' e 'accepted', usamos o mesmo rótulo 'Em Aberto'.
-    // Para evitar duplicidade, só renderizamos se for 'pending' OU se for 'accepted' e 'pending' for 0.
-    if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null;
-    if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null;
-
-    // Se for 'pending' ou 'accepted', somamos as contagens para exibir o total 'Em Aberto'
-    let displayCount = count;
-    if (statusKey === 'pending' || statusKey === 'accepted') {
-      displayCount = summaryColors.pending.count + summaryColors.accepted.count;
-      if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null; // Evita duplicidade
-      if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null; // Evita duplicidade
-    }
-
-    return (
-      <div 
-        className={cn(
-          "flex items-center justify-center px-2 py-1 rounded-md text-xs font-bold leading-none", 
-          status.compactBg, 
-          status.compactText // Usando a cor de texto compacta (branca)
-        )}
-      >
-        {displayCount} {status.text}
-      </div>
-    );
-  };
-
-  // Componente auxiliar para renderizar o status compacto (a caixa arredondada)
-  const CompactStatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
-    if (count === 0) return null;
-    const status = statusColors[statusKey];
-    
-    // Usar as classes compactBg e compactText para o fundo e a cor do texto
-    return (
-      <div 
-        className={cn(
-          "h-6 w-6 flex items-center justify-center rounded-md text-sm font-bold leading-none", 
-          status.compactBg, 
-          status.compactText
-        )}
-        title={`${count} ${status.text}`}
-      >
-        {count}
-      </div>
-    );
-  };
-
-  // Mapeamento de status para o dia atual (usado dentro do loop)
-  const getDailySummaryColors = (summary: DailySummary | undefined) => {
-    if (!summary) return {
-      accepted: { count: 0, status: statusColors.accepted },
-      pending: { count: 0, status: statusColors.pending },
-      rejected: { count: 0, status: statusColors.rejected },
-      closed: { count: 0, status: statusColors.closed },
-    };
-
-    return {
-      accepted: { count: summary.accepted, status: statusColors.accepted },
-      pending: { count: summary.pending, status: statusColors.pending },
-      rejected: { count: summary.rejected, status: statusColors.rejected },
-      closed: { count: summary.closed, status: statusColors.closed },
-    };
-  };
-
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
       <CardHeader>
@@ -325,12 +326,12 @@ export const MonthlyCalendarView = () => {
                     ) : (
                       <>
                         {/* Modo Detalhado: Renderiza apenas os status relevantes */}
-                        <StatusPill count={summaryColors.closed.count} statusKey="closed" />
+                        <StatusPill count={summaryColors.closed.count} statusKey="closed" summaryColors={summaryColors} />
                         {/* Agrupando Accepted e Pending em 'Em Aberto' */}
                         {(summaryColors.accepted.count > 0 || summaryColors.pending.count > 0) && (
-                          <StatusPill count={summaryColors.accepted.count + summaryColors.pending.count} statusKey="accepted" />
+                          <StatusPill count={summaryColors.accepted.count + summaryColors.pending.count} statusKey="accepted" summaryColors={summaryColors} />
                         )}
-                        <StatusPill count={summaryColors.rejected.count} statusKey="rejected" />
+                        <StatusPill count={summaryColors.rejected.count} statusKey="rejected" summaryColors={summaryColors} />
                       </>
                     )}
                   </div>

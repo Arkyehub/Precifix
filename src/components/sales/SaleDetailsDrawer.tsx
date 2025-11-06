@@ -51,10 +51,11 @@ interface SaleDetailsDrawerProps {
 }
 
 const statusColors = {
-  accepted: { text: 'Aceito', color: 'text-success', bg: 'bg-success/20', icon: CheckCircle },
-  pending: { text: 'Pendente', color: 'text-accent', bg: 'bg-accent/20', icon: Clock },
-  rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', icon: XCircle },
-  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', icon: CheckCircle },
+  // Mapeamento para termos de VENDA
+  accepted: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/20', icon: Clock },
+  pending: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/20', icon: Clock },
+  rejected: { text: 'Cancelada', color: 'text-destructive', bg: 'bg-destructive/20', icon: XCircle },
+  closed: { text: 'Atendida', color: 'text-success', bg: 'bg-success/20', icon: CheckCircle },
   awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/20', icon: DollarSign },
 };
 
@@ -88,6 +89,12 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
       );
     }
 
+    // Lógica para exibir o status correto (Em Aberto para pending/accepted)
+    let displayStatus = currentStatus;
+    if (sale.status === 'pending' || sale.status === 'accepted') {
+      displayStatus = statusColors.accepted; // Usa o mapeamento de 'accepted' que é 'Em Aberto'
+    }
+
     // Conteúdo normal da venda/agendamento
     return (
       <>
@@ -100,10 +107,10 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
             <span className="text-sm text-muted-foreground">
               Cliente: {sale.client_name}
             </span>
-            {currentStatus && (
-              <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1", currentStatus.color, currentStatus.bg)}>
-                <currentStatus.icon className="h-3 w-3" />
-                {currentStatus.text}
+            {displayStatus && (
+              <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1", displayStatus.color, displayStatus.bg)}>
+                <displayStatus.icon className="h-3 w-3" />
+                {displayStatus.text}
               </span>
             )}
           </SheetDescription>
