@@ -210,8 +210,9 @@ export const QuoteGenerator = ({
     : true; // Se não for obrigatório, esta parte é sempre true
 
   // Validação para venda rápida (cliente não obrigatório)
+  // A única validação necessária aqui é o veículo manual
   const isQuickSaleValid = isSale && !isClientRequired 
-    ? (clientNameInput === 'Consumidor Final' && manualVehicleInput.trim() !== '')
+    ? (manualVehicleInput.trim() !== '')
     : true; // Se não for venda rápida ou se for obrigatório, esta parte é sempre true
 
   // A validação final combina a base, a validação de cliente obrigatório E a validação de venda rápida
@@ -257,10 +258,7 @@ export const QuoteGenerator = ({
       }
     } else {
       // Venda Rápida (Cliente não obrigatório)
-      if (clientNameInput.trim() === '') {
-        // Este erro não deve ocorrer se o checkbox for desmarcado, pois o nome é preenchido automaticamente.
-        errors.push("Erro interno: Nome do cliente não preenchido automaticamente.");
-      }
+      // Removemos a verificação do clientNameInput aqui, pois ele é preenchido automaticamente.
       if (manualVehicleInput.trim() === '') {
         errors.push("Informe o veículo (Ex: 'Carro Pequeno').");
       }
