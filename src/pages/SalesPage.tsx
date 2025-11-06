@@ -67,7 +67,7 @@ const SalesPage = () => {
   const [saleToEditPayment, setSaleToEditPayment] = useState<Sale | null>(null);
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
-  const { saleDetails, profitDetails, isLoadingDetails } = useSaleProfitDetails(selectedSaleId);
+  const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
@@ -490,6 +490,7 @@ const SalesPage = () => {
         sale={saleDetails || null}
         profitDetails={profitDetails}
         isLoadingDetails={isLoadingDetails}
+        paymentMethodDetails={paymentMethodDetails}
       />
 
       {/* Diálogo de Confirmação de Pagamento (Reutilizado para Alterar Pagamento) */}

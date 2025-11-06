@@ -110,8 +110,6 @@ export const useSaleProfitDetails = (saleId: string | null) => {
           .from('services')
           .select('id, labor_cost_per_hour, other_costs')
           .in('id', serviceIds)
-          .eq('user_id', user.id);
-        
         // Não lançamos erro se a busca de detalhes falhar, apenas logamos e usamos o que temos.
         if (serviceDetailsError) {
           console.warn("Warning: Error fetching service details (original services might be deleted):", serviceDetailsError);
