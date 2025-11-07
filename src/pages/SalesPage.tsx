@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, Search, Info, Loader2, Filter, ListOrdered, BarChart, Pencil, Trash2, CreditCard, MoreVertical } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Info, Loader2, Filter, Calendar as CalendarIcon, CreditCard, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
@@ -16,6 +16,10 @@ import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details'; // Impor
 import { ConfirmPaymentDialog } from '@/components/agenda/ConfirmPaymentDialog'; // Importar o diálogo de pagamento
 import { useQuoteActions } from '@/hooks/use-quote-actions'; // Importar useQuoteActions
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // IMPORT CORRIGIDO
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, addDays } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 // Mapeamento de status do DB para rótulos de Venda
 type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
@@ -67,21 +71,34 @@ const SalesPage = () => {
   
   const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState(false);
   const [saleToEditPayment, setSaleToEditPayment] = useState<Sale | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
-    queryKey: ['closedSales', user?.id],
+    queryKey: ['closedSales', user?.id, dateRange], // Adicionado dateRange à queryKey
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('quotes')
         .select('id, sale_number, client_name, total_price, created_at, services_summary, status, payment_method_id, installments') // Adicionado payment_method_id e installments
         .eq('user_id', user.id)
-        .eq('is_sale', true) // Filtrar apenas vendas
-        .order('created_at', { ascending: false });
+        .eq('is_sale', true); // Filtrar apenas vendas
+
+      if (dateRange?.from) {
+        query = query.gte('created_at', format(dateRange.from, 'yyyy-MM-ddT00:00:00.000Z'));
+      }
+      if (dateRange?.to) {
+        // Adiciona um dia à data 'to' para incluir o dia inteiro na filtragem
+        const endOfDay = addDays(dateRange.to, 1);
+        query = query.lt('created_at', format(endOfDay, 'yyyy-MM-ddT00:00:00.000Z'));
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
       if (error) throw error;
       
       // O status retornado é o status real do quote
@@ -269,7 +286,12 @@ const SalesPage = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Filtros e Busca */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            {/* Botão Filtrar (apenas ícone) */}
+            <Button variant="outline" size="icon" className="shrink-0">
+              <Filter className="h-4 w-4" />
+            </Button>
+
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -279,9 +301,44 @@ const SalesPage = () => {
                 className="pl-10 bg-background"
               />
             </div>
-            <Button variant="outline" className="w-full sm:w-auto"><Filter className="h-4 w-4 mr-2" /> Filtrar</Button>
-            <Button variant="outline" className="w-full sm:w-auto"><ListOrdered className="h-4 w-4 mr-2" /> Ordenar</Button>
-            <Button variant="outline" className="w-full sm:w-auto"><BarChart className="h-4 w-4 mr-2" /> Gráficos</Button>
+            
+            {/* Botão de Filtro por Data */}
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                            !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                            dateRange.to ? (
+                                <>
+                                    {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                                    {format(dateRange.to, "dd/MM/yyyy")}
+                                </>
+                            ) : (
+                                format(dateRange.from, "dd/MM/yyyy")
+                            )
+                        ) : (
+                            <span>Filtrar por data</span>
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                    />
+                </PopoverContent>
+            </Popover>
           </div>
 
           {/* Resumo do Período */}
