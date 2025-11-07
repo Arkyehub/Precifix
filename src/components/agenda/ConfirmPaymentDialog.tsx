@@ -13,6 +13,8 @@ interface Quote {
   id: string;
   client_name: string;
   total_price: number;
+  payment_method_id?: string | null; // Adicionado para receber o método atual
+  installments?: number | null; // Adicionado para receber as parcelas atuais
 }
 
 interface ConfirmPaymentDialogProps {
@@ -45,26 +47,42 @@ export const ConfirmPaymentDialog = ({ isOpen, onClose, quote, onConfirm, isProc
   });
 
   const currentPaymentMethod = paymentMethods?.find(pm => pm.id === selectedPaymentMethodId);
+  const currentSalePaymentMethod = paymentMethods?.find(pm => pm.id === quote.payment_method_id);
 
   useEffect(() => {
     if (isOpen) {
-      // Tenta pré-selecionar o primeiro método de pagamento
-      if (paymentMethods && paymentMethods.length > 0) {
-        setSelectedPaymentMethodId(paymentMethods[0].id);
-        if (paymentMethods[0].type === 'credit_card' && paymentMethods[0].installments?.length) {
-          // Seleciona 1x por padrão para crédito
+      // Tenta pré-selecionar o método de pagamento atual da venda, se existir
+      if (quote.payment_method_id && paymentMethods?.some(pm => pm.id === quote.payment_method_id)) {
+        setSelectedPaymentMethodId(quote.payment_method_id);
+        // Tenta pré-selecionar as parcelas atuais da venda
+        if (quote.installments !== null && quote.installments !== undefined) {
+          setSelectedInstallments(quote.installments);
+        } else if (currentSalePaymentMethod?.type === 'credit_card' && currentSalePaymentMethod.installments?.length) {
+          // Se for cartão de crédito e não tiver parcelas salvas, seleciona 1x por padrão
           setSelectedInstallments(1);
         } else {
           setSelectedInstallments(null);
         }
+      } else if (paymentMethods && paymentMethods.length > 0) {
+        // Se não houver método de pagamento salvo na venda, pré-seleciona o primeiro disponível
+        setSelectedPaymentMethodId(paymentMethods[0].id);
+        if (paymentMethods[0].type === 'credit_card' && paymentMethods[0].installments?.length) {
+          setSelectedInstallments(1);
+        } else {
+          setSelectedInstallments(null);
+        }
+      } else {
+        // Limpa a seleção se não houver métodos ou venda
+        setSelectedPaymentMethodId('');
+        setSelectedInstallments(null);
       }
     }
-  }, [isOpen, paymentMethods]);
+  }, [isOpen, paymentMethods, quote.payment_method_id, quote.installments]);
 
   useEffect(() => {
     if (currentPaymentMethod?.type === 'credit_card' && currentPaymentMethod.installments?.length) {
-      // Se mudar para crédito, garante que 1x esteja selecionado
-      if (!selectedInstallments) {
+      // Se mudar para crédito, garante que 1x esteja selecionado se nada estiver selecionado
+      if (selectedInstallments === null) {
         setSelectedInstallments(1);
       }
     } else {
@@ -113,6 +131,12 @@ export const ConfirmPaymentDialog = ({ isOpen, onClose, quote, onConfirm, isProc
               <DollarSign className="h-5 w-5" />
               R$ {quote.total_price.toFixed(2)}
             </p>
+            {quote.payment_method_id && currentSalePaymentMethod && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Forma de Pagamento Atual: <span className="font-semibold text-foreground">{currentSalePaymentMethod.name}</span>
+                {quote.installments && quote.installments > 0 && ` em ${quote.installments}x`}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

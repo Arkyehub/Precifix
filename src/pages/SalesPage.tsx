@@ -28,6 +28,8 @@ interface Sale {
   created_at: string;
   services_summary: any[];
   status: QuoteStatus;
+  payment_method_id: string | null; // Adicionado
+  installments: number | null; // Adicionado
 }
 
 // Componente para o rótulo de pagamento pendente
@@ -76,7 +78,7 @@ const SalesPage = () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, sale_number, client_name, total_price, created_at, services_summary, status')
+        .select('id, sale_number, client_name, total_price, created_at, services_summary, status, payment_method_id, installments') // Adicionado payment_method_id e installments
         .eq('user_id', user.id)
         .eq('is_sale', true) // Filtrar apenas vendas
         .order('created_at', { ascending: false });
