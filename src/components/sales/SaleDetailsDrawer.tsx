@@ -234,10 +234,21 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                     )}
                     
                     {profitDetails.paymentFee > 0 && (
-                      <CostItem label="Taxa de Pagamento (Custo)" value={profitDetails.paymentFee} icon={CreditCard} isNegative={true} />
+                      <CostItem label="Taxa de Pagamento" value={profitDetails.paymentFee} icon={CreditCard} />
                     )}
 
                     <CostItem label="Custo Total da Operação" value={profitDetails.totalCost} icon={DollarSign} isTotal={true} />
+                  </div>
+
+                  {/* Valor da Venda */}
+                  <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                    <span className="flex items-center gap-2 font-bold text-foreground">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                      Valor da Venda
+                    </span>
+                    <span className="font-bold text-primary text-lg">
+                      R$ {sale.total_price.toFixed(2)}
+                    </span>
                   </div>
 
                   {/* LUCRO LÍQUIDO (Ênfase) */}

@@ -263,13 +263,12 @@ export const useSaleProfitDetails = (saleId: string | null) => {
       }
     }
 
-    // Custo Total da Operação (incluindo a comissão como custo)
-    const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + calculatedCommission;
+    // Custo Total da Operação (incluindo a comissão e taxa de pagamento como custo)
+    const totalCost = totalProductsCost + totalLaborCost + totalOtherCosts + calculatedCommission + paymentFee;
     
-    // Lucro Líquido (Valor Total - Taxa de Pagamento - Custo Total)
-    const finalPriceWithFee = totalServiceValue - paymentFee;
-    const netProfit = finalPriceWithFee - totalCost;
-    const profitMarginPercentage = finalPriceWithFee > 0 ? (netProfit / finalPriceWithFee) * 100 : 0;
+    // Lucro Líquido (Valor Total - Custo Total)
+    const netProfit = totalServiceValue - totalCost;
+    const profitMarginPercentage = totalServiceValue > 0 ? (netProfit / totalServiceValue) * 100 : 0;
 
     return {
       totalProductsCost,
