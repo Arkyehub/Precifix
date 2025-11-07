@@ -70,6 +70,8 @@ interface QuoteDataForEdit {
   service_time: string | null;
   commission_value?: number; // NOVO
   commission_type?: 'amount' | 'percentage'; // NOVO
+  payment_method_id?: string; // NOVO: Adicionado para armazenar o ID da forma de pagamento
+  installments?: number; // NOVO: Adicionado para armazenar o número de parcelas
 }
 
 interface QuoteCalculatorProps {
@@ -188,7 +190,7 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       if (!quoteIdToEdit || !user) return null;
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_id, client_name, vehicle_id, vehicle, total_price, services_summary, notes, service_date, service_time, commission_value, commission_type')
+        .select('id, client_id, client_name, vehicle_id, vehicle, total_price, services_summary, notes, service_date, service_time, commission_value, commission_type, payment_method_id, installments')
         .eq('id', quoteIdToEdit)
         .eq('user_id', user.id)
         .single();
@@ -256,7 +258,16 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
       setCommissionValueInput(commissionValue.toFixed(2).replace('.', ','));
       setCommissionType(commissionType);
       
-      // 5. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
+      // 6. Forma de Pagamento e Parcelas (NOVO)
+      if (quoteToEdit.payment_method_id) {
+        setSelectedPaymentMethodId(quoteToEdit.payment_method_id);
+        setSelectedInstallments(quoteToEdit.installments || null);
+      } else {
+        setSelectedPaymentMethodId(null);
+        setSelectedInstallments(null);
+      }
+      
+      // 7. Preço Final (para fins de cálculo, o valor original do serviço é o total_price)
       
       toast({
         title: "Orçamento carregado para edição",
