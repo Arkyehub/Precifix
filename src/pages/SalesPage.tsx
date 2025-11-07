@@ -71,7 +71,9 @@ const SalesPage = () => {
   
   const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState(false);
   const [saleToEditPayment, setSaleToEditPayment] = useState<Sale | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); // Estado real do filtro
+  const [openCalendar, setOpenCalendar] = useState(false); // Estado para controlar o Popover
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined); // Estado temporário para seleção no calendário
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
@@ -303,7 +305,7 @@ const SalesPage = () => {
             </div>
             
             {/* Botão de Filtro por Data */}
-            <Popover>
+            <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
                 <PopoverTrigger asChild>
                     <Button
                         id="date"
@@ -312,6 +314,10 @@ const SalesPage = () => {
                             "w-full sm:w-[300px] justify-start text-left font-normal",
                             !dateRange && "text-muted-foreground"
                         )}
+                        onClick={() => {
+                          setOpenCalendar(true);
+                          setTempDateRange(dateRange); // Inicializa o tempDateRange com o valor atual ao abrir
+                        }}
                     >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange?.from ? (
@@ -332,9 +338,17 @@ const SalesPage = () => {
                     <Calendar
                         initialFocus
                         mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
+                        defaultMonth={tempDateRange?.from || new Date()} // Usa tempDateRange para o mês padrão
+                        selected={tempDateRange} // O calendário exibe a seleção temporária
+                        onSelect={(newRange) => {
+                            setTempDateRange(newRange);
+                            if (newRange?.from && newRange?.to) {
+                                // Se 'from' e 'to' estão definidos, a seleção está completa
+                                setDateRange(newRange); // Aplica o filtro real
+                                setOpenCalendar(false); // Fecha o popover
+                            }
+                            // Se apenas 'from' está definido, mantém o popover aberto
+                        }}
                         numberOfMonths={2}
                     />
                 </PopoverContent>
