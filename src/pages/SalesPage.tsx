@@ -76,13 +76,14 @@ const SalesPage = () => {
   const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined); // Estado temporário para seleção no calendário
   const [searchFilterType, setSearchFilterType] = useState<'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
   const [tempSearchTerm, setTempSearchTerm] = useState(''); // Estado temporário para o input de busca
+  const [activeTextFilters, setActiveTextFilters] = useState<Array<{ type: 'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle', value: string }>>([]); // Novo estado para múltiplos filtros de texto
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
-    queryKey: ['closedSales', user?.id, searchTerm, searchFilterType, dateRange], // Adicionado searchFilterType à queryKey
+    queryKey: ['closedSales', user?.id, JSON.stringify(activeTextFilters), dateRange], // queryKey agora depende de activeTextFilters
     queryFn: async () => {
       if (!user) return [];
       let query = supabase
@@ -100,25 +101,27 @@ const SalesPage = () => {
         query = query.lte('created_at', end);
       }
 
-      // Aplicar filtro de busca de texto
-      if (searchTerm) {
-        if (searchFilterType === 'client') {
-          query = query.or(`client_name.ilike.%${searchTerm}%,sale_number.ilike.%${searchTerm}%`);
-        } else if (searchFilterType === 'status') {
-          // Mapear o termo de busca para o valor real do enum de status
-          const statusKey = Object.keys(statusLabels).find(key => 
-            statusLabels[key as QuoteStatus].label.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      // Aplicar filtros de texto do activeTextFilters (server-side)
+      const clientFilters = activeTextFilters.filter(f => f.type === 'client');
+      const statusFilters = activeTextFilters.filter(f => f.type === 'status');
+      const vehicleFilters = activeTextFilters.filter(f => f.type === 'vehicle');
+
+      if (clientFilters.length > 0) {
+        const clientOrConditions = clientFilters.map(f => `client_name.ilike.%${f.value}%,sale_number.ilike.%${f.value}%`).join(',');
+        query = query.or(clientOrConditions);
+      }
+      if (statusFilters.length > 0) {
+        const statusOrConditions = statusFilters.map(f => {
+          const statusKey = Object.keys(statusLabels).find(key =>
+            statusLabels[key as QuoteStatus].label.toString().toLowerCase().includes(f.value.toLowerCase())
           );
-          if (statusKey) {
-            query = query.eq('status', statusKey);
-          } else {
-            // Se não encontrar um status correspondente, retorna vazio para não mostrar resultados
-            return [];
-          }
-        } else if (searchFilterType === 'vehicle') {
-          query = query.ilike('vehicle', `%${searchTerm}%`);
-        }
-        // 'service' e 'paymentMethod' serão filtrados no cliente
+          return statusKey ? `status.eq.${statusKey}` : '';
+        }).filter(Boolean).join(',');
+        if (statusOrConditions) query = query.or(statusOrConditions);
+      }
+      if (vehicleFilters.length > 0) {
+        const vehicleOrConditions = vehicleFilters.map(f => `vehicle.ilike.%${f.value}%`).join(',');
+        query = query.or(vehicleOrConditions);
       }
 
       query = query.order('created_at', { ascending: false });
@@ -126,8 +129,35 @@ const SalesPage = () => {
       const { data, error } = await query;
       if (error) throw error;
       
-      // O status retornado é o status real do quote
-      return data as Sale[];
+      let currentSales = data as Sale[];
+
+      // Aplicar filtros de texto do activeTextFilters (client-side)
+      const serviceFilters = activeTextFilters.filter(f => f.type === 'service');
+      const paymentMethodFilters = activeTextFilters.filter(f => f.type === 'paymentMethod');
+
+      if (serviceFilters.length > 0) {
+        currentSales = currentSales.filter(sale =>
+          serviceFilters.some(filter =>
+            sale.services_summary.some((service: any) =>
+              service.name.toLowerCase().includes(filter.value.toLowerCase())
+            )
+          )
+        );
+      }
+
+      if (paymentMethodFilters.length > 0) {
+        if (paymentMethods) { // Garante que paymentMethods esteja carregado
+          currentSales = currentSales.filter(sale =>
+            paymentMethodFilters.some(filter => {
+              if (!sale.payment_method_id) return false;
+              const method = paymentMethods.find(pm => pm.id === sale.payment_method_id);
+              return method?.name.toLowerCase().includes(filter.value.toLowerCase());
+            })
+          );
+        }
+      }
+
+      return currentSales;
     },
     enabled: !!user,
   });
@@ -239,33 +269,39 @@ const SalesPage = () => {
     deleteSaleMutation.mutate(saleId);
   };
 
-  const filteredSales = React.useMemo(() => {
-    let currentSales = sales || [];
+  // Função para adicionar um filtro de texto
+  const handleApplySearch = () => {
+    if (tempSearchTerm.trim()) {
+      // Evita adicionar filtros duplicados
+      const existingFilterIndex = activeTextFilters.findIndex(
+        f => f.type === searchFilterType && f.value.toLowerCase() === tempSearchTerm.toLowerCase()
+      );
 
-    // Aplicar filtro de busca de texto para 'service' e 'paymentMethod' (client-side)
-    if (searchTerm && (searchFilterType === 'service' || searchFilterType === 'paymentMethod')) {
-      currentSales = currentSales.filter(sale => {
-        if (searchFilterType === 'service') {
-          return sale.services_summary.some((service: any) => 
-            service.name.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        } else if (searchFilterType === 'paymentMethod') {
-          if (!sale.payment_method_id || !paymentMethods) return false;
-          const method = paymentMethods.find(pm => pm.id === sale.payment_method_id);
-          return method?.name.toLowerCase().includes(searchTerm.toLowerCase());
-        }
-        return true;
-      });
+      if (existingFilterIndex === -1) {
+        setActiveTextFilters(prev => [...prev, { type: searchFilterType, value: tempSearchTerm.trim() }]);
+      }
+      setTempSearchTerm(''); // Limpa o input após aplicar o filtro
     }
-    return currentSales;
-  }, [sales, searchTerm, searchFilterType, paymentMethods]);
+  };
+
+  // Função para remover um filtro de texto específico
+  const handleRemoveTextFilter = (indexToRemove: number) => {
+    setActiveTextFilters(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  // Função para limpar todos os filtros
+  const handleClearAllFilters = () => {
+    setActiveTextFilters([]);
+    setDateRange(undefined);
+    setTempSearchTerm('');
+  };
 
   const summary = React.useMemo(() => {
-    const totalSales = filteredSales.length;
-    const attendedSales = filteredSales.filter(s => s.status === 'closed');
-    const awaitingPaymentSales = filteredSales.filter(s => s.status === 'awaiting_payment');
-    const openSales = filteredSales.filter(s => s.status === 'accepted' || s.status === 'pending');
-    const canceledSales = filteredSales.filter(s => s.status === 'rejected');
+    const totalSales = sales?.length || 0; // Use sales diretamente, pois a filtragem agora é na queryFn
+    const attendedSales = sales?.filter(s => s.status === 'closed') || [];
+    const awaitingPaymentSales = sales?.filter(s => s.status === 'awaiting_payment') || [];
+    const openSales = sales?.filter(s => s.status === 'accepted' || s.status === 'pending') || [];
+    const canceledSales = sales?.filter(s => s.status === 'rejected') || [];
 
     const totalRevenue = attendedSales.reduce((sum, s) => sum + s.total_price, 0);
     const awaitingPaymentValue = awaitingPaymentSales.reduce((sum, s) => sum + s.total_price, 0);
@@ -282,7 +318,7 @@ const SalesPage = () => {
       canceledCount: canceledSales.length,
       ticketMedio: attendedSales.length > 0 ? totalRevenue / attendedSales.length : 0,
     };
-  }, [filteredSales]);
+  }, [sales]); // Depende apenas de sales, pois a filtragem já ocorreu na queryFn
 
   const SummaryItem = ({ title, value, count, color, tooltip }: { title: string, value: string, count?: number, color: string, tooltip: string }) => (
     <div className="p-4 rounded-lg border bg-background/50 shadow-sm">
@@ -384,7 +420,7 @@ const SalesPage = () => {
                 onChange={(e) => setTempSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setSearchTerm(tempSearchTerm);
+                    handleApplySearch(); // Chama a função para adicionar o filtro
                   }
                 }}
                 className="pr-10 bg-background"
@@ -392,7 +428,7 @@ const SalesPage = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setSearchTerm(tempSearchTerm)}
+                onClick={handleApplySearch} // Chama a função para adicionar o filtro
                 className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
                 title="Buscar"
               >
@@ -509,25 +545,25 @@ const SalesPage = () => {
           </div>
 
           {/* Exibição de Filtros Ativos */}
-          {(searchTerm || dateRange?.from) && (
+          {(activeTextFilters.length > 0 || dateRange?.from) && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span className="font-semibold">Filtros Ativos:</span>
-              {searchTerm && (
-                <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
-                  {searchFilterType === 'client' ? 'Cliente/Venda' :
-                   searchFilterType === 'status' ? 'Status' :
-                   searchFilterType === 'service' ? 'Serviço' :
-                   searchFilterType === 'paymentMethod' ? 'Forma Pagamento' :
-                   searchFilterType === 'vehicle' ? 'Veículo' : 'Busca'}: "{searchTerm}"
+              {activeTextFilters.map((filter, index) => (
+                <span key={index} className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
+                  {filter.type === 'client' ? 'Cliente/Venda' :
+                   filter.type === 'status' ? 'Status' :
+                   filter.type === 'service' ? 'Serviço' :
+                   filter.type === 'paymentMethod' ? 'Forma Pagamento' :
+                   filter.type === 'vehicle' ? 'Veículo' : 'Busca'}: "{filter.value}"
                   <button 
-                    onClick={() => setSearchTerm('')} 
+                    onClick={() => handleRemoveTextFilter(index)} 
                     className="ml-1 text-primary-strong/70 hover:text-primary-strong"
                     title="Remover busca"
                   >
                     &times;
                   </button>
                 </span>
-              )}
+              ))}
               {dateRange?.from && (
                 <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
                   Período: {format(dateRange.from, "dd/MM/yyyy")}
@@ -544,11 +580,7 @@ const SalesPage = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => {
-                  setSearchTerm('');
-                  setTempSearchTerm('');
-                  setDateRange(undefined);
-                }}
+                onClick={handleClearAllFilters} // Chama a função para limpar todos os filtros
                 className="text-muted-foreground hover:text-foreground"
               >
                 Limpar Todos
@@ -570,8 +602,8 @@ const SalesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSales.length > 0 ? (
-                  filteredSales.map((sale) => {
+                {sales && sales.length > 0 ? (
+                  sales.map((sale) => {
                     const statusInfo = statusLabels[sale.status] || statusLabels.pending;
                     const isUpdating = updateSaleStatusMutation.isPending;
                     const isDeleting = deleteSaleMutation.isPending && deleteSaleMutation.variables === sale.id;
