@@ -412,6 +412,49 @@ const SalesPage = () => {
             </div>
           </div>
 
+          {/* Exibição de Filtros Ativos */}
+          {(searchTerm || dateRange?.from) && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-semibold">Filtros Ativos:</span>
+              {searchTerm && (
+                <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
+                  Busca: "{searchTerm}"
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="ml-1 text-primary-strong/70 hover:text-primary-strong"
+                    title="Remover busca"
+                  >
+                    &times;
+                  </button>
+                </span>
+              )}
+              {dateRange?.from && (
+                <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
+                  Período: {format(dateRange.from, "dd/MM/yyyy")}
+                  {dateRange.to && ` - ${format(dateRange.to, "dd/MM/yyyy")}`}
+                  <button 
+                    onClick={() => setDateRange(undefined)} 
+                    className="ml-1 text-primary-strong/70 hover:text-primary-strong"
+                    title="Remover filtro de data"
+                  >
+                    &times;
+                  </button>
+                </span>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  setSearchTerm('');
+                  setDateRange(undefined);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Limpar Todos
+              </Button>
+            </div>
+          )}
+
           {/* Tabela de Vendas */}
           <div className="rounded-md border bg-background">
             <Table>
