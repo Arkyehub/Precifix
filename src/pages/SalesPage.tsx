@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, CommandItem } from "@/components/ui/command"; // Importar componentes do Command
 
 // Mapeamento de status do DB para rótulos de Venda
 type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
@@ -34,6 +35,7 @@ interface Sale {
   status: QuoteStatus;
   payment_method_id: string | null; // Adicionado
   installments: number | null; // Adicionado
+  vehicle: string | null; // Adicionado para resolver o erro de compilação
 }
 
 // Componente para o rótulo de pagamento pendente
@@ -77,6 +79,7 @@ const SalesPage = () => {
   const [searchFilterType, setSearchFilterType] = useState<'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
   const [tempSearchTerm, setTempSearchTerm] = useState(''); // Estado temporário para o input de busca
   const [activeTextFilters, setActiveTextFilters] = useState<Array<{ type: 'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle', value: string }>>([]); // Novo estado para múltiplos filtros de texto
+  const [openCombobox, setOpenCombobox] = useState(false); // Estado para controlar a abertura do combobox
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
@@ -270,15 +273,16 @@ const SalesPage = () => {
   };
 
   // Função para adicionar um filtro de texto
-  const handleApplySearch = () => {
-    if (tempSearchTerm.trim()) {
+  const handleApplySearch = (selectedValue?: string) => {
+    const valueToApply = selectedValue || tempSearchTerm;
+    if (valueToApply.trim()) {
       // Evita adicionar filtros duplicados
       const existingFilterIndex = activeTextFilters.findIndex(
-        f => f.type === searchFilterType && f.value.toLowerCase() === tempSearchTerm.toLowerCase()
+        f => f.type === searchFilterType && f.value.toLowerCase() === valueToApply.toLowerCase()
       );
 
       if (existingFilterIndex === -1) {
-        setActiveTextFilters(prev => [...prev, { type: searchFilterType, value: tempSearchTerm.trim() }]);
+        setActiveTextFilters(prev => [...prev, { type: searchFilterType, value: valueToApply.trim() }]);
       }
       setTempSearchTerm(''); // Limpa o input após aplicar o filtro
     }
@@ -295,6 +299,41 @@ const SalesPage = () => {
     setDateRange(undefined);
     setTempSearchTerm('');
   };
+
+  // Gerar sugestões para o combobox
+  const suggestions = React.useMemo(() => {
+    const uniqueValues = new Set<string>();
+    const currentSuggestions: { value: string; label: string }[] = [];
+
+    if (!sales) return [];
+
+    if (searchFilterType === 'status') {
+      return selectableStatuses.map(s => ({ value: s.key, label: s.label.toString() }));
+    } else if (searchFilterType === 'paymentMethod') {
+      return paymentMethods?.map((pm: any) => ({ value: pm.name, label: pm.name })) || [];
+    } else if (searchFilterType === 'client') {
+      sales.forEach(sale => {
+        if (sale.client_name) uniqueValues.add(sale.client_name);
+        if (sale.sale_number) uniqueValues.add(sale.sale_number);
+      });
+    } else if (searchFilterType === 'service') {
+      sales.forEach(sale => {
+        sale.services_summary?.forEach((service: any) => {
+          if (service.name) uniqueValues.add(service.name);
+        });
+      });
+    } else if (searchFilterType === 'vehicle') {
+      sales.forEach(sale => {
+        if (sale.vehicle) uniqueValues.add(sale.vehicle);
+      });
+    }
+
+    Array.from(uniqueValues).sort().forEach(value => {
+      currentSuggestions.push({ value, label: value });
+    });
+
+    return currentSuggestions;
+  }, [sales, searchFilterType, paymentMethods]);
 
   const summary = React.useMemo(() => {
     const totalSales = sales?.length || 0; // Use sales diretamente, pois a filtragem agora é na queryFn
@@ -406,35 +445,70 @@ const SalesPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="relative flex-1 flex items-center">
-              <Input
-                placeholder={
-                  searchFilterType === 'client' ? 'Buscar por cliente ou número da venda' :
-                  searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
-                  searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
-                  searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
-                  searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
-                  'Buscar...'
-                }
-                value={tempSearchTerm}
-                onChange={(e) => setTempSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleApplySearch(); // Chama a função para adicionar o filtro
-                  }
-                }}
-                className="pr-10 bg-background"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleApplySearch} // Chama a função para adicionar o filtro
-                className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
-                title="Buscar"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <div className="relative flex-1 flex items-center">
+                  <Input
+                    placeholder={
+                      searchFilterType === 'client' ? 'Buscar por cliente ou número da venda' :
+                      searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
+                      searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                      searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
+                      searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                      'Buscar...'
+                    }
+                    value={tempSearchTerm}
+                    onChange={(e) => {
+                      setTempSearchTerm(e.target.value);
+                      setOpenCombobox(true); // Abre o combobox ao digitar
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleApplySearch();
+                        setOpenCombobox(false); // Fecha ao pressionar Enter
+                      }
+                    }}
+                    className="pr-10 bg-background"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleApplySearch()} // Chama a função para adicionar o filtro
+                    className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
+                    title="Buscar"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  {/* CommandInput não é necessário aqui, pois o Input principal já está sendo usado */}
+                  <CommandList>
+                    <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {suggestions
+                        .filter(suggestion =>
+                          suggestion.label.toLowerCase().includes(tempSearchTerm.toLowerCase())
+                        )
+                        .map((suggestion) => (
+                          <CommandItem
+                            key={suggestion.value}
+                            value={suggestion.label} // Usar label para a busca interna do Command
+                            onSelect={() => {
+                              setTempSearchTerm(suggestion.label); // Preenche o input com a sugestão
+                              handleApplySearch(suggestion.value); // Aplica o filtro
+                              setOpenCombobox(false); // Fecha o combobox
+                            }}
+                          >
+                            {suggestion.label}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             
             {/* Botão de Filtro por Data */}
             <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
