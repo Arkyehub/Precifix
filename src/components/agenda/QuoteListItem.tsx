@@ -34,15 +34,15 @@ interface QuoteListItemProps {
 }
 
 const statusColors = {
-  accepted: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' },
-  pending: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' },
+  accepted: { text: 'Aceito', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' },
+  pending: { text: 'Em Aberto', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/50' },
   rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
-  awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
+  awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-yellow-600', bg: 'bg-yellow-600/10', border: 'border-yellow-600/50' },
 };
 
 const selectableStatuses: { key: QuotePayload['status']; label: string }[] = [
-  { key: 'pending', label: 'Pendente' },
+  { key: 'pending', label: 'Em Aberto' },
   { key: 'accepted', label: 'Aceito' },
   { key: 'rejected', label: 'Cancelado' },
   { key: 'closed', label: 'Concluído' },

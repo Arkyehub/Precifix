@@ -49,16 +49,17 @@ const AwaitingPaymentLabel = () => (
 const statusLabels: Record<QuoteStatus, { label: string | React.ReactNode; color: string }> = {
   closed: { label: 'Atendida', color: 'bg-success/20 text-success' },
   rejected: { label: 'Cancelada', color: 'bg-destructive/20 text-destructive' },
-  accepted: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' },
-  pending: { label: 'Em Aberto', color: 'bg-primary/20 text-primary-strong' },
+  accepted: { label: 'Aceita', color: 'bg-primary/20 text-primary-strong' },
+  pending: { label: 'Em Aberto', color: 'bg-orange-500/20 text-orange-500' },
   awaiting_payment: { label: <AwaitingPaymentLabel />, color: 'bg-info/20 text-info' },
 };
 
 // Status que o usuário pode selecionar no dropdown
 const selectableStatuses: { key: QuoteStatus; label: string }[] = [
   { key: 'closed', label: 'Atendida' },
+  { key: 'accepted', label: 'Aceita' },
+  { key: 'pending', label: 'Em Aberto' },
   { key: 'rejected', label: 'Cancelada' },
-  { key: 'accepted', label: 'Em Aberto' },
   { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
 ];
 
@@ -347,12 +348,14 @@ const SalesPage = () => {
     const totalSales = sales?.length || 0; // Use sales diretamente, pois a filtragem agora é na queryFn
     const attendedSales = sales?.filter(s => s.status === 'closed') || [];
     const awaitingPaymentSales = sales?.filter(s => s.status === 'awaiting_payment') || [];
-    const openSales = sales?.filter(s => s.status === 'accepted' || s.status === 'pending') || [];
+    const openSales = sales?.filter(s => s.status === 'pending') || [];
+    const acceptedSales = sales?.filter(s => s.status === 'accepted') || [];
     const canceledSales = sales?.filter(s => s.status === 'rejected') || [];
 
     const totalRevenue = attendedSales.reduce((sum, s) => sum + s.total_price, 0);
     const awaitingPaymentValue = awaitingPaymentSales.reduce((sum, s) => sum + s.total_price, 0);
     const openValue = openSales.reduce((sum, s) => sum + s.total_price, 0);
+    const acceptedValue = acceptedSales.reduce((sum, s) => sum + s.total_price, 0);
     
     return {
       totalSales,
@@ -362,6 +365,8 @@ const SalesPage = () => {
       awaitingPaymentValue,
       openSalesCount: openSales.length,
       openValue,
+      acceptedSalesCount: acceptedSales.length,
+      acceptedValue,
       canceledCount: canceledSales.length,
       ticketMedio: attendedSales.length > 0 ? totalRevenue / attendedSales.length : 0,
     };
@@ -597,9 +602,9 @@ const SalesPage = () => {
               <SummaryItem 
                 title="Total Vendas" 
                 count={summary.totalSales}
-                value={`R$ ${(summary.totalRevenue + summary.awaitingPaymentValue + summary.openValue).toFixed(2)}`} 
+                value={`R$ ${(summary.totalRevenue + summary.awaitingPaymentValue + summary.openValue + summary.acceptedValue).toFixed(2)}`} 
                 color="text-primary-strong"
-                tooltip="Valor total de todas as vendas (Atendidas + Aguardando Pagamento + Em Aberto) no período."
+                tooltip="Valor total de todas as vendas (Atendidas + Aguardando Pagamento + Em Aberto + Aceitas) no período."
               />
               <SummaryItem 
                 title="Atendidas" 
@@ -616,17 +621,18 @@ const SalesPage = () => {
                 tooltip="Vendas finalizadas, mas o pagamento ainda está pendente (ex: boleto, PIX agendado)."
               />
               <SummaryItem 
+                title="Aceitas" 
+                count={summary.acceptedSalesCount}
+                value={`R$ ${summary.acceptedValue.toFixed(2)}`} 
+                color="text-primary-strong"
+                tooltip="Vendas aceitas pelo cliente, aguardando execução."
+              />
+              <SummaryItem 
                 title="Em Aberto" 
                 count={summary.openSalesCount}
                 value={`R$ ${summary.openValue.toFixed(2)}`} 
-                color="text-primary-strong"
-                tooltip="Vendas lançadas, mas ainda não iniciadas ou em fase de negociação (status 'accepted' ou 'pending')."
-              />
-              <SummaryItem 
-                title="Ticket médio" 
-                value={`R$ ${summary.ticketMedio.toFixed(2)}`} 
-                color="text-primary"
-                tooltip="Valor médio por venda atendida."
+                color="text-orange-500"
+                tooltip="Vendas lançadas, mas ainda não iniciadas ou em fase de negociação (status 'pending')."
               />
             </div>
           </div>

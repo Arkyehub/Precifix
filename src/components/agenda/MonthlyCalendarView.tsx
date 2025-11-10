@@ -27,29 +27,31 @@ interface DailySummary {
 }
 
 const statusColors = {
-  accepted: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/20', compactBg: 'bg-primary', compactText: 'text-primary-foreground' }, // CORRIGIDO AQUI
-  pending: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/20', compactBg: 'bg-primary', compactText: 'text-primary-foreground' }, // CORRIGIDO AQUI
-  rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' }, // Alterado para text-white
-  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' }, // Alterado para text-white
+  accepted: { text: 'Aceito', color: 'text-primary-strong', bg: 'bg-primary/20', compactBg: 'bg-primary', compactText: 'text-primary-foreground' },
+  pending: { text: 'Em Aberto', color: 'text-orange-500', bg: 'bg-orange-500/20', compactBg: 'bg-orange-500', compactText: 'text-white' },
+  rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' },
+  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' },
 };
 
 // Componente auxiliar para renderizar o status (modo detalhado)
-const StatusPill = ({ count, statusKey, summaryColors }: { count: number, statusKey: keyof typeof statusColors, summaryColors: ReturnType<typeof getDailySummaryColors> }) => {
+const StatusPill = ({ count, statusKey }: { count: number, statusKey: keyof typeof statusColors }) => {
   if (count === 0) return null;
   const status = statusColors[statusKey];
   
   // Para 'pending' e 'accepted', usamos o mesmo rótulo 'Em Aberto'.
   // Para evitar duplicidade, só renderizamos se for 'pending' OU se for 'accepted' e 'pending' for 0.
-  if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null;
-  if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null;
+  // REMOVIDO: Lógica de agrupamento de pending e accepted
+  // if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null;
+  // if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null;
 
   // Se for 'pending' ou 'accepted', somamos as contagens para exibir o total 'Em Aberto'
-  let displayCount = count;
-  if (statusKey === 'pending' || statusKey === 'accepted') {
-    displayCount = summaryColors.pending.count + summaryColors.accepted.count;
-    if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null; // Evita duplicidade
-    if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null; // Evita duplicidade
-  }
+  // REMOVIDO: Lógica de soma de contagens
+  // let displayCount = count;
+  // if (statusKey === 'pending' || statusKey === 'accepted') {
+  //   displayCount = summaryColors.pending.count + summaryColors.accepted.count;
+  //   if (statusKey === 'accepted' && summaryColors.pending.count > 0) return null; // Evita duplicidade
+  //   if (statusKey === 'pending' && summaryColors.accepted.count > 0) return null; // Evita duplicidade
+  // }
 
   return (
     <div 
@@ -59,7 +61,7 @@ const StatusPill = ({ count, statusKey, summaryColors }: { count: number, status
         status.compactText // Usando a cor de texto compacta (branca)
       )}
     >
-      {displayCount} {status.text}
+      {count} {status.text}
     </div>
   );
 };
@@ -251,7 +253,8 @@ export const MonthlyCalendarView = () => {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4"> {/* Alterado para 5 colunas */}
             <SummaryBox title="Total" count={monthlySummary.total} value={monthlySummary.totalValue} color="text-foreground" valueColor="text-primary-strong" />
             <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-info" valueColor="text-info" /> {/* Adicionado Concluídos */}
-            <SummaryBox title="Em Aberto" count={monthlySummary.accepted + monthlySummary.pending} value={monthlySummary.acceptedValue + monthlySummary.pendingValue} color="text-primary-strong" valueColor="text-primary-strong" />
+            <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-primary-strong" valueColor="text-primary-strong" /> {/* NOVO */}
+            <SummaryBox title="Em Aberto" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-orange-500" valueColor="text-orange-500" /> {/* Alterado para apenas pending */}
             <SummaryBox title="Cancelados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" /> {/* Nomenclatura atualizada */}
           </div>
         </div>
@@ -277,7 +280,8 @@ export const MonthlyCalendarView = () => {
 
             const statusList = [
               { key: 'closed', count: summaryColors.closed.count, status: statusColors.closed },
-              { key: 'accepted', count: summaryColors.accepted.count + summaryColors.pending.count, status: statusColors.accepted }, // Agrupando 'Em Aberto'
+              { key: 'accepted', count: summaryColors.accepted.count, status: statusColors.accepted }, // Não agrupa mais
+              { key: 'pending', count: summaryColors.pending.count, status: statusColors.pending }, // Separado
               { key: 'rejected', count: summaryColors.rejected.count, status: statusColors.rejected },
             ].filter(s => s.count > 0);
 
@@ -326,12 +330,10 @@ export const MonthlyCalendarView = () => {
                     ) : (
                       <>
                         {/* Modo Detalhado: Renderiza apenas os status relevantes */}
-                        <StatusPill count={summaryColors.closed.count} statusKey="closed" summaryColors={summaryColors} />
-                        {/* Agrupando Accepted e Pending em 'Em Aberto' */}
-                        {(summaryColors.accepted.count > 0 || summaryColors.pending.count > 0) && (
-                          <StatusPill count={summaryColors.accepted.count + summaryColors.pending.count} statusKey="accepted" summaryColors={summaryColors} />
-                        )}
-                        <StatusPill count={summaryColors.rejected.count} statusKey="rejected" summaryColors={summaryColors} />
+                        <StatusPill count={summaryColors.closed.count} statusKey="closed" />
+                        <StatusPill count={summaryColors.accepted.count} statusKey="accepted" />
+                        <StatusPill count={summaryColors.pending.count} statusKey="pending" />
+                        <StatusPill count={summaryColors.rejected.count} statusKey="rejected" />
                       </>
                     )}
                   </div>
