@@ -456,7 +456,16 @@ const SalesPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+            <Popover open={openCombobox} onOpenChange={(newOpenState) => {
+              // Se o popover está tentando abrir (newOpenState é true)
+              // E o termo de busca está vazio, então previne a abertura.
+              // Caso contrário, permite a abertura/fechamento conforme solicitado.
+              if (newOpenState && tempSearchTerm.length === 0) {
+                setOpenCombobox(false);
+              } else {
+                setOpenCombobox(newOpenState);
+              }
+            }}>
               <PopoverTrigger asChild>
                 <div className="relative flex-1 flex items-center">
                   <Input
@@ -472,7 +481,13 @@ const SalesPage = () => {
                     value={tempSearchTerm}
                     onChange={(e) => {
                       setTempSearchTerm(e.target.value);
-                      setOpenCombobox(e.target.value.length > 0); // Abre o combobox apenas se houver texto
+                      // Se o usuário digitar algo, tenta abrir o combobox.
+                      // A lógica em onOpenChange do Popover vai decidir se ele realmente abre.
+                      if (e.target.value.length > 0) {
+                        setOpenCombobox(true);
+                      } else {
+                        setOpenCombobox(false);
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
