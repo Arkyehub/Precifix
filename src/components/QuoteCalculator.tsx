@@ -592,21 +592,24 @@ export const QuoteCalculator = ({ isSale = false }: QuoteCalculatorProps) => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)] mb-6">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
-              <FileText className="h-5 w-5 text-primary-foreground" />
+        {/* Renderiza o CardHeader apenas se não for uma nova venda (isSale=true e sem quoteIdToEdit) */}
+        {(!isSale || quoteIdToEdit) && (
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+                <FileText className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-foreground">
+                  {isSale ? 'Lançar Venda' : (quoteIdToEdit ? `Editar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento Detalhado')}
+                </CardTitle>
+                <CardDescription>
+                  {isSale ? 'Registre os detalhes da venda finalizada.' : 'Selecione os serviços, ajuste os custos e gere um orçamento profissional.'}
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-foreground">
-                {isSale ? 'Lançar Venda' : (quoteIdToEdit ? `Editar Orçamento #${quoteIdToEdit.substring(0, 8)}` : 'Gerar Orçamento Detalhado')}
-              </CardTitle>
-              <CardDescription>
-                {isSale ? 'Registre os detalhes da venda finalizada.' : 'Selecione os serviços, ajuste os custos e gere um orçamento profissional.'}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
+        )}
         <CardContent className="space-y-6">
           
           <QuoteClientSection
