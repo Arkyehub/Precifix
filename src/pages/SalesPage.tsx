@@ -342,15 +342,31 @@ const SalesPage = () => {
                         selected={tempDateRange} // O calendário exibe a seleção temporária
                         onSelect={(newRange) => {
                             setTempDateRange(newRange);
-                            if (newRange?.from && newRange?.to) {
-                                // Se 'from' e 'to' estão definidos, a seleção está completa
-                                setDateRange(newRange); // Aplica o filtro real
-                                setOpenCalendar(false); // Fecha o popover
-                            }
-                            // Se apenas 'from' está definido, mantém o popover aberto
+                            // Não fecha o popover automaticamente aqui
                         }}
                         numberOfMonths={2}
                     />
+                    <div className="flex justify-end gap-2 p-2 border-t">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => {
+                                setDateRange(undefined);
+                                setTempDateRange(undefined);
+                                setOpenCalendar(false);
+                            }}
+                        >
+                            Limpar
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                setDateRange(tempDateRange);
+                                setOpenCalendar(false);
+                            }}
+                            disabled={!tempDateRange?.from} // Desabilita se nenhuma data foi selecionada
+                        >
+                            Confirmar
+                        </Button>
+                    </div>
                 </PopoverContent>
             </Popover>
           </div>
