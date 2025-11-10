@@ -467,10 +467,10 @@ const SalesPage = () => {
                   {
                     searchFilterType === 'client' ? 'Buscar por cliente' :
                     searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
-                    searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
-                    searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                    searchFilterType === 'status' ? 'Buscar por status' :
+                    searchFilterType === 'service' ? 'Buscar por serviço' :
                     searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
-                    searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                    searchFilterType === 'vehicle' ? 'Buscar por veículo' :
                     'Buscar...'
                   }
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -482,10 +482,10 @@ const SalesPage = () => {
                     placeholder={
                       searchFilterType === 'client' ? 'Buscar por cliente' :
                       searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
-                      searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
-                      searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                      searchFilterType === 'status' ? 'Buscar por status' :
+                      searchFilterType === 'service' ? 'Buscar por serviço' :
                       searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
-                      searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                      searchFilterType === 'vehicle' ? 'Buscar por veículo' :
                       'Buscar...'
                     }
                     value={tempSearchTerm}
