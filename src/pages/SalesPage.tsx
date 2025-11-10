@@ -457,12 +457,14 @@ const SalesPage = () => {
             </DropdownMenu>
 
             <Popover open={openCombobox} onOpenChange={(newOpenState) => {
-              // Se o popover está tentando abrir (newOpenState é true)
-              // E o termo de busca está vazio, então previne a abertura.
-              // Caso contrário, permite a abertura/fechamento conforme solicitado.
-              if (newOpenState && tempSearchTerm.length === 0) {
-                setOpenCombobox(false);
+              // Se o popover está tentando fechar (newOpenState é false)
+              // E ainda há texto no campo de busca, queremos mantê-lo aberto.
+              if (!newOpenState && tempSearchTerm.length > 0) {
+                // Não fazemos nada aqui, o estado 'openCombobox' já deve ser 'true'
+                // devido ao 'onChange' do input, efetivamente ignorando o evento de fechamento.
               } else {
+                // Em todos os outros casos (tentando abrir, ou tentando fechar com campo vazio),
+                // deixamos o 'newOpenState' ditar o estado de 'openCombobox'.
                 setOpenCombobox(newOpenState);
               }
             }}>
@@ -470,8 +472,8 @@ const SalesPage = () => {
                 <div className="relative flex-1 flex items-center">
                   <Input
                     placeholder={
-                      searchFilterType === 'client' ? 'Buscar por cliente' : // MODIFICADO
-                      searchFilterType === 'saleNumber' ? 'Buscar por número da venda' : // NOVO
+                      searchFilterType === 'client' ? 'Buscar por cliente' :
+                      searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
                       searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
                       searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
                       searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
@@ -481,13 +483,10 @@ const SalesPage = () => {
                     value={tempSearchTerm}
                     onChange={(e) => {
                       setTempSearchTerm(e.target.value);
-                      // Se o usuário digitar algo, tenta abrir o combobox.
-                      // A lógica em onOpenChange do Popover vai decidir se ele realmente abre.
-                      if (e.target.value.length > 0) {
-                        setOpenCombobox(true);
-                      } else {
-                        setOpenCombobox(false);
-                      }
+                      // Sempre tenta abrir se houver texto, ou fechar se vazio.
+                      // A lógica em onOpenChange do Popover agora garante que ele não feche
+                      // se houver texto, mesmo que o Radix tente fechar.
+                      setOpenCombobox(e.target.value.length > 0);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
