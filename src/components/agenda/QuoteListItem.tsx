@@ -4,14 +4,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X, Info, Loader2, MoreVertical, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { QuotePayload } from '@/lib/quote-utils';
 
 interface Quote {
   id: string;
   client_name: string;
   vehicle: string;
   total_price: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'closed';
+  status: QuotePayload['status'];
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
@@ -22,12 +23,14 @@ interface QuoteListItemProps {
   isDeleting: boolean;
   isMarkingNotRealized: boolean;
   isClosingSale: boolean;
+  isUpdatingStatus: boolean;
   onCopyLink: (quoteId: string) => void;
   onEditQuote: (quoteId: string) => void;
   onOpenCloseSaleDialog: (quote: Quote) => void;
   onMarkAsNotRealized: (quoteId: string) => void;
   onOpenDetailsDrawer: (quoteId: string) => void;
   onDeleteQuote: (quoteId: string) => void;
+  onStatusChange: (quoteId: string, newStatus: QuotePayload['status'], oldStatus: QuotePayload['status']) => void;
 }
 
 const statusColors = {
@@ -35,19 +38,30 @@ const statusColors = {
   pending: { text: 'Em Aberto', color: 'text-primary-strong', bg: 'bg-primary/10', border: 'border-primary/50' },
   rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/50' },
   closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
+  awaiting_payment: { text: 'Aguardando Pagamento', color: 'text-info', bg: 'bg-info/10', border: 'border-info/50' },
 };
+
+const selectableStatuses: { key: QuotePayload['status']; label: string }[] = [
+  { key: 'pending', label: 'Pendente' },
+  { key: 'accepted', label: 'Aceito' },
+  { key: 'rejected', label: 'Cancelado' },
+  { key: 'closed', label: 'Concluído' },
+  { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
+];
 
 export const QuoteListItem = ({
   quote,
   isDeleting,
   isMarkingNotRealized,
   isClosingSale,
+  isUpdatingStatus,
   onCopyLink,
   onEditQuote,
   onOpenCloseSaleDialog,
   onMarkAsNotRealized,
   onOpenDetailsDrawer,
   onDeleteQuote,
+  onStatusChange,
 }: QuoteListItemProps) => {
   const status = statusColors[quote.status];
 
@@ -70,9 +84,39 @@ export const QuoteListItem = ({
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <p className="font-bold text-foreground">{quote.client_name}</p>
-            <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", status.color, status.bg)}>
-              {status.text}
-            </span>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <span 
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center",
+                    status.color
+                  )}
+                  title="Clique para mudar o status"
+                >
+                  {isUpdatingStatus && isUpdatingStatus ? <Loader2 className="h-3 w-3 animate-spin inline-block mr-1" /> : null}
+                  {status.text}
+                </span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-card">
+                <DropdownMenuLabel>Mudar Status do Agendamento</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {selectableStatuses.map(({ key, label }) => (
+                  <DropdownMenuItem 
+                    key={key} 
+                    onClick={() => onStatusChange(quote.id, key, quote.status)}
+                    disabled={quote.status === key || isUpdatingStatus}
+                    className={cn(
+                      "cursor-pointer",
+                      quote.status === key && "bg-muted/50 font-bold"
+                    )}
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
           </div>
           <p className="text-sm text-muted-foreground flex items-center gap-1 ml-6">
             <Car className="h-4 w-4" />

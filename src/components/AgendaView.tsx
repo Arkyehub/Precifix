@@ -15,13 +15,15 @@ import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details';
 import { AgendaHeader } from '@/components/agenda/AgendaHeader';
 import { AgendaSummary } from '@/components/agenda/AgendaSummary';
 import { QuoteListItem } from '@/components/agenda/QuoteListItem';
+import { QuotePayload } from '@/lib/quote-utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Quote {
   id: string;
   client_name: string;
   vehicle: string;
   total_price: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'closed';
+  status: QuotePayload['status'];
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
@@ -62,6 +64,11 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState(false);
   const [quoteToClose, setQuoteToClose] = useState<Quote | null>(null);
 
+  // Estados para o AlertDialog de mudança de status
+  const [showStatusChangeWarning, setShowStatusChangeWarning] = useState(false);
+  const [quoteToChangeStatus, setQuoteToChangeStatus] = useState<Quote | null>(null);
+  const [newStatusForWarning, setNewStatusForWarning] = useState<QuotePayload['status'] | null>(null);
+
   // Fetch all quotes that have a service_date defined
   const { data: quotes, isLoading, error } = useQuery<Quote[]>({
     queryKey: ['scheduledQuotes', user?.id],
@@ -97,6 +104,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
       toast({
         title: "Orçamento excluído!",
         description: "O orçamento e seu link foram removidos.",
@@ -114,33 +122,50 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     },
   });
 
-  const markAsNotRealizedMutation = useMutation({
-    mutationFn: async (quoteId: string) => {
+  const updateQuoteStatusMutation = useMutation({
+    mutationFn: async ({ quoteId, newStatus, oldStatus }: { quoteId: string; newStatus: QuotePayload['status']; oldStatus: QuotePayload['status'] }) => {
       if (!user) throw new Error("Usuário não autenticado.");
+
+      const updateData: { status: QuotePayload['status']; is_sale?: boolean } = { status: newStatus };
+
+      // Se o status anterior era 'closed' e o novo não é 'closed', remove da lista de vendas
+      if (oldStatus === 'closed' && newStatus !== 'closed') {
+        updateData.is_sale = false;
+      } else if (newStatus === 'closed' && oldStatus !== 'closed') {
+        // Se o novo status é 'closed' e o anterior não era, marca como venda
+        updateData.is_sale = true;
+      }
       
       const { error } = await supabase
         .from('quotes')
-        .update({ status: 'rejected' })
+        .update(updateData)
         .eq('id', quoteId)
         .eq('user_id', user.id);
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
       toast({
-        title: "Agendamento marcado como Cancelado!",
-        description: "O status do agendamento foi atualizado para Cancelado.",
+        title: "Status atualizado!",
+        description: `O status do agendamento foi atualizado para ${variables.newStatus}.`,
       });
+      setShowStatusChangeWarning(false); // Fecha o aviso se estiver aberto
+      setQuoteToChangeStatus(null);
+      setNewStatusForWarning(null);
     },
     onError: (err) => {
-      console.error("Erro ao marcar como Cancelado:", err);
+      console.error("Erro ao atualizar status:", err);
       toast({
         title: "Erro ao atualizar status",
         description: err.message,
         variant: "destructive",
       });
+      setShowStatusChangeWarning(false); // Fecha o aviso se estiver aberto
+      setQuoteToChangeStatus(null);
+      setNewStatusForWarning(null);
     },
   });
 
@@ -217,8 +242,30 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     deleteQuoteMutation.mutate(quoteId);
   };
 
-  const handleMarkAsNotRealized = (quoteId: string) => {
-    markAsNotRealizedMutation.mutate(quoteId);
+  const handleStatusChange = (quoteId: string, newStatus: QuotePayload['status'], oldStatus: QuotePayload['status']) => {
+    if (oldStatus === 'closed' && newStatus !== 'closed') {
+      // Se o status anterior era 'closed' e o novo não é, mostra o aviso
+      const quote = quotes?.find(q => q.id === quoteId);
+      if (quote) {
+        setQuoteToChangeStatus(quote);
+        setNewStatusForWarning(newStatus);
+        setShowStatusChangeWarning(true);
+      }
+    } else {
+      // Caso contrário, executa a mutação diretamente
+      updateQuoteStatusMutation.mutate({ quoteId, newStatus, oldStatus });
+    }
+  };
+
+  // Função para confirmar a mudança de status após o aviso
+  const confirmStatusChangeFromWarning = () => {
+    if (quoteToChangeStatus && newStatusForWarning) {
+      updateQuoteStatusMutation.mutate({ 
+        quoteId: quoteToChangeStatus.id, 
+        newStatus: newStatusForWarning, 
+        oldStatus: quoteToChangeStatus.status 
+      });
+    }
   };
 
   // --- Memoization ---
@@ -332,14 +379,16 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                 key={quote.id}
                 quote={quote}
                 isDeleting={deleteQuoteMutation.isPending && quoteIdToDelete === quote.id}
-                isMarkingNotRealized={markAsNotRealizedMutation.isPending}
+                isMarkingNotRealized={false}
                 isClosingSale={handleCloseSale.isPending}
+                isUpdatingStatus={updateQuoteStatusMutation.isPending && quoteToChangeStatus?.id === quote.id}
                 onCopyLink={handleCopyLink}
                 onEditQuote={handleEditQuote}
                 onOpenCloseSaleDialog={handleOpenCloseSaleDialog}
-                onMarkAsNotRealized={handleMarkAsNotRealized}
+                onMarkAsNotRealized={() => handleStatusChange(quote.id, 'rejected', quote.status)}
                 onOpenDetailsDrawer={handleOpenDetailsDrawer}
                 onDeleteQuote={handleDeleteQuote}
+                onStatusChange={handleStatusChange}
               />
             ))}
           </div>
@@ -369,6 +418,32 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
         isLoadingDetails={isLoadingDetails}
         paymentMethodDetails={paymentMethodDetails}
       />
+
+      {/* AlertDialog para aviso de mudança de status de 'Concluído' */}
+      <AlertDialog open={showStatusChangeWarning} onOpenChange={setShowStatusChangeWarning}>
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atenção: Alteração de Status!</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a alterar o status do agendamento de "{quoteToChangeStatus?.client_name}" de "Concluído" para "{newStatusForWarning}".
+              <br /><br />
+              **Esta ação removerá esta venda da sua lista de "Gerenciar Vendas".**
+              <br /><br />
+              Tem certeza que deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateQuoteStatusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmStatusChangeFromWarning} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={updateQuoteStatusMutation.isPending}
+            >
+              {updateQuoteStatusMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar e Remover Venda"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
