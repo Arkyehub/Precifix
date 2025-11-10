@@ -330,7 +330,7 @@ const PaymentMethodsPage = () => {
                   <div className="text-sm text-muted-foreground ml-4">
                     <p>Tipo: {method.type === 'cash' ? 'Dinheiro' : method.type === 'pix' ? 'PIX' : method.type === 'debit_card' ? 'Cartão de Débito' : 'Cartão de Crédito'}</p>
                     {method.type !== 'credit_card' && (
-                      <p>Taxa: {method.rate.toFixed(2)}%</p>
+                      <p>Taxa: {(method.rate ?? 0).toFixed(2)}%</p>
                     )}
                     {method.type === 'credit_card' && method.installments && method.installments.length > 0 && (
                       <div className="mt-2">
