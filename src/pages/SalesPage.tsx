@@ -457,8 +457,29 @@ const SalesPage = () => {
             </DropdownMenu>
 
             <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-              <div className="relative flex-1 flex items-center">
-                <PopoverTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className="w-full justify-between text-left font-normal"
+                >
+                  {tempSearchTerm
+                    ? suggestions.find((suggestion) => suggestion.value === tempSearchTerm)?.label || tempSearchTerm
+                    : (
+                        searchFilterType === 'client' ? 'Buscar por cliente' :
+                        searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
+                        searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
+                        searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                        searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
+                        searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                        'Buscar...'
+                      )}
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
                   <CommandInput
                     placeholder={
                       searchFilterType === 'client' ? 'Buscar por cliente' :
@@ -470,32 +491,15 @@ const SalesPage = () => {
                       'Buscar...'
                     }
                     value={tempSearchTerm}
-                    onValueChange={(value) => { // CommandInput usa onValueChange
-                      setTempSearchTerm(value);
-                      setOpenCombobox(value.length > 0); // Abre o combobox se houver texto
-                    }}
+                    onValueChange={setTempSearchTerm}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         handleApplySearch();
-                        setOpenCombobox(false); // Fecha ao pressionar Enter
+                        setOpenCombobox(false);
                       }
                     }}
-                    className="pr-10 bg-background"
+                    autoFocus
                   />
-                </PopoverTrigger>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleApplySearch()} // Chama a função para adicionar o filtro
-                  className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
-                  title="Buscar"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
-                  {/* Não precisamos de outro CommandInput aqui, pois já temos um como trigger */}
                   <CommandList>
                     <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
                     <CommandGroup>
@@ -506,11 +510,11 @@ const SalesPage = () => {
                         .map((suggestion) => (
                           <CommandItem
                             key={suggestion.value}
-                            value={suggestion.label} // Usar label para a busca interna do Command
+                            value={suggestion.label}
                             onSelect={() => {
-                              setTempSearchTerm(suggestion.label); // Preenche o input com a sugestão
-                              handleApplySearch(suggestion.value); // Aplica o filtro
-                              setOpenCombobox(false); // Fecha o combobox
+                              setTempSearchTerm(suggestion.label);
+                              handleApplySearch(suggestion.value);
+                              setOpenCombobox(false);
                             }}
                           >
                             {suggestion.label}
