@@ -75,6 +75,7 @@ const SalesPage = () => {
   const [openCalendar, setOpenCalendar] = useState(false); // Estado para controlar o Popover
   const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined); // Estado temporário para seleção no calendário
   const [searchFilterType, setSearchFilterType] = useState<'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
+  const [tempSearchTerm, setTempSearchTerm] = useState(''); // Estado temporário para o input de busca
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
@@ -369,8 +370,7 @@ const SalesPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative flex-1 flex items-center">
               <Input
                 placeholder={
                   searchFilterType === 'client' ? 'Buscar por cliente ou número da venda' :
@@ -380,10 +380,24 @@ const SalesPage = () => {
                   searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
                   'Buscar...'
                 }
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-background"
+                value={tempSearchTerm}
+                onChange={(e) => setTempSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setSearchTerm(tempSearchTerm);
+                  }
+                }}
+                className="pr-10 bg-background"
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSearchTerm(tempSearchTerm)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
+                title="Buscar"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
             </div>
             
             {/* Botão de Filtro por Data */}
@@ -532,6 +546,7 @@ const SalesPage = () => {
                 size="sm" 
                 onClick={() => {
                   setSearchTerm('');
+                  setTempSearchTerm('');
                   setDateRange(undefined);
                 }}
                 className="text-muted-foreground hover:text-foreground"
