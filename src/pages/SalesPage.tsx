@@ -417,7 +417,6 @@ const SalesPage = () => {
               onClick={() => navigate('/sales/new')}
               className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
             >
-              <Plus className="mr-2 h-4 w-4" />
               Lançar Venda
             </Button>
           </div>
