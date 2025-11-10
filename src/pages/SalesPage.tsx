@@ -472,7 +472,7 @@ const SalesPage = () => {
                     value={tempSearchTerm}
                     onChange={(e) => {
                       setTempSearchTerm(e.target.value);
-                      setOpenCombobox(true); // Abre o combobox ao digitar
+                      setOpenCombobox(e.target.value.length > 0); // Abre o combobox apenas se houver texto
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
