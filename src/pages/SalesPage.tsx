@@ -458,10 +458,9 @@ const SalesPage = () => {
 
             <Popover open={openCombobox} onOpenChange={(newOpenState) => {
               // Se o popover está tentando fechar (newOpenState é false)
-              // E ainda há texto no campo de busca, queremos mantê-lo aberto.
+              // E ainda há texto no campo de busca, queremos explicitamente mantê-lo aberto.
               if (!newOpenState && tempSearchTerm.length > 0) {
-                // Não fazemos nada aqui, o estado 'openCombobox' já deve ser 'true'
-                // devido ao 'onChange' do input, efetivamente ignorando o evento de fechamento.
+                setOpenCombobox(true); // Força o popover a permanecer aberto
               } else {
                 // Em todos os outros casos (tentando abrir, ou tentando fechar com campo vazio),
                 // deixamos o 'newOpenState' ditar o estado de 'openCombobox'.
