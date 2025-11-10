@@ -74,18 +74,19 @@ const SalesPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); // Estado real do filtro
   const [openCalendar, setOpenCalendar] = useState(false); // Estado para controlar o Popover
   const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined); // Estado temporário para seleção no calendário
+  const [searchFilterType, setSearchFilterType] = useState<'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading, error } = useQuery<Sale[]>({
-    queryKey: ['closedSales', user?.id, dateRange], // Adicionado dateRange à queryKey
+    queryKey: ['closedSales', user?.id, searchTerm, searchFilterType, dateRange], // Adicionado searchFilterType à queryKey
     queryFn: async () => {
       if (!user) return [];
       let query = supabase
         .from('quotes')
-        .select('id, sale_number, client_name, total_price, created_at, services_summary, status, payment_method_id, installments') // Adicionado payment_method_id e installments
+        .select('id, sale_number, client_name, total_price, created_at, services_summary, status, payment_method_id, installments, vehicle') // Adicionado vehicle
         .eq('user_id', user.id)
         .eq('is_sale', true); // Filtrar apenas vendas
 
@@ -98,6 +99,27 @@ const SalesPage = () => {
         query = query.lte('created_at', end);
       }
 
+      // Aplicar filtro de busca de texto
+      if (searchTerm) {
+        if (searchFilterType === 'client') {
+          query = query.or(`client_name.ilike.%${searchTerm}%,sale_number.ilike.%${searchTerm}%`);
+        } else if (searchFilterType === 'status') {
+          // Mapear o termo de busca para o valor real do enum de status
+          const statusKey = Object.keys(statusLabels).find(key => 
+            statusLabels[key as QuoteStatus].label.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          if (statusKey) {
+            query = query.eq('status', statusKey);
+          } else {
+            // Se não encontrar um status correspondente, retorna vazio para não mostrar resultados
+            return [];
+          }
+        } else if (searchFilterType === 'vehicle') {
+          query = query.ilike('vehicle', `%${searchTerm}%`);
+        }
+        // 'service' e 'paymentMethod' serão filtrados no cliente
+      }
+
       query = query.order('created_at', { ascending: false });
 
       const { data, error } = await query;
@@ -105,6 +127,20 @@ const SalesPage = () => {
       
       // O status retornado é o status real do quote
       return data as Sale[];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch payment methods for client-side filtering
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['paymentMethods', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, name');
+      if (error) throw error;
+      return data;
     },
     enabled: !!user,
   });
@@ -202,10 +238,26 @@ const SalesPage = () => {
     deleteSaleMutation.mutate(saleId);
   };
 
-  const filteredSales = sales?.filter(sale => 
-    sale.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (sale.sale_number && sale.sale_number.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  const filteredSales = React.useMemo(() => {
+    let currentSales = sales || [];
+
+    // Aplicar filtro de busca de texto para 'service' e 'paymentMethod' (client-side)
+    if (searchTerm && (searchFilterType === 'service' || searchFilterType === 'paymentMethod')) {
+      currentSales = currentSales.filter(sale => {
+        if (searchFilterType === 'service') {
+          return sale.services_summary.some((service: any) => 
+            service.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        } else if (searchFilterType === 'paymentMethod') {
+          if (!sale.payment_method_id || !paymentMethods) return false;
+          const method = paymentMethods.find(pm => pm.id === sale.payment_method_id);
+          return method?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return true;
+      });
+    }
+    return currentSales;
+  }, [sales, searchTerm, searchFilterType, paymentMethods]);
 
   const summary = React.useMemo(() => {
     const totalSales = filteredSales.length;
@@ -289,15 +341,45 @@ const SalesPage = () => {
         <CardContent className="space-y-6">
           {/* Filtros e Busca */}
           <div className="flex flex-col sm:flex-row gap-4 items-center">
-            {/* Botão Filtrar (apenas ícone) */}
-            <Button variant="outline" size="icon" className="shrink-0">
-              <Filter className="h-4 w-4" />
-            </Button>
+            {/* Dropdown de Filtro por Tipo */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0">
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 bg-card">
+                <DropdownMenuLabel>Filtrar por:</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setSearchFilterType('client')}>
+                  Cliente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchFilterType('status')}>
+                  Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchFilterType('service')}>
+                  Serviço
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchFilterType('paymentMethod')}>
+                  Forma de Pagamento
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchFilterType('vehicle')}>
+                  Veículo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente ou número da venda"
+                placeholder={
+                  searchFilterType === 'client' ? 'Buscar por cliente ou número da venda' :
+                  searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
+                  searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                  searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
+                  searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                  'Buscar...'
+                }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-background"
@@ -418,7 +500,11 @@ const SalesPage = () => {
               <span className="font-semibold">Filtros Ativos:</span>
               {searchTerm && (
                 <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
-                  Busca: "{searchTerm}"
+                  {searchFilterType === 'client' ? 'Cliente/Venda' :
+                   searchFilterType === 'status' ? 'Status' :
+                   searchFilterType === 'service' ? 'Serviço' :
+                   searchFilterType === 'paymentMethod' ? 'Forma Pagamento' :
+                   searchFilterType === 'vehicle' ? 'Veículo' : 'Busca'}: "{searchTerm}"
                   <button 
                     onClick={() => setSearchTerm('')} 
                     className="ml-1 text-primary-strong/70 hover:text-primary-strong"
