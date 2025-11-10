@@ -464,17 +464,15 @@ const SalesPage = () => {
                   aria-expanded={openCombobox}
                   className="w-full justify-between text-left font-normal"
                 >
-                  {tempSearchTerm
-                    ? suggestions.find((suggestion) => suggestion.value === tempSearchTerm)?.label || tempSearchTerm
-                    : (
-                        searchFilterType === 'client' ? 'Buscar por cliente' :
-                        searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
-                        searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
-                        searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
-                        searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
-                        searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
-                        'Buscar...'
-                      )}
+                  {
+                    searchFilterType === 'client' ? 'Buscar por cliente' :
+                    searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
+                    searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
+                    searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
+                    searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
+                    searchFilterType === 'vehicle' ? 'Buscar por veículo (Ex: Gol)' :
+                    'Buscar...'
+                  }
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
