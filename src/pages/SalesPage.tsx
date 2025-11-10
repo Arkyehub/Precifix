@@ -456,20 +456,10 @@ const SalesPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Popover open={openCombobox} onOpenChange={(newOpenState) => {
-              // Se o popover está tentando fechar (newOpenState é false)
-              // E ainda há texto no campo de busca, queremos explicitamente mantê-lo aberto.
-              if (!newOpenState && tempSearchTerm.length > 0) {
-                setOpenCombobox(true); // Força o popover a permanecer aberto
-              } else {
-                // Em todos os outros casos (tentando abrir, ou tentando fechar com campo vazio),
-                // deixamos o 'newOpenState' ditar o estado de 'openCombobox'.
-                setOpenCombobox(newOpenState);
-              }
-            }}>
-              <PopoverTrigger asChild>
-                <div className="relative flex-1 flex items-center">
-                  <Input
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <div className="relative flex-1 flex items-center">
+                <PopoverTrigger asChild>
+                  <CommandInput
                     placeholder={
                       searchFilterType === 'client' ? 'Buscar por cliente' :
                       searchFilterType === 'saleNumber' ? 'Buscar por número da venda' :
@@ -480,12 +470,9 @@ const SalesPage = () => {
                       'Buscar...'
                     }
                     value={tempSearchTerm}
-                    onChange={(e) => {
-                      setTempSearchTerm(e.target.value);
-                      // Sempre tenta abrir se houver texto, ou fechar se vazio.
-                      // A lógica em onOpenChange do Popover agora garante que ele não feche
-                      // se houver texto, mesmo que o Radix tente fechar.
-                      setOpenCombobox(e.target.value.length > 0);
+                    onValueChange={(value) => { // CommandInput usa onValueChange
+                      setTempSearchTerm(value);
+                      setOpenCombobox(value.length > 0); // Abre o combobox se houver texto
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -495,20 +482,20 @@ const SalesPage = () => {
                     }}
                     className="pr-10 bg-background"
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleApplySearch()} // Chama a função para adicionar o filtro
-                    className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
-                    title="Buscar"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
-              </PopoverTrigger>
+                </PopoverTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleApplySearch()} // Chama a função para adicionar o filtro
+                  className="absolute right-0 top-1/2 -translate-y-1/2 h-full rounded-l-none bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
+                  title="Buscar"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
-                  {/* CommandInput não é necessário aqui, pois o Input principal já está sendo usado */}
+                  {/* Não precisamos de outro CommandInput aqui, pois já temos um como trigger */}
                   <CommandList>
                     <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
                     <CommandGroup>
