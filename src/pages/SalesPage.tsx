@@ -76,9 +76,9 @@ const SalesPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); // Estado real do filtro
   const [openCalendar, setOpenCalendar] = useState(false); // Estado para controlar o Popover
   const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined); // Estado temporário para seleção no calendário
-  const [searchFilterType, setSearchFilterType] = useState<'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
+  const [searchFilterType, setSearchFilterType] = useState<'client' | 'saleNumber' | 'status' | 'service' | 'paymentMethod' | 'vehicle'>('client'); // Novo estado para o tipo de filtro de busca
   const [tempSearchTerm, setTempSearchTerm] = useState(''); // Estado temporário para o input de busca
-  const [activeTextFilters, setActiveTextFilters] = useState<Array<{ type: 'client' | 'status' | 'service' | 'paymentMethod' | 'vehicle', value: string }>>([]); // Novo estado para múltiplos filtros de texto
+  const [activeTextFilters, setActiveTextFilters] = useState<Array<{ type: 'client' | 'saleNumber' | 'status' | 'service' | 'paymentMethod' | 'vehicle', value: string }>>([]); // Novo estado para múltiplos filtros de texto
   const [openCombobox, setOpenCombobox] = useState(false); // Estado para controlar a abertura do combobox
 
   // Hook para buscar detalhes e calcular lucro da venda selecionada
@@ -106,12 +106,17 @@ const SalesPage = () => {
 
       // Aplicar filtros de texto do activeTextFilters (server-side)
       const clientFilters = activeTextFilters.filter(f => f.type === 'client');
+      const saleNumberFilters = activeTextFilters.filter(f => f.type === 'saleNumber'); // NOVO: Filtro por número da venda
       const statusFilters = activeTextFilters.filter(f => f.type === 'status');
       const vehicleFilters = activeTextFilters.filter(f => f.type === 'vehicle');
 
       if (clientFilters.length > 0) {
-        const clientOrConditions = clientFilters.map(f => `client_name.ilike.%${f.value}%,sale_number.ilike.%${f.value}%`).join(',');
+        const clientOrConditions = clientFilters.map(f => `client_name.ilike.%${f.value}%`).join(','); // MODIFICADO: Apenas client_name
         query = query.or(clientOrConditions);
+      }
+      if (saleNumberFilters.length > 0) { // NOVO: Lógica para número da venda
+        const saleNumberOrConditions = saleNumberFilters.map(f => `sale_number.ilike.%${f.value}%`).join(',');
+        query = query.or(saleNumberOrConditions);
       }
       if (statusFilters.length > 0) {
         const statusOrConditions = statusFilters.map(f => {
@@ -314,6 +319,9 @@ const SalesPage = () => {
     } else if (searchFilterType === 'client') {
       sales.forEach(sale => {
         if (sale.client_name) uniqueValues.add(sale.client_name);
+      });
+    } else if (searchFilterType === 'saleNumber') { // NOVO: Sugestões para número da venda
+      sales.forEach(sale => {
         if (sale.sale_number) uniqueValues.add(sale.sale_number);
       });
     } else if (searchFilterType === 'service') {
@@ -430,6 +438,9 @@ const SalesPage = () => {
                 <DropdownMenuItem onClick={() => setSearchFilterType('client')}>
                   Cliente
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchFilterType('saleNumber')}> {/* NOVO ITEM */}
+                  Nº Venda
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSearchFilterType('status')}>
                   Status
                 </DropdownMenuItem>
@@ -450,7 +461,8 @@ const SalesPage = () => {
                 <div className="relative flex-1 flex items-center">
                   <Input
                     placeholder={
-                      searchFilterType === 'client' ? 'Buscar por cliente ou número da venda' :
+                      searchFilterType === 'client' ? 'Buscar por cliente' : // MODIFICADO
+                      searchFilterType === 'saleNumber' ? 'Buscar por número da venda' : // NOVO
                       searchFilterType === 'status' ? 'Buscar por status (Ex: Atendida)' :
                       searchFilterType === 'service' ? 'Buscar por serviço (Ex: Polimento)' :
                       searchFilterType === 'paymentMethod' ? 'Buscar por forma de pagamento' :
@@ -624,7 +636,8 @@ const SalesPage = () => {
               <span className="font-semibold">Filtros Ativos:</span>
               {activeTextFilters.map((filter, index) => (
                 <span key={index} className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
-                  {filter.type === 'client' ? 'Cliente/Venda' :
+                  {filter.type === 'client' ? 'Cliente' : // MODIFICADO
+                   filter.type === 'saleNumber' ? 'Nº Venda' : // NOVO
                    filter.type === 'status' ? 'Status' :
                    filter.type === 'service' ? 'Serviço' :
                    filter.type === 'paymentMethod' ? 'Forma Pagamento' :
