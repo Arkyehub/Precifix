@@ -18,7 +18,7 @@ import { useQuoteActions } from '@/hooks/use-quote-actions'; // Importar useQuot
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // IMPORT CORRIGIDO
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, addDays } from 'date-fns';
+import { format, addDays, startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 // Mapeamento de status do DB para rótulos de Venda
@@ -90,12 +90,12 @@ const SalesPage = () => {
         .eq('is_sale', true); // Filtrar apenas vendas
 
       if (dateRange?.from) {
-        query = query.gte('created_at', format(dateRange.from, 'yyyy-MM-ddT00:00:00.000Z'));
+        const start = startOfDay(dateRange.from).toISOString();
+        query = query.gte('created_at', start);
       }
       if (dateRange?.to) {
-        // Adiciona um dia à data 'to' para incluir o dia inteiro na filtragem
-        const endOfDay = addDays(dateRange.to, 1);
-        query = query.lt('created_at', format(endOfDay, 'yyyy-MM-ddT00:00:00.000Z'));
+        const end = endOfDay(dateRange.to).toISOString();
+        query = query.lte('created_at', end);
       }
 
       query = query.order('created_at', { ascending: false });
