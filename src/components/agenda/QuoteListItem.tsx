@@ -68,7 +68,6 @@ const selectableStatuses: { key: QuotePayload['status']; label: string }[] = [
   { key: 'accepted', label: 'Aceito' },
   { key: 'rejected', label: 'Cancelado' },
   { key: 'closed', label: 'Concluído' },
-  { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
 ];
 
 export const QuoteListItem = ({
