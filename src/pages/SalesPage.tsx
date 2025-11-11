@@ -56,6 +56,15 @@ const SalesPage = () => {
     setDateRange(undefined);
   };
 
+  // Mapeamento para exibir os nomes amigáveis dos status
+  const statusDisplayLabels: Record<QuoteStatus, string> = {
+    closed: 'Atendida',
+    rejected: 'Cancelada',
+    accepted: 'Aceita',
+    pending: 'Em Aberto',
+    awaiting_payment: 'Aguardando Pagamento',
+  };
+
   // --- Handlers for SalesListTable ---
   const handleOpenDetails = (saleId: string) => {
     setSelectedSaleId(saleId);
@@ -187,7 +196,13 @@ const SalesPage = () => {
                    filter.type === 'status' ? 'Status' :
                    filter.type === 'service' ? 'Serviço' :
                    filter.type === 'paymentMethod' ? 'Forma Pagamento' :
-                   filter.type === 'vehicle' ? 'Veículo' : 'Busca'}: "{filter.value}"
+                   filter.type === 'vehicle' ? 'Veículo' : 'Busca'}: "
+                  {filter.type === 'status'
+                    ? statusDisplayLabels[filter.value as QuoteStatus]
+                    : filter.type === 'paymentMethod'
+                      ? paymentMethods?.find(pm => pm.id === filter.value)?.name || filter.value
+                      : filter.value}
+                  "
                   <button 
                     onClick={() => handleRemoveTextFilter(index)} 
                     className="ml-0.5 text-primary-strong/70 hover:text-primary-strong"

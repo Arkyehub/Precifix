@@ -60,15 +60,14 @@ export const SalesFilterBar = ({
     if (valueToApply.trim()) {
       const newFilter: ActiveTextFilter = { type: searchFilterType, value: valueToApply.trim() };
       
-      // Check for duplicates before adding
-      const isDuplicate = activeTextFilters.some(
-        f => f.type === newFilter.type && f.value.toLowerCase() === newFilter.value.toLowerCase()
+      // Remove any existing filter of the same type before adding the new one
+      const filteredExisting = activeTextFilters.filter(
+        f => f.type !== newFilter.type
       );
 
-      if (!isDuplicate) {
-        const updatedFilters = [...activeTextFilters, newFilter];
-        onApplyFilters({ activeTextFilters: updatedFilters, dateRange });
-      }
+      const updatedFilters = [...filteredExisting, newFilter];
+      onApplyFilters({ activeTextFilters: updatedFilters, dateRange });
+      
       setTempSearchTerm('');
     }
   };
