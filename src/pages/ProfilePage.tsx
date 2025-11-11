@@ -297,7 +297,8 @@ const ProfilePage = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['userProfile', user?.id] });
-      // No need to manually update session here, onAuthStateChange should handle it
+      // Força a atualização da sessão para que o user_metadata seja atualizado em todos os lugares (ex: Header)
+      supabase.auth.refreshSession(); 
       toast({
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso.",
