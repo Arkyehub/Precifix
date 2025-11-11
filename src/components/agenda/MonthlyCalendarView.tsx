@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck, Loader2, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -232,6 +232,15 @@ export const MonthlyCalendarView = () => {
             </CardDescription>
           </div>
         </div>
+        <Button
+          variant="default"
+          size="sm"
+          className="absolute top-4 right-4"
+          onClick={() => navigate('/quote-generation')}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Criar Orçamento
+        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Navegação Mensal */}
