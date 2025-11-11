@@ -8,6 +8,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 export interface OperationalCost {
   id: string;
@@ -16,6 +22,10 @@ export interface OperationalCost {
   type: 'fixed' | 'variable';
   user_id: string;
   created_at: string;
+  expense_date?: string; // Data da despesa
+  is_recurring?: boolean; // Se é recorrente
+  recurrence_frequency?: 'none' | 'daily' | 'weekly' | 'monthly'; // Frequência da recorrência
+  recurrence_end_date?: string; // Data final da recorrência
 }
 
 interface CostFormDialogProps {
@@ -35,6 +45,10 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
   const [description, setDescription] = useState(cost?.description || defaultDescription || '');
   const [value, setValue] = useState(cost?.value.toFixed(2) || '');
   const [type, setType] = useState<'fixed' | 'variable'>(cost?.type || defaultType || 'fixed');
+  const [expenseDate, setExpenseDate] = useState<Date | undefined>(cost?.expense_date ? new Date(cost.expense_date) : undefined);
+  const [isRecurring, setIsRecurring] = useState(cost?.is_recurring || false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<'none' | 'daily' | 'weekly' | 'monthly'>(cost?.recurrence_frequency || 'none');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | undefined>(cost?.recurrence_end_date ? new Date(cost.recurrence_end_date) : undefined);
 
   // Determina se o custo é o "Produtos Gastos no Mês"
   const isProductsCost = description === 'Produtos Gastos no Mês';
@@ -44,11 +58,19 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       setDescription(cost.description);
       setValue(cost.value.toFixed(2));
       setType(cost.type);
+      setExpenseDate(cost.expense_date ? new Date(cost.expense_date) : undefined);
+      setIsRecurring(cost.is_recurring || false);
+      setRecurrenceFrequency(cost.recurrence_frequency || 'none');
+      setRecurrenceEndDate(cost.recurrence_end_date ? new Date(cost.recurrence_end_date) : undefined);
     } else {
       // Se não estiver editando, use os defaults ou valores vazios
       setDescription(defaultDescription || '');
       setValue('');
       setType(defaultType || 'fixed');
+      setExpenseDate(undefined);
+      setIsRecurring(false);
+      setRecurrenceFrequency('none');
+      setRecurrenceEndDate(undefined);
     }
   }, [cost, isOpen, defaultDescription, defaultType]);
 
@@ -57,15 +79,21 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       if (!user) throw new Error("Usuário não autenticado.");
 
       let costData;
+      const payload = {
+        description: newCost.description,
+        value: newCost.value,
+        type: newCost.type,
+        expense_date: newCost.expense_date,
+        is_recurring: newCost.is_recurring,
+        recurrence_frequency: newCost.recurrence_frequency,
+        recurrence_end_date: newCost.recurrence_end_date,
+      };
+
       if (newCost.id) {
         // Update existing cost
         const { data, error } = await supabase
           .from('operational_costs')
-          .update({ 
-            description: newCost.description, 
-            value: newCost.value, 
-            type: newCost.type,
-          })
+          .update(payload)
           .eq('id', newCost.id)
           .eq('user_id', user.id)
           .select()
@@ -76,11 +104,9 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
         // Insert new cost
         const { data, error } = await supabase
           .from('operational_costs')
-          .insert({ 
-            description: newCost.description, 
-            value: newCost.value, 
-            type: newCost.type,
-            user_id: user.id 
+          .insert({
+            ...payload,
+            user_id: user.id
           })
           .select()
           .single();
@@ -125,6 +151,30 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       });
       return;
     }
+    if (!expenseDate) {
+      toast({
+        title: "Data da Despesa Obrigatória",
+        description: "Por favor, selecione a data da despesa.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (isRecurring && recurrenceFrequency === 'none') {
+      toast({
+        title: "Frequência de Recorrência Obrigatória",
+        description: "Por favor, selecione a frequência da recorrência.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (isRecurring && recurrenceFrequency !== 'none' && !recurrenceEndDate) {
+      toast({
+        title: "Data Final da Recorrência Obrigatória",
+        description: "Por favor, selecione a data final da recorrência.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Forçar o tipo para 'variable' se for "Produtos Gastos no Mês"
     const finalType = isProductsCost ? 'variable' : type;
@@ -135,6 +185,10 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       value: parseFloat(value),
       type: finalType,
       user_id: user!.id,
+      expense_date: expenseDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      is_recurring: isRecurring,
+      recurrence_frequency: isRecurring ? recurrenceFrequency : undefined,
+      recurrence_end_date: isRecurring && recurrenceEndDate ? recurrenceEndDate.toISOString().split('T')[0] : undefined,
     });
   };
 
@@ -147,11 +201,11 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="description">Descrição *</Label>
-            <Input 
-              id="description" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)} 
-              className="bg-background" 
+            <Input
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-background"
               readOnly={isProductsCost || !!defaultDescription} // Desabilitar se for "Produtos Gastos no Mês" ou se houver defaultDescription
             />
           </div>
@@ -161,8 +215,8 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
           </div>
           <div className="space-y-2">
             <Label htmlFor="cost-type" className="text-sm">Tipo de Custo</Label>
-            <Select 
-              value={type} 
+            <Select
+              value={type}
               onValueChange={(value: 'fixed' | 'variable') => setType(value)}
               disabled={isProductsCost || !!defaultType} // Desabilitar se for "Produtos Gastos no Mês" ou se houver defaultType
             >
@@ -175,6 +229,94 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
               </SelectContent>
             </Select>
           </div>
+
+          {/* Campo de Data da Despesa */}
+          <div className="space-y-2">
+            <Label htmlFor="expense-date">Data da Despesa *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal bg-background",
+                    !expenseDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {expenseDate ? format(expenseDate, "PPP") : <span>Selecione uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={expenseDate}
+                  onSelect={setExpenseDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Checkbox de Frequência */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="is-recurring"
+              checked={isRecurring}
+              onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+            />
+            <Label htmlFor="is-recurring">Frequência</Label>
+          </div>
+
+          {/* Opções de Recorrência (condicional) */}
+          {isRecurring && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="recurrence-frequency">Frequência da Recorrência</Label>
+                <Select
+                  value={recurrenceFrequency}
+                  onValueChange={(value: 'none' | 'daily' | 'weekly' | 'monthly') => setRecurrenceFrequency(value)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Selecione a frequência" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não repetir</SelectItem>
+                    <SelectItem value="daily">Diária</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {recurrenceFrequency !== 'none' && (
+                <div className="space-y-2">
+                  <Label htmlFor="recurrence-end-date">Data Final da Recorrência *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-background",
+                          !recurrenceEndDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {recurrenceEndDate ? format(recurrenceEndDate, "PPP") : <span>Selecione uma data</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={recurrenceEndDate}
+                        onSelect={setRecurrenceEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>

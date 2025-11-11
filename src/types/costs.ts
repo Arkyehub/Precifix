@@ -5,6 +5,10 @@ export interface OperationalCost {
   type: 'fixed' | 'variable';
   user_id: string;
   created_at: string;
+  expense_date?: string; // Data da despesa
+  is_recurring?: boolean; // Se é recorrente
+  recurrence_frequency?: 'none' | 'daily' | 'weekly' | 'monthly'; // Frequência da recorrência
+  recurrence_end_date?: string; // Data final da recorrência
 }
 
 export interface OperationalHours {
