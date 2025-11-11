@@ -56,32 +56,32 @@ export const AgendaSummary = ({ summary }: AgendaSummaryProps) => {
     <div className="space-y-4 pt-4 border-t border-border/50">
       <h4 className="text-lg font-semibold text-foreground">Resumo da Agenda (Dia)</h4>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <SummaryCard 
-          title="Total" 
-          count={summary.total} 
-          value={summary.totalValue} 
-          color="text-foreground" 
+        <SummaryCard
+          title="Total"
+          count={summary.total}
+          value={summary.totalValue}
+          color="text-foreground"
           valueColor="text-primary-strong"
         />
-        <SummaryCard 
-          title="Concluídos" 
-          count={summary.closed} 
-          value={summary.closedValue} 
-          color="text-info" 
-          valueColor="text-info"
+        <SummaryCard
+          title="Concluídos"
+          count={summary.closed}
+          value={summary.closedValue}
+          color="text-blue-500"
+          valueColor="text-blue-500"
         />
-        <SummaryCard 
-          title="Em Aberto" 
-          count={openCount} 
-          value={openValue} 
-          color="text-primary-strong" 
-          valueColor="text-primary-strong" // Usar primary-strong para o valor
+        <SummaryCard
+          title="Em Aberto"
+          count={openCount}
+          value={openValue}
+          color="text-yellow-500"
+          valueColor="text-yellow-500"
         />
-        <SummaryCard 
+        <SummaryCard
           title="Cancelados"
-          count={summary.rejected} 
-          value={summary.rejectedValue} 
-          color="text-destructive" 
+          count={summary.rejected}
+          value={summary.rejectedValue}
+          color="text-destructive"
           valueColor="text-destructive"
         />
       </div>

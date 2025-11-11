@@ -27,10 +27,10 @@ interface DailySummary {
 }
 
 const statusColors = {
-  accepted: { text: 'Aceito', color: 'text-primary-strong', bg: 'bg-primary/20', compactBg: 'bg-primary', compactText: 'text-primary-foreground' },
-  pending: { text: 'Em Aberto', color: 'text-orange-500', bg: 'bg-orange-500/20', compactBg: 'bg-orange-500', compactText: 'text-white' },
+  accepted: { text: 'Aceito', color: 'text-green-500', bg: 'bg-green-500/20', compactBg: 'bg-green-500', compactText: 'text-white' },
+  pending: { text: 'Em Aberto', color: 'text-yellow-500', bg: 'bg-yellow-500/20', compactBg: 'bg-yellow-500', compactText: 'text-white' },
   rejected: { text: 'Cancelado', color: 'text-destructive', bg: 'bg-destructive/20', compactBg: 'bg-destructive', compactText: 'text-white' },
-  closed: { text: 'Concluído', color: 'text-info', bg: 'bg-info/20', compactBg: 'bg-info', compactText: 'text-white' },
+  closed: { text: 'Concluído', color: 'text-blue-500', bg: 'bg-blue-500/20', compactBg: 'bg-blue-500', compactText: 'text-white' },
 };
 
 // Componente auxiliar para renderizar o status (modo detalhado)
@@ -261,9 +261,9 @@ export const MonthlyCalendarView = () => {
           <h4 className="text-sm font-semibold text-muted-foreground">Resumo do período</h4>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4"> {/* Alterado para 5 colunas */}
             <SummaryBox title="Total" count={monthlySummary.total} value={monthlySummary.totalValue} color="text-foreground" valueColor="text-primary-strong" />
-            <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-info" valueColor="text-info" /> {/* Adicionado Concluídos */}
-            <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-primary-strong" valueColor="text-primary-strong" /> {/* NOVO */}
-            <SummaryBox title="Em Aberto" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-orange-500" valueColor="text-orange-500" /> {/* Alterado para apenas pending */}
+            <SummaryBox title="Concluídos" count={monthlySummary.closed} value={monthlySummary.closedValue} color="text-blue-500" valueColor="text-blue-500" /> {/* Adicionado Concluídos */}
+            <SummaryBox title="Aceitos" count={monthlySummary.accepted} value={monthlySummary.acceptedValue} color="text-green-500" valueColor="text-green-500" /> {/* NOVO */}
+            <SummaryBox title="Em Aberto" count={monthlySummary.pending} value={monthlySummary.pendingValue} color="text-yellow-500" valueColor="text-yellow-500" /> {/* Alterado para apenas pending */}
             <SummaryBox title="Cancelados" count={monthlySummary.rejected} value={monthlySummary.rejectedValue} color="text-destructive" valueColor="text-destructive" /> {/* Nomenclatura atualizada */}
           </div>
         </div>
