@@ -24,6 +24,7 @@ interface PaymentEditDialogProps {
     is_paid: boolean;
     paid_value?: number;
     paid_date?: Date;
+    payment_record_id?: string; // Adicionado para passar o ID do registro de pagamento
   };
   onConfirm: (
     originalCostId: string,
@@ -31,7 +32,7 @@ interface PaymentEditDialogProps {
     paidValue: number,
     isPaid: boolean,
     isRecurring: boolean,
-    paymentId?: string,
+    paymentRecordId?: string, // Renomeado de paymentId para paymentRecordId
   ) => void;
   isRecurring: boolean;
 }
@@ -65,7 +66,7 @@ export const PaymentEditDialog: React.FC<PaymentEditDialogProps> = ({
       value,
       isPaid,
       isRecurring,
-      expense.id // Pass the instance ID as paymentId if it exists
+      expense.payment_record_id // Passa o payment_record_id
     );
     onClose();
   };

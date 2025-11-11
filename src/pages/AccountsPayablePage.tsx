@@ -29,6 +29,7 @@ interface ExpenseInstance {
   paid_value?: number; // Valor efetivamente pago para esta instância
   paid_date?: Date; // Data de pagamento desta instância
   is_recurring: boolean; // Adicionar para saber se é recorrente
+  payment_record_id?: string; // NOVO: ID do registro na tabela operational_cost_payments, se existir
 }
 
 const generateExpenseInstances = (
@@ -47,6 +48,7 @@ const generateExpenseInstances = (
   costs.forEach(cost => {
     if (!cost.expense_date) return;
 
+    // Parse the date string to a local Date object to avoid timezone issues
     const [year, month, day] = cost.expense_date.split('-').map(Number);
     const initialDueDate = new Date(year, month - 1, day);
 
@@ -69,6 +71,7 @@ const generateExpenseInstances = (
         paid_value: cost.is_paid ? cost.value : undefined, // Para custos não recorrentes, o valor pago é o valor original
         paid_date: cost.paid_date ? new Date(cost.paid_date) : undefined,
         is_recurring: false,
+        payment_record_id: undefined, // Não há registro de pagamento separado para custos não recorrentes
       });
     } else {
       // Custo recorrente
@@ -91,18 +94,21 @@ const generateExpenseInstances = (
         let instancePaidValue: number | undefined;
         let instancePaidDate: Date | undefined;
         let instanceStatus: ExpenseInstance['status'];
+        let paymentRecordId: string | undefined; // Variável para armazenar o ID do registro de pagamento
 
         if (payment && payment.is_paid) {
           instanceIsPaid = true;
           instancePaidValue = payment.paid_value;
           instancePaidDate = new Date(payment.paid_date);
           instanceStatus = 'Paga';
+          paymentRecordId = payment.id; // Armazena o ID real do registro de pagamento
         } else {
           instanceIsPaid = false;
           instancePaidValue = undefined;
           instancePaidDate = undefined;
           instanceStatus =
             isPast(currentDueDate) && !isToday(currentDueDate) ? 'Atrasada' : 'Em aberto';
+          paymentRecordId = undefined;
         }
 
         instances.push({
@@ -116,6 +122,7 @@ const generateExpenseInstances = (
           paid_value: instancePaidValue,
           paid_date: instancePaidDate,
           is_recurring: true,
+          payment_record_id: paymentRecordId, // Adiciona o ID do registro de pagamento
         });
 
         if (cost.recurrence_frequency === 'daily') {
@@ -182,14 +189,14 @@ const AccountsPayablePage = () => {
       paidValue,
       isPaid,
       isRecurring,
-      paymentId,
+      paymentRecordId, // Renomeado de paymentId para paymentRecordId
     }: {
       originalCostId: string;
       dueDate: Date;
       paidValue: number;
       isPaid: boolean;
       isRecurring: boolean;
-      paymentId?: string;
+      paymentRecordId?: string; // NOVO: ID do registro de pagamento
     }) => {
       if (!user) throw new Error('Usuário não autenticado.');
 
@@ -204,11 +211,11 @@ const AccountsPayablePage = () => {
           is_paid: isPaid,
         };
 
-        if (paymentId && isPaid) { // Se já existe e está sendo editado para pago
+        if (paymentRecordId && isPaid) { // Se já existe e está sendo editado para pago
           const { error } = await supabase
             .from('operational_cost_payments')
             .update(paymentData)
-            .eq('id', paymentId)
+            .eq('id', paymentRecordId) // Usa o paymentRecordId real
             .eq('user_id', user.id);
           if (error) throw error;
         } else if (isPaid) { // Se não existe e está sendo marcado como pago
@@ -295,7 +302,7 @@ const AccountsPayablePage = () => {
     paidValue: number,
     isPaid: boolean,
     isRecurring: boolean,
-    paymentId?: string,
+    paymentRecordId?: string, // Renomeado de paymentId para paymentRecordId
   ) => {
     markAsPaidMutation.mutate({
       originalCostId,
@@ -303,7 +310,7 @@ const AccountsPayablePage = () => {
       paidValue,
       isPaid,
       isRecurring,
-      paymentId,
+      paymentRecordId,
     });
   };
 
