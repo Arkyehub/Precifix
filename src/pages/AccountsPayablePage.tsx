@@ -35,7 +35,9 @@ const generateExpenseInstances = (costs: OperationalCost[], today: Date): Expens
   costs.forEach(cost => {
     if (!cost.expense_date) return;
 
-    const initialDueDate = new Date(cost.expense_date);
+    // Parse the date string to a local Date object to avoid timezone issues
+    const [year, month, day] = cost.expense_date.split('-').map(Number);
+    const initialDueDate = new Date(year, month - 1, day);
 
     if (!cost.is_recurring || cost.recurrence_frequency === 'none') {
       // Custo não recorrente
@@ -57,7 +59,9 @@ const generateExpenseInstances = (costs: OperationalCost[], today: Date): Expens
       });
     } else {
       // Custo recorrente
-      const recurrenceEndDate = cost.recurrence_end_date ? new Date(cost.recurrence_end_date) : new Date(today.getFullYear() + 10, 0, 1); // Default to 10 years if no end date
+      const recurrenceEndDate = cost.recurrence_end_date 
+        ? new Date(Number(cost.recurrence_end_date.split('-')[0]), Number(cost.recurrence_end_date.split('-')[1]) - 1, Number(cost.recurrence_end_date.split('-')[2])) 
+        : new Date(today.getFullYear() + 10, 0, 1); // Default to 10 years if no end date
 
       let currentDueDate = initialDueDate;
       let instanceCount = 0;
