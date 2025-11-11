@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import {
   prepareQuotePayload, 
   createQuotePdfBlob 
 } from '@/lib/quote-utils'; // Importando utilitários
+import { useQuoteMutations } from './use-quote-mutations'; // NOVO IMPORT
 
 interface Profile {
   id: string;
@@ -26,46 +27,6 @@ interface Profile {
 
 // --- UTILS DE BANCO DE DADOS ---
 
-const checkDuplicity = async (payload: QuotePayload, user: any, excludeId?: string) => {
-  if (!user) throw new Error("Usuário não autenticado.");
-  
-  if (payload.client_id && payload.service_date) {
-    let query = supabase
-      .from('quotes')
-      .select('id, status')
-      .eq('user_id', user.id)
-      .eq('client_id', payload.client_id)
-      .eq('service_date', payload.service_date);
-
-    if (payload.service_time) {
-      query = query.eq('service_time', payload.service_time);
-    } else {
-      query = query.is('service_time', null);
-    }
-
-    if (excludeId) {
-      query = query.not('id', 'eq', excludeId);
-    }
-
-    const { data: existingQuotes, error: checkError } = await query;
-
-    if (checkError) {
-      // Lançar um erro padronizado
-      throw new Error(`Erro ao verificar duplicidade: ${checkError.message}`);
-    }
-
-    if (existingQuotes && existingQuotes.length > 0) {
-      const existingStatus = existingQuotes[0].status;
-      let statusText = existingStatus === 'accepted' ? 'aprovado' : existingStatus === 'rejected' ? 'rejeitado' : 'pendente';
-      const timeText = payload.service_time ? ` às ${payload.service_time}` : '';
-      
-      throw new Error(
-        `Já existe um orçamento ${statusText} para este cliente na data ${payload.service_date.split('-').reverse().join('/')}${timeText}.`
-      );
-    }
-  }
-};
-
 const uploadPdfToStorage = async (pdfBlob: Blob, fileName: string, userId: string, toast: any) => {
   const filePath = `${userId}/${fileName}`;
   const { error: uploadError } = await supabase.storage
@@ -82,7 +43,6 @@ const uploadPdfToStorage = async (pdfBlob: Blob, fileName: string, userId: strin
       description: uploadError.message,
       variant: "destructive",
     });
-    // Lançar um erro padronizado
     throw new Error(`Erro ao fazer upload do PDF: ${uploadError.message}`);
   }
 
@@ -96,10 +56,18 @@ const uploadPdfToStorage = async (pdfBlob: Blob, fileName: string, userId: strin
 
 export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = false) => {
   const { user } = useSession();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate(); 
   const [searchParams] = useSearchParams();
+
+  const { 
+    saveQuoteMutation, 
+    updateQuoteMutation, 
+    handleCloseSaleMutation,
+    isSavingQuote,
+    isUpdatingQuote,
+    isClosingSale: isClosingSaleMutation, // Renomeado para evitar conflito
+  } = useQuoteMutations();
 
   const getBaseUrl = () => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -108,191 +76,22 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     return window.location.origin;
   };
 
-  const saveQuoteMutation = useMutation({
-    mutationFn: async (quoteData: QuotePayload) => {
-      if (!user) throw new Error("Usuário não autenticado.");
+  // Helper para salvar um novo orçamento e retornar o payload completo
+  const saveNewQuoteAndGetPayload = async (quoteData: QuoteData): Promise<QuotePayload & { id: string }> => {
+    if (!user) throw new Error("Usuário não autenticado.");
+    const payload = prepareQuotePayload(quoteData, 'pending', false);
+    const savedQuote = await saveQuoteMutation.mutateAsync(payload);
+    return savedQuote as QuotePayload & { id: string };
+  };
 
-      await checkDuplicity(quoteData, user);
-
-      // Se for uma venda (is_sale: true), gera o sale_number sequencial
-      let saleNumber = null;
-      if (quoteData.is_sale) {
-        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
-        if (saleNumberError) {
-          // Lançar um erro padronizado
-          throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
-        }
-        saleNumber = newSaleNumber;
-      }
-
-      const { data, error } = await supabase
-        .from('quotes')
-        .insert({
-          user_id: user.id,
-          ...quoteData,
-          sale_number: saleNumber, // Usar o número sequencial gerado
-        })
-        .select()
-        .single();
-      if (error) {
-        // Lançar um erro padronizado
-        throw new Error(`Erro ao salvar orçamento/venda: ${error.message}`);
-      }
-      return data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
-      
-      if (variables.is_sale) {
-        queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
-        toast({
-          title: "Venda registrada!",
-          description: `Venda ${data.sale_number} registrada com sucesso.`,
-        });
-        navigate('/sales');
-      } else {
-        // Navega para a agenda diária na data do serviço do orçamento salvo
-        navigate(`/agenda/daily?date=${data.service_date}`);
-        toast({
-          title: "Orçamento salvo!",
-          description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
-        });
-      }
-    },
-    onError: (err) => {
-      // O erro já deve ser um objeto Error aqui, mas garantimos que a mensagem seja exibida
-      toast({
-        title: "Erro ao salvar orçamento/venda",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateQuoteMutation = useMutation({
-    mutationFn: async ({ quoteId, quoteData }: { quoteId: string; quoteData: QuotePayload }) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      await checkDuplicity(quoteData, user, quoteId);
-
-      const { data, error } = await supabase
-        .from('quotes')
-        .update(quoteData)
-        .eq('id', quoteId)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      if (error) {
-        // Lançar um erro padronizado
-        throw new Error(`Erro ao atualizar orçamento: ${error.message}`);
-      }
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['quotesCalendar', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
-      
-      if (data.is_sale) {
-        queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
-        navigate('/sales'); // Redireciona para a página de vendas se for uma venda
-      } else {
-        navigate(`/agenda/daily?date=${data.service_date}`); // Redireciona para a agenda diária
-      }
-      
-      toast({
-        title: "Orçamento atualizado!",
-        description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
-      });
-    },
-    onError: (err) => {
-      toast({
-        title: "Erro ao atualizar orçamento",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleCloseSale = useMutation({
-    mutationFn: async ({ quoteId, paymentMethodId, installments }: { quoteId: string; paymentMethodId: string; installments: number | null }) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      // 1. Gerar sale_number sequencial (se ainda não tiver)
-      const { data: existingQuote } = await supabase
-        .from('quotes')
-        .select('sale_number')
-        .eq('id', quoteId)
-        .single();
-      
-      let saleNumber = existingQuote?.sale_number;
-      if (!saleNumber) {
-        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
-        if (saleNumberError) {
-          // Lançar um erro padronizado
-          throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
-        }
-        saleNumber = newSaleNumber;
-      }
-
-      // 2. Atualizar o orçamento para status 'closed', is_sale: true, e adicionar dados de pagamento
-      const { data, error } = await supabase
-        .from('quotes')
-        .update({
-          status: 'closed', // Status 'Atendida'
-          is_sale: true,
-          sale_number: saleNumber,
-          payment_method_id: paymentMethodId,
-          installments: installments,
-        })
-        .eq('id', quoteId)
-        .eq('user_id', user.id)
-        .select('service_date')
-        .single();
-      
-      if (error) {
-        // Lançar um erro padronizado
-        throw new Error(`Erro ao finalizar venda: ${error.message}`);
-      }
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['scheduledQuotes', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['monthlyScheduledQuotes', user?.id] });
-      
-      if (data.service_date) {
-        navigate(`/agenda/daily?date=${data.service_date}`);
-      }
-    },
-    onError: (err) => {
-      toast({
-        title: "Erro ao finalizar venda",
-        description: err.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const saveQuoteAndGetId = async (quoteData: QuoteData) => {
+  const handleSaveQuote = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
     const payload = prepareQuotePayload(quoteData, 'pending', false);
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
-  const handleSaveQuote = async (quoteData: QuoteData) => {
-    if (!user) throw new Error("Usuário não autenticado.");
-    const payload = prepareQuotePayload(quoteData, 'pending', false); // Salva como pendente
-    return await saveQuoteMutation.mutateAsync(payload);
-  };
-
   const handleSaveSale = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
-    // Ao salvar uma venda rápida, o status inicial é 'closed' (Atendida)
     const payload = prepareQuotePayload(quoteData, 'closed', true); 
     return await saveQuoteMutation.mutateAsync(payload);
   };
@@ -303,9 +102,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     try {
       await updateQuoteMutation.mutateAsync({ quoteId, quoteData: payload });
     } catch (error: any) {
-      // Se o erro for um objeto Error (como garantimos acima), ele será propagado
       console.error("Erro ao atualizar orçamento:", error);
-      throw error; // Propagar o erro para o TanStack Query
+      throw error;
     }
   };
 
@@ -315,36 +113,36 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       return;
     }
     try {
-      const pdfBlob = await createQuotePdfBlob(quoteData);
-      
       let currentQuoteId: string;
       let currentQuoteNumber: string;
+      let finalQuotePayload: QuotePayload;
 
-      // Determine if we are working with an existing quote or a new one
-      if (quoteData.id) { // If quoteData already has an ID, it's an existing quote
+      if (quoteData.id) {
         currentQuoteId = quoteData.id;
         currentQuoteNumber = quoteData.id.substring(0, 8);
-        // No need to save/update the quote in DB again, just use its ID
-      } else { // It's a new quote, save it first
-        const savedQuote = await saveQuoteAndGetId(quoteData);
+        finalQuotePayload = prepareQuotePayload(quoteData, 'pending', false); // Re-prepare payload for PDF content
+      } else {
+        const savedQuote = await saveNewQuoteAndGetPayload(quoteData);
         currentQuoteId = savedQuote.id;
         currentQuoteNumber = savedQuote.id.substring(0, 8);
+        finalQuotePayload = savedQuote;
       }
 
-      // Sanitize client name for filename
-      const sanitizedClientName = quoteData.client_name
-        .normalize("NFD") // Decompose combined graphemes
-        .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
-        .replace(/[^a-zA-Z0-9_.-]/g, "_") // Replace non-alphanumeric (except _.-) with _
-        .replace(/__+/g, "_"); // Replace multiple underscores with a single one
+      const pdfBlob = await createQuotePdfBlob({ ...quoteData, id: currentQuoteId }); // Pass ID to PDF generation
 
-      const fileName = `orcamento_${currentQuoteNumber}_${sanitizedClientName}_${quoteData.quote_date}.pdf`;
+      const sanitizedClientName = finalQuotePayload.client_name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_.-]/g, "_")
+        .replace(/__+/g, "_");
+
+      const fileName = `orcamento_${currentQuoteNumber}_${sanitizedClientName}_${finalQuotePayload.quote_date}.pdf`;
       const publicUrl = await uploadPdfToStorage(pdfBlob, `${currentQuoteId}/${fileName}`, user.id, toast);
 
       await supabase
         .from('quotes')
         .update({ pdf_url: publicUrl })
-        .eq('id', currentQuoteId); // Use currentQuoteId here
+        .eq('id', currentQuoteId);
 
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
@@ -360,7 +158,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         description: "O orçamento foi baixado para seu dispositivo e salvo no sistema.",
       });
     } catch (error: any) {
-      console.error("Erro ao gerar PDF:", error); // Log the error for debugging
+      console.error("Erro ao gerar PDF:", error);
       toast({
         title: "Erro ao gerar PDF",
         description: error.message || "Não foi possível gerar o PDF do orçamento.",
@@ -386,17 +184,15 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     try {
       let currentQuoteId: string;
 
-      // Determine if we are working with an existing quote or a new one
-      if (quoteData.id) { // If quoteData already has an ID, it's an existing quote
+      if (quoteData.id) {
         currentQuoteId = quoteData.id;
-        // No need to save/update the quote in DB again, just use its ID
-      } else { // It's a new quote, save it first
-        const savedQuote = await saveQuoteAndGetId(quoteData);
+      } else {
+        const savedQuote = await saveNewQuoteAndGetPayload(quoteData);
         currentQuoteId = savedQuote.id;
       }
 
       const baseUrl = getBaseUrl();
-      const quoteViewLink = `${baseUrl}/quote/view/${currentQuoteId}`; // Use currentQuoteId here
+      const quoteViewLink = `${baseUrl}/quote/view/${currentQuoteId}`;
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${quoteViewLink}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`
@@ -430,8 +226,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
+      } else if (quoteData.id) {
+        savedQuoteId = quoteData.id;
       } else {
-        const savedQuote = await saveQuoteAndGetId(quoteData);
+        const savedQuote = await saveNewQuoteAndGetPayload(quoteData);
         savedQuoteId = savedQuote.id;
       }
 
@@ -468,8 +266,10 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         const payload = prepareQuotePayload(quoteData, 'pending', false);
         const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
         savedQuoteId = updatedQuote.id;
+      } else if (quoteData.id) {
+        savedQuoteId = quoteData.id;
       } else {
-        const savedQuote = await saveQuoteAndGetId(quoteData);
+        const savedQuote = await saveNewQuoteAndGetPayload(quoteData);
         savedQuoteId = savedQuote.id;
       }
 
@@ -493,8 +293,8 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     }
   };
 
-  const isGeneratingOrSaving = saveQuoteMutation.isPending || updateQuoteMutation.isPending;
-  const isSendingWhatsApp = saveQuoteMutation.isPending || updateQuoteMutation.isPending;
+  const isGeneratingOrSaving = isSavingQuote || isUpdatingQuote;
+  const isSendingWhatsApp = isSavingQuote || isUpdatingQuote; // Mantido para consistência, mas pode ser ajustado se houver um estado de envio específico
 
   return {
     handleGenerateAndDownloadPDF,
@@ -504,8 +304,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     handleUpdateQuote,
     handleSaveQuote,
     handleSaveSale,
-    handleCloseSale,
+    handleCloseSale: handleCloseSaleMutation, // Retorna a mutação diretamente
     isGeneratingOrSaving,
     isSendingWhatsApp,
+    isClosingSale: isClosingSaleMutation, // Expondo o estado de carregamento da mutação de fechar venda
   };
 };
