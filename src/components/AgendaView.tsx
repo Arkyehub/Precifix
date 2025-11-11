@@ -215,6 +215,7 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   // Helper function to convert fetched Quote to QuoteData for useQuoteActions
   const convertQuoteToQuoteData = (quote: Quote): QuoteData => {
     return {
+      id: quote.id, // Passando o ID do orçamento
       quote_date: format(new Date(quote.created_at), 'yyyy-MM-dd'),
       client_name: quote.client_name,
       clientId: quote.client_id,

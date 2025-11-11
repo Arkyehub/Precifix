@@ -317,28 +317,27 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     try {
       const pdfBlob = await createQuotePdfBlob(quoteData);
       
-      let savedQuoteId: string;
-      let savedQuoteNumber: string;
-      const quoteIdFromParams = searchParams.get('quoteId');
+      let currentQuoteId: string;
+      let currentQuoteNumber: string;
 
-      if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData, 'pending', false);
-        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
-        savedQuoteId = updatedQuote.id;
-        savedQuoteNumber = updatedQuote.id.substring(0, 8);
-      } else {
+      // Determine if we are working with an existing quote or a new one
+      if (quoteData.id) { // If quoteData already has an ID, it's an existing quote
+        currentQuoteId = quoteData.id;
+        currentQuoteNumber = quoteData.id.substring(0, 8);
+        // No need to save/update the quote in DB again, just use its ID
+      } else { // It's a new quote, save it first
         const savedQuote = await saveQuoteAndGetId(quoteData);
-        savedQuoteId = savedQuote.id;
-        savedQuoteNumber = savedQuote.id.substring(0, 8);
+        currentQuoteId = savedQuote.id;
+        currentQuoteNumber = savedQuote.id.substring(0, 8);
       }
 
-      const fileName = `orcamento_${savedQuoteNumber}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
-      const publicUrl = await uploadPdfToStorage(pdfBlob, `${savedQuoteId}/${fileName}`, user.id, toast);
+      const fileName = `orcamento_${currentQuoteNumber}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
+      const publicUrl = await uploadPdfToStorage(pdfBlob, `${currentQuoteId}/${fileName}`, user.id, toast);
 
       await supabase
         .from('quotes')
         .update({ pdf_url: publicUrl })
-        .eq('id', savedQuoteId);
+        .eq('id', currentQuoteId); // Use currentQuoteId here
 
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
@@ -354,10 +353,12 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         description: "O orçamento foi baixado para seu dispositivo e salvo no sistema.",
       });
     } catch (error: any) {
-      // Erro já tratado nas mutações/uploadPdfToStorage
-      // Se for um erro de TanStack Query, ele já foi tratado no onError da mutação.
-      // Se for um erro de upload, ele já foi toastado e relançado como Error.
-      // Não precisamos de um toast genérico aqui, pois o erro já foi tratado.
+      console.error("Erro ao gerar PDF:", error); // Log the error for debugging
+      toast({
+        title: "Erro ao gerar PDF",
+        description: error.message || "Não foi possível gerar o PDF do orçamento.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -376,20 +377,19 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     }
 
     try {
-      let savedQuoteId: string;
-      const quoteIdFromParams = searchParams.get('quoteId');
+      let currentQuoteId: string;
 
-      if (quoteIdFromParams) {
-        const payload = prepareQuotePayload(quoteData, 'pending', false);
-        const updatedQuote = await updateQuoteMutation.mutateAsync({ quoteId: quoteIdFromParams, quoteData: payload });
-        savedQuoteId = updatedQuote.id;
-      } else {
+      // Determine if we are working with an existing quote or a new one
+      if (quoteData.id) { // If quoteData already has an ID, it's an existing quote
+        currentQuoteId = quoteData.id;
+        // No need to save/update the quote in DB again, just use its ID
+      } else { // It's a new quote, save it first
         const savedQuote = await saveQuoteAndGetId(quoteData);
-        savedQuoteId = savedQuote.id;
+        currentQuoteId = savedQuote.id;
       }
 
       const baseUrl = getBaseUrl();
-      const quoteViewLink = `${baseUrl}/quote/view/${savedQuoteId}`;
+      const quoteViewLink = `${baseUrl}/quote/view/${currentQuoteId}`; // Use currentQuoteId here
       const companyName = profile?.company_name || 'Precifix';
       const whatsappMessage = encodeURIComponent(
         `Olá! 😄\nAqui está o seu orçamento personalizado para os cuidados do seu veículo 🚗✨\n\n${quoteViewLink}\n\nSe quiser fazer algum ajuste ou agendar o serviço, é só me chamar aqui no WhatsApp!\n\n${companyName}`

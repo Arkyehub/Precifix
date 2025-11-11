@@ -27,6 +27,7 @@ export type PaymentMethod = OriginalPaymentMethod;
 
 // Interfaces para os dados do orçamento
 export interface QuoteData {
+  id?: string; // Adicionado para identificar orçamentos existentes
   quote_date: string;
   client_name: string;
   clientId?: string | null;
