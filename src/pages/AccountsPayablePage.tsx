@@ -281,11 +281,14 @@ const AccountsPayablePage = () => {
       filtered = filtered.filter(expense => expense.status === statusFilter);
     }
 
-    if (dateRange.from) {
-      filtered = filtered.filter(expense => expense.due_date >= startOfDay(dateRange.from!));
+    // Adiciona verificação defensiva para dateRange
+    const { from, to } = dateRange || {};
+
+    if (from) {
+      filtered = filtered.filter(expense => expense.due_date >= startOfDay(from));
     }
-    if (dateRange.to) {
-      filtered = filtered.filter(expense => expense.due_date <= endOfDay(dateRange.to!));
+    if (to) {
+      filtered = filtered.filter(expense => expense.due_date <= endOfDay(to));
     }
 
     return filtered;
