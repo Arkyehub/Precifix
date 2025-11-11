@@ -185,10 +185,10 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       value: parseFloat(value),
       type: finalType,
       user_id: user!.id,
-      expense_date: expenseDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      expense_date: format(expenseDate, 'yyyy-MM-dd'), // Corrigido aqui
       is_recurring: isRecurring,
       recurrence_frequency: isRecurring ? recurrenceFrequency : undefined,
-      recurrence_end_date: isRecurring && recurrenceEndDate ? recurrenceEndDate.toISOString().split('T')[0] : undefined,
+      recurrence_end_date: isRecurring && recurrenceEndDate ? format(recurrenceEndDate, 'yyyy-MM-dd') : undefined, // Corrigido aqui
     });
   };
 
