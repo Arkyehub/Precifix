@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -153,6 +153,8 @@ const AccountsPayablePage = () => {
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<ExpenseInstance | null>(null);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false); // Novo estado para controlar o Popover
+  const [tempDateRange, setTempDateRange] = useState<DateRange>({ from: undefined, to: undefined }); // Novo estado temporário para a data
 
   const { data: operationalCosts, isLoading, error } = useQuery<OperationalCost[]>({
     queryKey: ['operationalCosts', user?.id],
@@ -317,6 +319,25 @@ const AccountsPayablePage = () => {
     });
   };
 
+  // Funções para o filtro de data
+  const handleConfirmDateFilter = () => {
+    setDateRange(tempDateRange);
+    setIsDatePopoverOpen(false);
+  };
+
+  const handleClearDateFilter = () => {
+    setTempDateRange({ from: undefined, to: undefined });
+    setDateRange({ from: undefined, to: undefined });
+    setIsDatePopoverOpen(false);
+  };
+
+  // Sincroniza tempDateRange com dateRange quando o popover abre
+  useEffect(() => {
+    if (isDatePopoverOpen) {
+      setTempDateRange(dateRange);
+    }
+  }, [isDatePopoverOpen, dateRange]);
+
   if (isLoading || isLoadingPayments) return <div>Carregando contas a pagar...</div>;
   if (error) return <div>Erro ao carregar contas a pagar: {error.message}</div>;
 
@@ -349,7 +370,7 @@ const AccountsPayablePage = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Popover>
+        <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
           <PopoverTrigger asChild>
             <Button
               id="date"
@@ -378,12 +399,16 @@ const AccountsPayablePage = () => {
             <Calendar
               initialFocus
               mode="range"
-              defaultMonth={dateRange.from}
-              selected={dateRange}
-              onSelect={setDateRange}
+              defaultMonth={tempDateRange.from || dateRange.from}
+              selected={tempDateRange}
+              onSelect={setTempDateRange}
               numberOfMonths={2}
               locale={ptBR}
             />
+            <div className="flex justify-end gap-2 p-2 border-t">
+              <Button variant="outline" onClick={handleClearDateFilter}>Limpar</Button>
+              <Button onClick={handleConfirmDateFilter}>Confirmar</Button>
+            </div>
           </PopoverContent>
         </Popover>
       </div>
