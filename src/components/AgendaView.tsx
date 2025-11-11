@@ -15,8 +15,9 @@ import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details';
 import { AgendaHeader } from '@/components/agenda/AgendaHeader';
 import { AgendaSummary } from '@/components/agenda/AgendaSummary';
 import { QuoteListItem } from '@/components/agenda/QuoteListItem';
-import { QuotePayload } from '@/lib/quote-utils';
+import { QuotePayload, QuoteData, QuotedService, PaymentMethod } from '@/lib/quote-utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Profile } from '@/lib/quote-utils';
 
 interface Quote {
   id: string;
@@ -27,6 +28,26 @@ interface Quote {
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
+  // Added fields for PDF/WhatsApp generation
+  user_id: string; // Adicionado para o Client
+  client_id: string | null;
+  vehicle_id: string | null;
+  services_summary: QuotedService[]; // JSONB array
+  client_document: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  client_address: string | null;
+  client_address_number: string | null;
+  client_complement: string | null;
+  client_city: string | null;
+  client_state: string | null;
+  client_zip_code: string | null;
+  valid_until: string;
+  created_at: string; // For quote_date
+  commission_value: number | null;
+  commission_type: 'amount' | 'percentage' | null;
+  payment_method_id: string | null;
+  installments: number | null;
 }
 
 interface AgendaViewProps {
@@ -45,7 +66,24 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { handleCloseSale } = useQuoteActions(undefined, true);
+  
+  // Fetch user profile for useQuoteActions
+  const { data: userProfile } = useQuery<Profile>({
+    queryKey: ['userProfile', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { handleCloseSale, handleGenerateAndDownloadPDF, handleSendViaWhatsApp } = useQuoteActions(userProfile || undefined, true);
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
   
@@ -76,13 +114,18 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('id, client_name, vehicle, total_price, status, service_date, service_time, notes')
+        .select(`
+          id, client_name, vehicle, total_price, status, service_date, service_time, notes,
+          user_id, client_id, vehicle_id, services_summary, client_document, client_phone, client_email,
+          client_address, client_address_number, client_complement, client_city, client_state, client_zip_code,
+          valid_until, created_at, commission_value, commission_type, payment_method_id, installments
+        `)
         .eq('user_id', user.id)
         .not('service_date', 'is', null)
         .order('service_date', { ascending: true })
         .order('service_time', { ascending: true });
       if (error) throw error;
-      return data;
+      return data as Quote[];
     },
     enabled: !!user,
   });
@@ -169,6 +212,49 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
     },
   });
 
+  // Helper function to convert fetched Quote to QuoteData for useQuoteActions
+  const convertQuoteToQuoteData = (quote: Quote): QuoteData => {
+    return {
+      quote_date: format(new Date(quote.created_at), 'yyyy-MM-dd'),
+      client_name: quote.client_name,
+      clientId: quote.client_id,
+      vehicle: quote.vehicle,
+      selectedVehicleId: quote.vehicle_id,
+      selectedClient: quote.client_id ? {
+        id: quote.client_id,
+        name: quote.client_name,
+        document_number: quote.client_document,
+        phone_number: quote.client_phone,
+        email: quote.client_email,
+        address: quote.client_address,
+        address_number: quote.client_address_number,
+        complement: quote.client_complement,
+        city: quote.client_city,
+        state: quote.client_state,
+        zip_code: quote.client_zip_code,
+        user_id: quote.user_id,
+        created_at: quote.created_at,
+      } : undefined,
+      clientDetails: {
+        phoneNumber: quote.client_phone || undefined,
+        address: quote.client_address || undefined,
+        addressNumber: quote.client_address_number || undefined,
+        complement: quote.client_complement || undefined,
+      },
+      serviceTime: quote.service_time || '',
+      finalPrice: quote.total_price,
+      selectedServices: quote.services_summary,
+      observations: quote.notes || '',
+      serviceDate: quote.service_date || '',
+      isClientRequired: !!quote.client_id,
+      calculatedCommission: quote.commission_value || 0,
+      commissionType: quote.commission_type || 'amount',
+      currentPaymentMethod: quote.payment_method_id ? { id: quote.payment_method_id, name: '', type: 'cash', rate: 0, user_id: '', created_at: quote.created_at } : undefined,
+      selectedInstallments: quote.installments,
+      profile: userProfile || undefined,
+    };
+  };
+
   // --- Action Handlers ---
 
   const handleCopyLink = (quoteId: string) => {
@@ -189,6 +275,16 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
           variant: "destructive",
         });
       });
+  };
+
+  const handleGeneratePdfForQuote = (quote: Quote) => {
+    const quoteData = convertQuoteToQuoteData(quote);
+    handleGenerateAndDownloadPDF(quoteData);
+  };
+
+  const handleSendWhatsAppForQuote = (quote: Quote) => {
+    const quoteData = convertQuoteToQuoteData(quote);
+    handleSendViaWhatsApp(quoteData);
   };
 
   const handleEditQuote = (quoteId: string) => {
@@ -389,6 +485,8 @@ export const AgendaView = ({ initialDate }: AgendaViewProps) => {
                 onOpenDetailsDrawer={handleOpenDetailsDrawer}
                 onDeleteQuote={handleDeleteQuote}
                 onStatusChange={handleStatusChange}
+                onGeneratePdf={handleGeneratePdfForQuote}
+                onSendWhatsApp={handleSendWhatsAppForQuote}
               />
             ))}
           </div>

@@ -2,10 +2,10 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X, Info, Loader2, MoreVertical, CheckCircle } from 'lucide-react';
+import { FileText, Clock, Car, DollarSign, Link as LinkIcon, Trash2, Pencil, CheckCheck, X, Info, Loader2, MoreVertical, CheckCircle, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { QuotePayload } from '@/lib/quote-utils';
+import { QuotePayload, QuotedService } from '@/lib/quote-utils';
 
 interface Quote {
   id: string;
@@ -16,6 +16,26 @@ interface Quote {
   service_date: string | null;
   service_time: string | null;
   notes: string | null;
+  // Added fields for PDF/WhatsApp generation (matching AgendaView)
+  user_id: string;
+  client_id: string | null;
+  vehicle_id: string | null;
+  services_summary: QuotedService[];
+  client_document: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  client_address: string | null;
+  client_address_number: string | null;
+  client_complement: string | null;
+  client_city: string | null;
+  client_state: string | null;
+  client_zip_code: string | null;
+  valid_until: string;
+  created_at: string;
+  commission_value: number | null;
+  commission_type: 'amount' | 'percentage' | null;
+  payment_method_id: string | null;
+  installments: number | null;
 }
 
 interface QuoteListItemProps {
@@ -31,6 +51,8 @@ interface QuoteListItemProps {
   onOpenDetailsDrawer: (quoteId: string) => void;
   onDeleteQuote: (quoteId: string) => void;
   onStatusChange: (quoteId: string, newStatus: QuotePayload['status'], oldStatus: QuotePayload['status']) => void;
+  onGeneratePdf: (quote: Quote) => void; // Nova prop
+  onSendWhatsApp: (quote: Quote) => void; // Nova prop
 }
 
 const statusColors = {
@@ -62,6 +84,8 @@ export const QuoteListItem = ({
   onOpenDetailsDrawer,
   onDeleteQuote,
   onStatusChange,
+  onGeneratePdf,
+  onSendWhatsApp,
 }: QuoteListItemProps) => {
   const status = statusColors[quote.status];
 
@@ -177,7 +201,27 @@ export const QuoteListItem = ({
                 Concluir Tarefa
               </DropdownMenuItem>
 
-              {/* 2. Copiar Link */}
+              <DropdownMenuSeparator />
+
+              {/* 2. Gerar PDF */}
+              <DropdownMenuItem 
+                onClick={() => onGeneratePdf(quote)}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4 text-blue-500" />
+                Gerar PDF
+              </DropdownMenuItem>
+
+              {/* 3. Enviar Orçamento (WhatsApp) */}
+              <DropdownMenuItem 
+                onClick={() => onSendWhatsApp(quote)}
+                className="cursor-pointer"
+              >
+                <MessageSquare className="mr-2 h-4 w-4 text-green-500" />
+                Enviar Orçamento
+              </DropdownMenuItem>
+
+              {/* 4. Copiar Link */}
               <DropdownMenuItem 
                 onClick={() => onCopyLink(quote.id)}
                 className="cursor-pointer"
@@ -186,7 +230,7 @@ export const QuoteListItem = ({
                 Copiar Link
               </DropdownMenuItem>
 
-              {/* 3. Editar Orçamento */}
+              {/* 5. Editar Orçamento */}
               <DropdownMenuItem 
                 onClick={() => canEdit && onEditQuote(quote.id)}
                 disabled={!canEdit}
@@ -198,7 +242,7 @@ export const QuoteListItem = ({
 
               <DropdownMenuSeparator />
 
-              {/* 4. Excluir Orçamento (Usando AlertDialog para confirmação) */}
+              {/* 6. Excluir Orçamento (Usando AlertDialog para confirmação) */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem 

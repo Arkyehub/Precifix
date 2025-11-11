@@ -1,8 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { addDays, format } from 'date-fns';
-import { QuotedService } from '@/components/QuoteServiceFormDialog';
+import { QuotedService as OriginalQuotedService } from '@/components/QuoteServiceFormDialog'; // Renomeado para evitar conflito
 import { Client } from '@/types/clients';
-import { PaymentMethod } from '@/components/PaymentMethodFormDialog';
+import { PaymentMethod as OriginalPaymentMethod } from '@/components/PaymentMethodFormDialog'; // Renomeado para evitar conflito
 
 // Define Profile interface here if not already in a shared types file
 export interface Profile {
@@ -17,7 +17,13 @@ export interface Profile {
   address_number: string | null;
   zip_code: string | null;
   avatar_url: string | null;
+  city?: string | null; // Adicionado
+  state?: string | null; // Adicionado
 }
+
+// Re-exportando QuotedService e PaymentMethod para uso consistente
+export type QuotedService = OriginalQuotedService;
+export type PaymentMethod = OriginalPaymentMethod;
 
 // Interfaces para os dados do orçamento
 export interface QuoteData {
