@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
-import { OperationalCost } from '@/types/costs';
+import { OperationalCost, OperationalCostPayment } from '@/types/costs';
 import { format, isPast, isToday, addDays, addWeeks, addMonths, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
@@ -16,26 +16,37 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DateRange } from 'react-day-picker';
+import { PaymentEditDialog } from '@/components/costs/PaymentEditDialog';
 
 interface ExpenseInstance {
   id: string; // ID único para a instância (pode ser o original ou gerado)
   original_cost_id: string; // ID do custo operacional original
   description: string;
-  value: number;
+  value: number; // Valor original do custo
   due_date: Date;
   status: 'Paga' | 'Em aberto' | 'Atrasada';
   is_paid: boolean; // Indica se esta instância específica foi paga
+  paid_value?: number; // Valor efetivamente pago para esta instância
   paid_date?: Date; // Data de pagamento desta instância
+  is_recurring: boolean; // Adicionar para saber se é recorrente
 }
 
-const generateExpenseInstances = (costs: OperationalCost[], today: Date): ExpenseInstance[] => {
+const generateExpenseInstances = (
+  costs: OperationalCost[],
+  payments: OperationalCostPayment[],
+  today: Date,
+): ExpenseInstance[] => {
   const instances: ExpenseInstance[] = [];
   const startOfToday = startOfDay(today);
+
+  const paymentMap = new Map<string, OperationalCostPayment>();
+  payments.forEach(payment => {
+    paymentMap.set(`${payment.operational_cost_id}-${payment.due_date}`, payment);
+  });
 
   costs.forEach(cost => {
     if (!cost.expense_date) return;
 
-    // Parse the date string to a local Date object to avoid timezone issues
     const [year, month, day] = cost.expense_date.split('-').map(Number);
     const initialDueDate = new Date(year, month - 1, day);
 
@@ -55,38 +66,58 @@ const generateExpenseInstances = (costs: OperationalCost[], today: Date): Expens
         due_date: initialDueDate,
         status,
         is_paid: cost.is_paid || false,
+        paid_value: cost.is_paid ? cost.value : undefined, // Para custos não recorrentes, o valor pago é o valor original
         paid_date: cost.paid_date ? new Date(cost.paid_date) : undefined,
+        is_recurring: false,
       });
     } else {
       // Custo recorrente
-      const recurrenceEndDate = cost.recurrence_end_date 
-        ? new Date(Number(cost.recurrence_end_date.split('-')[0]), Number(cost.recurrence_end_date.split('-')[1]) - 1, Number(cost.recurrence_end_date.split('-')[2])) 
+      const recurrenceEndDate = cost.recurrence_end_date
+        ? new Date(
+            Number(cost.recurrence_end_date.split('-')[0]),
+            Number(cost.recurrence_end_date.split('-')[1]) - 1,
+            Number(cost.recurrence_end_date.split('-')[2]),
+          )
         : new Date(today.getFullYear() + 10, 0, 1); // Default to 10 years if no end date
 
       let currentDueDate = initialDueDate;
       let instanceCount = 0;
 
-      while (currentDueDate <= recurrenceEndDate && currentDueDate <= addMonths(startOfToday, 12)) { // Limit to 12 months in the future for performance
-        const instanceId = `${cost.id}-${format(currentDueDate, 'yyyyMMdd')}`; // Unique ID for each instance
+      while (currentDueDate <= recurrenceEndDate && currentDueDate <= addMonths(startOfToday, 12)) {
+        const instanceKey = `${cost.id}-${format(currentDueDate, 'yyyy-MM-dd')}`;
+        const payment = paymentMap.get(instanceKey);
 
-        // For recurring costs, we assume 'Em aberto' or 'Atrasada' for now,
-        // as marking individual instances as paid requires a separate tracking mechanism.
-        const status: ExpenseInstance['status'] = isPast(currentDueDate) && !isToday(currentDueDate)
-          ? 'Atrasada'
-          : 'Em aberto';
+        let instanceIsPaid = false;
+        let instancePaidValue: number | undefined;
+        let instancePaidDate: Date | undefined;
+        let instanceStatus: ExpenseInstance['status'];
+
+        if (payment && payment.is_paid) {
+          instanceIsPaid = true;
+          instancePaidValue = payment.paid_value;
+          instancePaidDate = new Date(payment.paid_date);
+          instanceStatus = 'Paga';
+        } else {
+          instanceIsPaid = false;
+          instancePaidValue = undefined;
+          instancePaidDate = undefined;
+          instanceStatus =
+            isPast(currentDueDate) && !isToday(currentDueDate) ? 'Atrasada' : 'Em aberto';
+        }
 
         instances.push({
-          id: instanceId,
+          id: instanceKey, // Usar a chave como ID para instâncias recorrentes
           original_cost_id: cost.id,
           description: cost.description,
           value: cost.value,
           due_date: currentDueDate,
-          status,
-          is_paid: false, // Recurring instances are not marked as paid in the template
-          paid_date: undefined,
+          status: instanceStatus,
+          is_paid: instanceIsPaid,
+          paid_value: instancePaidValue,
+          paid_date: instancePaidDate,
+          is_recurring: true,
         });
 
-        // Move to the next due date
         if (cost.recurrence_frequency === 'daily') {
           currentDueDate = addDays(currentDueDate, 1);
         } else if (cost.recurrence_frequency === 'weekly') {
@@ -94,10 +125,10 @@ const generateExpenseInstances = (costs: OperationalCost[], today: Date): Expens
         } else if (cost.recurrence_frequency === 'monthly') {
           currentDueDate = addMonths(currentDueDate, 1);
         } else {
-          break; // Should not happen with 'none' handled above
+          break;
         }
         instanceCount++;
-        if (instanceCount > 365 * 10) break; // Safety break for extremely long recurrences
+        if (instanceCount > 365 * 10) break;
       }
     }
   });
@@ -113,6 +144,8 @@ const AccountsPayablePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Paga' | 'Em aberto' | 'Atrasada'>('all');
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseInstance | null>(null);
 
   const { data: operationalCosts, isLoading, error } = useQuery<OperationalCost[]>({
     queryKey: ['operationalCosts', user?.id],
@@ -128,68 +161,153 @@ const AccountsPayablePage = () => {
     enabled: !!user,
   });
 
-  const markAsPaidMutation = useMutation({
-    mutationFn: async (costId: string) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-      const { error } = await supabase
-        .from('operational_costs')
-        .update({ is_paid: true, paid_date: format(new Date(), 'yyyy-MM-dd') })
-        .eq('id', costId)
+  const { data: operationalCostPayments, isLoading: isLoadingPayments } = useQuery<OperationalCostPayment[]>({
+    queryKey: ['operationalCostPayments', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('operational_cost_payments')
+        .select('*')
         .eq('user_id', user.id);
       if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async ({
+      originalCostId,
+      dueDate,
+      paidValue,
+      isPaid,
+      isRecurring,
+      paymentId,
+    }: {
+      originalCostId: string;
+      dueDate: Date;
+      paidValue: number;
+      isPaid: boolean;
+      isRecurring: boolean;
+      paymentId?: string;
+    }) => {
+      if (!user) throw new Error('Usuário não autenticado.');
+
+      if (isRecurring) {
+        // Para custos recorrentes, insere/atualiza na tabela operational_cost_payments
+        const paymentData = {
+          user_id: user.id,
+          operational_cost_id: originalCostId,
+          due_date: format(dueDate, 'yyyy-MM-dd'),
+          paid_value: paidValue,
+          paid_date: format(new Date(), 'yyyy-MM-dd'),
+          is_paid: isPaid,
+        };
+
+        if (paymentId && isPaid) { // Se já existe e está sendo editado para pago
+          const { error } = await supabase
+            .from('operational_cost_payments')
+            .update(paymentData)
+            .eq('id', paymentId)
+            .eq('user_id', user.id);
+          if (error) throw error;
+        } else if (isPaid) { // Se não existe e está sendo marcado como pago
+          const { error } = await supabase
+            .from('operational_cost_payments')
+            .insert(paymentData);
+          if (error) throw error;
+        } else { // Se está sendo marcado como não pago, deleta o registro de pagamento
+          const { error } = await supabase
+            .from('operational_cost_payments')
+            .delete()
+            .eq('operational_cost_id', originalCostId)
+            .eq('due_date', format(dueDate, 'yyyy-MM-dd'))
+            .eq('user_id', user.id);
+          if (error) throw error;
+        }
+      } else {
+        // Para custos não recorrentes, atualiza na tabela operational_costs
+        const { error } = await supabase
+          .from('operational_costs')
+          .update({
+            is_paid: isPaid,
+            paid_date: isPaid ? format(new Date(), 'yyyy-MM-dd') : null,
+            value: paidValue, // Atualiza o valor original para custos não recorrentes
+          })
+          .eq('id', originalCostId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operationalCosts', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['operationalCostPayments', user?.id] });
       toast({
-        title: "Custo marcado como pago!",
-        description: "O custo foi atualizado com sucesso.",
+        title: 'Custo atualizado!',
+        description: 'O status e/ou valor do custo foi atualizado com sucesso.',
       });
     },
-    onError: (err) => {
+    onError: err => {
       toast({
-        title: "Erro ao marcar custo como pago",
+        title: 'Erro ao atualizar custo',
         description: err.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const allExpenseInstances = useMemo(() => {
-    if (!operationalCosts) return [];
-    return generateExpenseInstances(operationalCosts, new Date());
-  }, [operationalCosts]);
+    if (!operationalCosts || !operationalCostPayments) return [];
+    return generateExpenseInstances(operationalCosts, operationalCostPayments, new Date());
+  }, [operationalCosts, operationalCostPayments]);
 
   const filteredExpenses = useMemo(() => {
     let filtered = allExpenseInstances;
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(expense =>
-        expense.description.toLowerCase().includes(searchQuery.toLowerCase())
+        expense.description.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
-    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(expense => expense.status === statusFilter);
     }
 
-    // Filter by date range
     if (dateRange.from) {
-      filtered = filtered.filter(expense =>
-        expense.due_date >= startOfDay(dateRange.from!)
-      );
+      filtered = filtered.filter(expense => expense.due_date >= startOfDay(dateRange.from!));
     }
     if (dateRange.to) {
-      filtered = filtered.filter(expense =>
-        expense.due_date <= endOfDay(dateRange.to!)
-      );
+      filtered = filtered.filter(expense => expense.due_date <= endOfDay(dateRange.to!));
     }
 
     return filtered;
   }, [allExpenseInstances, searchQuery, statusFilter, dateRange]);
 
-  if (isLoading) return <div>Carregando contas a pagar...</div>;
+  const handleOpenPaymentDialog = (expense: ExpenseInstance) => {
+    setSelectedExpense(expense);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = (
+    originalCostId: string,
+    dueDate: Date,
+    paidValue: number,
+    isPaid: boolean,
+    isRecurring: boolean,
+    paymentId?: string,
+  ) => {
+    markAsPaidMutation.mutate({
+      originalCostId,
+      dueDate,
+      paidValue,
+      isPaid,
+      isRecurring,
+      paymentId,
+    });
+  };
+
+  if (isLoading || isLoadingPayments) return <div>Carregando contas a pagar...</div>;
   if (error) return <div>Erro ao carregar contas a pagar: {error.message}</div>;
 
   return (
@@ -266,7 +384,8 @@ const AccountsPayablePage = () => {
             <TableRow>
               <TableHead>Descrição</TableHead>
               <TableHead>Vencimento</TableHead>
-              <TableHead>Valor</TableHead>
+              <TableHead>Valor Original</TableHead>
+              <TableHead>Valor Pago</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -279,6 +398,11 @@ const AccountsPayablePage = () => {
                   <TableCell>{format(expense.due_date, 'dd/MM/yyyy')}</TableCell>
                   <TableCell>R$ {expense.value.toFixed(2)}</TableCell>
                   <TableCell>
+                    {expense.is_paid && expense.paid_value !== undefined
+                      ? `R$ ${expense.paid_value.toFixed(2)}`
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
                     <span className={cn(
                       "px-2 py-1 rounded-full text-xs font-semibold",
                       expense.status === 'Paga' && "bg-green-100 text-green-800",
@@ -289,24 +413,23 @@ const AccountsPayablePage = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    {!expense.is_paid && expense.status !== 'Atrasada' && ( // Only allow marking as paid if not already paid and not overdue
+                    {!expense.is_paid ? (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => markAsPaidMutation.mutate(expense.original_cost_id)}
+                        onClick={() => handleOpenPaymentDialog(expense)}
                         disabled={markAsPaidMutation.isPending}
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" /> Pagar
                       </Button>
-                    )}
-                    {expense.status === 'Atrasada' && !expense.is_paid && (
-                      <Button variant="destructive" size="sm" disabled>
-                        <XCircle className="h-4 w-4 mr-2" /> Atrasada
-                      </Button>
-                    )}
-                    {expense.is_paid && (
-                      <Button variant="ghost" size="sm" disabled>
-                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Paga
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleOpenPaymentDialog(expense)}
+                        disabled={markAsPaidMutation.isPending}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" /> Editar
                       </Button>
                     )}
                   </TableCell>
@@ -314,7 +437,7 @@ const AccountsPayablePage = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   Nenhuma despesa encontrada.
                 </TableCell>
               </TableRow>
@@ -322,6 +445,16 @@ const AccountsPayablePage = () => {
           </TableBody>
         </Table>
       </div>
+
+      {selectedExpense && (
+        <PaymentEditDialog
+          isOpen={isPaymentDialogOpen}
+          onClose={() => setIsPaymentDialogOpen(false)}
+          expense={selectedExpense}
+          onConfirm={handleConfirmPayment}
+          isRecurring={selectedExpense.is_recurring}
+        />
+      )}
     </div>
   );
 };
