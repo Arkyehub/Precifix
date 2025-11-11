@@ -331,7 +331,14 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
         currentQuoteNumber = savedQuote.id.substring(0, 8);
       }
 
-      const fileName = `orcamento_${currentQuoteNumber}_${quoteData.client_name.replace(/\s+/g, '_')}_${quoteData.quote_date}.pdf`;
+      // Sanitize client name for filename
+      const sanitizedClientName = quoteData.client_name
+        .normalize("NFD") // Decompose combined graphemes
+        .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+        .replace(/[^a-zA-Z0-9_.-]/g, "_") // Replace non-alphanumeric (except _.-) with _
+        .replace(/__+/g, "_"); // Replace multiple underscores with a single one
+
+      const fileName = `orcamento_${currentQuoteNumber}_${sanitizedClientName}_${quoteData.quote_date}.pdf`;
       const publicUrl = await uploadPdfToStorage(pdfBlob, `${currentQuoteId}/${fileName}`, user.id, toast);
 
       await supabase
