@@ -58,10 +58,22 @@ export const CostFormDialog = ({ isOpen, onClose, cost, defaultDescription, defa
       setDescription(cost.description);
       setValue(cost.value.toFixed(2));
       setType(cost.type);
-      setExpenseDate(cost.expense_date ? new Date(cost.expense_date) : undefined);
+      // Correção para expenseDate
+      if (cost.expense_date) {
+        const [year, month, day] = cost.expense_date.split('-').map(Number);
+        setExpenseDate(new Date(year, month - 1, day));
+      } else {
+        setExpenseDate(undefined);
+      }
       setIsRecurring(cost.is_recurring || false);
       setRecurrenceFrequency(cost.recurrence_frequency || 'none');
-      setRecurrenceEndDate(cost.recurrence_end_date ? new Date(cost.recurrence_end_date) : undefined);
+      // Correção para recurrenceEndDate
+      if (cost.recurrence_end_date) {
+        const [year, month, day] = cost.recurrence_end_date.split('-').map(Number);
+        setRecurrenceEndDate(new Date(year, month - 1, day));
+      } else {
+        setRecurrenceEndDate(undefined);
+      }
     } else {
       // Se não estiver editando, use os defaults ou valores vazios
       setDescription(defaultDescription || '');
