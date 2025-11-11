@@ -20,6 +20,7 @@ import CalendarPage from "./pages/CalendarPage";
 import DailyAgendaPage from "./pages/DailyAgendaPage";
 import SalesPage from "./pages/SalesPage"; // Importar SalesPage
 import NewSalePage from "./pages/NewSalePage"; // Importar NewSalePage
+import AccountsPayablePage from "./pages/AccountsPayablePage"; // Importar AccountsPayablePage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
@@ -123,6 +124,15 @@ const App = () => (
               element={
                 <DashboardLayout>
                   <NewSalePage />
+                </DashboardLayout>
+              } 
+            />
+            {/* Nova Rota de Contas a Pagar */}
+            <Route 
+              path="/accounts-payable" 
+              element={
+                <DashboardLayout>
+                  <AccountsPayablePage />
                 </DashboardLayout>
               } 
             />

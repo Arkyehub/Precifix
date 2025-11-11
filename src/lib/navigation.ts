@@ -14,6 +14,7 @@ import {
   Wrench,
   ShoppingCart, // Novo ícone para Vendas
   PlusCircle, // Novo ícone para Lançar Venda
+  Banknote, // Novo ícone para Contas a Pagar
 } from 'lucide-react';
 
 export const navigationLinks = [
@@ -43,6 +44,7 @@ export const navigationLinks = [
     type: 'group',
     sublinks: [
       { to: '/manage-costs', icon: DollarSign, label: 'Gerenciar Custos' },
+      { to: '/accounts-payable', icon: Banknote, label: 'Contas a Pagar' }, // Novo link
       { to: '/billing', icon: ReceiptText, label: 'Gerenciar Faturamento' },
       { to: '/payment-methods', icon: CreditCard, label: 'Gerenciar Pagamentos' },
     ]

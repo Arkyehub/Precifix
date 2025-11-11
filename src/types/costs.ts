@@ -9,6 +9,8 @@ export interface OperationalCost {
   is_recurring?: boolean; // Se é recorrente
   recurrence_frequency?: 'none' | 'daily' | 'weekly' | 'monthly'; // Frequência da recorrência
   recurrence_end_date?: string; // Data final da recorrência
+  is_paid?: boolean; // Se o custo foi pago
+  paid_date?: string; // Data do pagamento
 }
 
 export interface OperationalHours {
