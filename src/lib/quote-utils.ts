@@ -1,7 +1,23 @@
-import { addDays } from 'date-fns';
+import { jsPDF } from 'jspdf';
+import { addDays, format } from 'date-fns';
 import { QuotedService } from '@/components/QuoteServiceFormDialog';
 import { Client } from '@/types/clients';
 import { PaymentMethod } from '@/components/PaymentMethodFormDialog';
+
+// Define Profile interface here if not already in a shared types file
+export interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  document_number: string | null;
+  phone_number: string | null;
+  email: string | null;
+  address: string | null;
+  address_number: string | null;
+  zip_code: string | null;
+  avatar_url: string | null;
+}
 
 // Interfaces para os dados do orçamento
 export interface QuoteData {
@@ -27,6 +43,7 @@ export interface QuoteData {
   commissionType: 'amount' | 'percentage';
   currentPaymentMethod?: PaymentMethod;
   selectedInstallments?: number | null;
+  profile?: Profile; // Adicionado profile aqui
 }
 
 export interface QuotePayload {
@@ -161,12 +178,126 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
 
 // --- GERAÇÃO DE PDF ---
 
-// Assuming createQuotePdfBlob is defined elsewhere in this file and needs to be exported
-// If it's not defined, you'll need to provide its implementation.
 export const createQuotePdfBlob = async (quoteData: QuoteData): Promise<Blob> => {
-  // Placeholder implementation for createQuotePdfBlob
-  // You would replace this with your actual PDF generation logic using jspdf
-  console.warn("createQuotePdfBlob is a placeholder. Implement actual PDF generation.");
-  const dummyPdfContent = `PDF for ${quoteData.client_name} on ${quoteData.quote_date}`;
-  return new Blob([dummyPdfContent], { type: 'application/pdf' });
+  const doc = new jsPDF();
+
+  const primaryColor = '#FFD700'; // Yellow from the image
+  const textColor = '#000000'; // Black
+  const lightGray = '#F0F0F0'; // Light gray for table header
+
+  let yPos = 10;
+  const margin = 15;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // --- Header ---
+  doc.setFillColor(primaryColor);
+  doc.rect(0, 0, pageWidth, 40, 'F'); // Yellow background for header
+
+  doc.setFontSize(10);
+  doc.setTextColor(textColor);
+  doc.text(quoteData.profile?.company_name || 'Sua Empresa', margin, yPos + 5);
+
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ORÇAMENTO', margin, yPos + 18);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const formattedDate = format(new Date(quoteData.quote_date), 'dd/MM/yyyy');
+  doc.text(`Data: ${formattedDate}`, margin, yPos + 25);
+
+  // Placeholder for image (if profile.avatar_url is available and valid, could fetch and embed)
+  // For now, just a rectangle or a text placeholder
+  // doc.rect(pageWidth - margin - 20, yPos + 5, 20, 20); // Placeholder rectangle for image
+  // doc.text('Logo', pageWidth - margin - 15, yPos + 15);
+
+  yPos = 50; // Start content below header
+
+  // --- Client Details ---
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Dados do Cliente', margin, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Cliente: ${quoteData.client_name}`, margin, yPos);
+  yPos += 5;
+  doc.text(`Veículo: ${quoteData.vehicle}`, margin, yPos);
+  yPos += 5;
+  if (quoteData.clientDetails.phoneNumber) {
+    doc.text(`Telefone: ${quoteData.clientDetails.phoneNumber}`, margin, yPos);
+    yPos += 5;
+  }
+  let addressLine = '';
+  if (quoteData.clientDetails.address) {
+    addressLine += `Endereço: ${quoteData.clientDetails.address}`;
+    if (quoteData.clientDetails.addressNumber) {
+      addressLine += `, ${quoteData.clientDetails.addressNumber}`;
+    }
+    if (quoteData.clientDetails.complement) {
+      addressLine += ` - ${quoteData.clientDetails.complement}`;
+    }
+    doc.text(addressLine, margin, yPos);
+    yPos += 5;
+  }
+  yPos += 10; // Extra space
+
+  // --- Services Contracted ---
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Serviços Contratados', margin, yPos);
+  yPos += 7;
+
+  // Table Header
+  const tableStartX = margin;
+  const tableCol1Width = 100;
+  const tableCol2Width = 30;
+  const tableCol3Width = 40;
+  const rowHeight = 7;
+
+  doc.setFillColor(lightGray);
+  doc.rect(tableStartX, yPos, tableCol1Width + tableCol2Width + tableCol3Width, rowHeight, 'F');
+  doc.setTextColor(textColor);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Serviço', tableStartX + 2, yPos + rowHeight - 2);
+  doc.text('Tempo', tableStartX + tableCol1Width + 2, yPos + rowHeight - 2);
+  doc.text('Valor', tableStartX + tableCol1Width + tableCol2Width + 2, yPos + rowHeight - 2);
+  yPos += rowHeight;
+
+  // Table Rows
+  doc.setFont('helvetica', 'normal');
+  quoteData.selectedServices.forEach(service => {
+    doc.text(service.name, tableStartX + 2, yPos + rowHeight - 2);
+    doc.text(`${service.quote_execution_time_minutes || service.execution_time_minutes} min`, tableStartX + tableCol1Width + 2, yPos + rowHeight - 2);
+    doc.text(`R$ ${service.quote_price?.toFixed(2) || service.price.toFixed(2)}`, tableStartX + tableCol1Width + tableCol2Width + 2, yPos + rowHeight - 2);
+    yPos += rowHeight;
+  });
+  yPos += 10; // Extra space
+
+  // --- Payment Method ---
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Forma de Pagamento:', margin, yPos);
+  yPos += 7;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  let paymentMethodText = quoteData.currentPaymentMethod?.name || 'Não especificado';
+  if (quoteData.selectedInstallments && quoteData.selectedInstallments > 1) {
+    paymentMethodText += ` em até ${quoteData.selectedInstallments}x`;
+  }
+  doc.text(paymentMethodText, margin, yPos);
+  yPos += 10; // Extra space
+
+  // --- Total Value ---
+  doc.setFillColor(primaryColor);
+  doc.rect(margin, yPos, pageWidth - (2 * margin), 15, 'F'); // Yellow background for total
+  doc.setTextColor(textColor);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`VALOR TOTAL: R$ ${quoteData.finalPrice.toFixed(2)}`, margin + 5, yPos + 10);
+
+  return doc.output('blob');
 };
