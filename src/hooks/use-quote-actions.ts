@@ -153,6 +153,13 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
           description: `Venda ${data.sale_number} registrada com sucesso.`,
         });
         navigate('/sales');
+      } else {
+        // Navega para a agenda diária na data do serviço do orçamento salvo
+        navigate(`/agenda/daily?date=${data.service_date}`);
+        toast({
+          title: "Orçamento salvo!",
+          description: `Orçamento #${data.id.substring(0, 8)} foi salvo com sucesso.`,
+        });
       }
     },
     onError: (err) => {
@@ -192,9 +199,9 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
       
       if (data.is_sale) {
         queryClient.invalidateQueries({ queryKey: ['closedSales', user?.id] });
-        navigate('/agenda/daily?date=' + data.service_date);
+        navigate('/sales'); // Redireciona para a página de vendas se for uma venda
       } else {
-        navigate('/agenda');
+        navigate(`/agenda/daily?date=${data.service_date}`); // Redireciona para a agenda diária
       }
       
       toast({
@@ -274,6 +281,12 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
   const saveQuoteAndGetId = async (quoteData: QuoteData) => {
     if (!user) throw new Error("Usuário não autenticado.");
     const payload = prepareQuotePayload(quoteData, 'pending', false);
+    return await saveQuoteMutation.mutateAsync(payload);
+  };
+
+  const handleSaveQuote = async (quoteData: QuoteData) => {
+    if (!user) throw new Error("Usuário não autenticado.");
+    const payload = prepareQuotePayload(quoteData, 'pending', false); // Salva como pendente
     return await saveQuoteMutation.mutateAsync(payload);
   };
 
@@ -482,6 +495,7 @@ export const useQuoteActions = (profile: Profile | undefined, isSale: boolean = 
     handleGenerateLink,
     handleGenerateLocalLink,
     handleUpdateQuote,
+    handleSaveQuote,
     handleSaveSale,
     handleCloseSale,
     isGeneratingOrSaving,

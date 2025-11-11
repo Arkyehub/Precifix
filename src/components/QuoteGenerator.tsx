@@ -13,6 +13,7 @@ import { useQuoteActions } from '@/hooks/use-quote-actions';
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from 'react-router-dom'; // Importar useSearchParams
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Importar Tooltip
+import { useNavigate } from 'react-router-dom'; // Importar useNavigate
 
 interface QuoteGeneratorProps {
   selectedServices: QuotedService[];
@@ -81,6 +82,7 @@ export const QuoteGenerator = ({
 }: QuoteGeneratorProps) => {
   const { user } = useSession();
   const [searchParams] = useSearchParams(); // Inicializar useSearchParams
+  const navigate = useNavigate(); // Inicializar useNavigate
 
   const { data: profile } = useQuery({
     queryKey: ['userProfile', user?.id],
@@ -135,9 +137,9 @@ export const QuoteGenerator = ({
     handleGenerateAndDownloadPDF, 
     handleSendViaWhatsApp, 
     handleGenerateLink,
-    handleGenerateLocalLink,
     handleUpdateQuote,
     handleSaveSale, // Nova função para salvar venda
+    handleSaveQuote, // Adicionado
     isGeneratingOrSaving, 
     isSendingWhatsApp,
   } = useQuoteActions(profile, isSale); // Passar isSale para o hook
@@ -225,11 +227,8 @@ export const QuoteGenerator = ({
 
     if (quoteIdToEdit) {
       handleUpdateQuote(quoteIdToEdit, quoteData);
-    } else if (isSale) {
-      handleSaveSale(quoteData); // Salva como venda
     } else {
-      // Para novos orçamentos, o fluxo padrão é gerar link/pdf
-      handleGenerateLink(quoteData);
+      handleSaveQuote(quoteData); // Chama a função para salvar o orçamento
     }
   };
 
@@ -335,66 +334,27 @@ export const QuoteGenerator = ({
                 Registrar Venda Finalizada
               </Button>
             </ActionButtonWrapper>
-          ) : quoteIdToEdit ? (
-            <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="save">
-              <Button
-                onClick={handleSaveOrUpdate}
-                disabled={!isQuoteValid || isGeneratingOrSaving}
-                className="w-full bg-success hover:bg-success/90"
-              >
-                {isGeneratingOrSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Pencil className="mr-2 h-4 w-4" />
-                )}
-                Salvar Alterações
-              </Button>
-            </ActionButtonWrapper>
           ) : (
             <>
-              <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="generate">
+              <Button
+                onClick={() => navigate('/agenda')} // Botão Cancelar
+                variant="outline"
+                className="w-full border-destructive/30 hover:bg-destructive/10 hover:border-destructive"
+              >
+                Cancelar
+              </Button>
+              <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="save">
                 <Button
-                  onClick={() => handleGenerateAndDownloadPDF(quoteData)}
+                  onClick={handleSaveOrUpdate}
                   disabled={!isQuoteValid || isGeneratingOrSaving}
                   className="w-full bg-primary hover:bg-primary-glow"
                 >
                   {isGeneratingOrSaving ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Download className="mr-2 h-4 w-4" />
+                    <Pencil className="mr-2 h-4 w-4" />
                   )}
-                  Gerar e Baixar PDF
-                </Button>
-              </ActionButtonWrapper>
-              
-              <ActionButtonWrapper disabled={!isQuoteValid || isGeneratingOrSaving} actionType="generate">
-                <Button
-                  onClick={() => handleGenerateLink(quoteData)}
-                  disabled={!isQuoteValid || isGeneratingOrSaving}
-                  variant="outline"
-                  className="w-full border-primary/30 hover:bg-primary/10 hover:border-primary"
-                >
-                  {isGeneratingOrSaving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                  )}
-                  Link do Orçamento
-                </Button>
-              </ActionButtonWrapper>
-
-              <ActionButtonWrapper disabled={isWhatsAppDisabled} actionType="whatsapp">
-                <Button
-                  onClick={() => handleSendViaWhatsApp(quoteData)}
-                  disabled={isWhatsAppDisabled}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white"
-                >
-                  {isSendingWhatsApp ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  Enviar via WhatsApp
+                  Salvar Orçamento
                 </Button>
               </ActionButtonWrapper>
             </>
