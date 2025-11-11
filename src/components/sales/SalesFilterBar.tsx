@@ -50,13 +50,10 @@ export const SalesFilterBar = ({
   const [openCalendar, setOpenCalendar] = useState(false);
   const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(dateRange);
 
-  // Internal state for active filters to manage removal
-  const [internalActiveTextFilters, setInternalActiveTextFilters] = useState<ActiveTextFilter[]>(activeTextFilters);
-
-  // Sync external activeTextFilters with internal state
+  // Sync external dateRange with internal state
   React.useEffect(() => {
-    setInternalActiveTextFilters(activeTextFilters);
-  }, [activeTextFilters]);
+    setTempDateRange(dateRange);
+  }, [dateRange]);
 
   const handleAddTextFilter = (selectedValue?: string) => {
     const valueToApply = selectedValue || tempSearchTerm;
@@ -64,38 +61,30 @@ export const SalesFilterBar = ({
       const newFilter: ActiveTextFilter = { type: searchFilterType, value: valueToApply.trim() };
       
       // Check for duplicates before adding
-      const isDuplicate = internalActiveTextFilters.some(
+      const isDuplicate = activeTextFilters.some(
         f => f.type === newFilter.type && f.value.toLowerCase() === newFilter.value.toLowerCase()
       );
 
       if (!isDuplicate) {
-        const updatedFilters = [...internalActiveTextFilters, newFilter];
-        setInternalActiveTextFilters(updatedFilters);
+        const updatedFilters = [...activeTextFilters, newFilter];
         onApplyFilters({ activeTextFilters: updatedFilters, dateRange });
       }
       setTempSearchTerm('');
     }
   };
 
-  const handleRemoveTextFilter = (indexToRemove: number) => {
-    const updatedFilters = internalActiveTextFilters.filter((_, index) => index !== indexToRemove);
-    setInternalActiveTextFilters(updatedFilters);
-    onApplyFilters({ activeTextFilters: updatedFilters, dateRange });
-  };
-
   const handleApplyDateRange = () => {
-    onApplyFilters({ activeTextFilters: internalActiveTextFilters, dateRange: tempDateRange });
+    onApplyFilters({ activeTextFilters, dateRange: tempDateRange });
     setOpenCalendar(false);
   };
 
-  const handleClearDateRange = () => {
+  const handleClearDateRangeInternal = () => { // Renamed to avoid conflict with parent handler
     setTempDateRange(undefined);
-    onApplyFilters({ activeTextFilters: internalActiveTextFilters, dateRange: undefined });
+    onApplyFilters({ activeTextFilters, dateRange: undefined });
     setOpenCalendar(false);
   };
 
   const handleClearAll = () => {
-    setInternalActiveTextFilters([]);
     setTempSearchTerm('');
     setTempDateRange(undefined);
     onClearAllFilters(); // Call the external clear all handler
@@ -259,7 +248,7 @@ export const SalesFilterBar = ({
               <div className="flex justify-end gap-2 p-2 border-t">
                   <Button 
                       variant="outline" 
-                      onClick={handleClearDateRange}
+                      onClick={handleClearDateRangeInternal}
                   >
                       Limpar
                   </Button>
@@ -273,49 +262,7 @@ export const SalesFilterBar = ({
           </PopoverContent>
       </Popover>
 
-      {(internalActiveTextFilters.length > 0 || dateRange?.from) && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground w-full">
-          <span className="font-semibold">Filtros Ativos:</span>
-          {internalActiveTextFilters.map((filter, index) => (
-            <span key={index} className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
-              {filter.type === 'client' ? 'Cliente' :
-               filter.type === 'saleNumber' ? 'Nº Venda' :
-               filter.type === 'status' ? 'Status' :
-               filter.type === 'service' ? 'Serviço' :
-               filter.type === 'paymentMethod' ? 'Forma Pagamento' :
-               filter.type === 'vehicle' ? 'Veículo' : 'Busca'}: "{filter.value}"
-              <button 
-                onClick={() => handleRemoveTextFilter(index)} 
-                className="ml-1 text-primary-strong/70 hover:text-primary-strong"
-                title="Remover busca"
-              >
-                &times;
-              </button>
-            </span>
-          ))}
-          {dateRange?.from && (
-            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary-strong">
-              Período: {format(dateRange.from, "dd/MM/yyyy")}
-              {dateRange.to && ` - ${format(dateRange.to, "dd/MM/yyyy")}`}
-              <button 
-                onClick={handleClearDateRange} 
-                className="ml-1 text-primary-strong/70 hover:text-primary-strong"
-                title="Remover filtro de data"
-              >
-                &times;
-              </button>
-            </span>
-          )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleClearAll}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Limpar Todos
-          </Button>
-        </div>
-      )}
+      {/* REMOVED: Active filters display moved to SalesPage.tsx */}
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { useSaleProfitDetails } from '@/hooks/use-sale-profit-details';
 import { ConfirmPaymentDialog } from '@/components/agenda/ConfirmPaymentDialog';
 import { useQuoteActions } from '@/hooks/use-quote-actions';
 import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 
 // Importar os novos hooks e componentes
 import { useSalesData, QuoteStatus, Sale, ActiveTextFilter } from '@/hooks/use-sales-data';
@@ -43,6 +44,15 @@ const SalesPage = () => {
 
   const handleClearAllFilters = () => {
     setActiveTextFilters([]);
+    setDateRange(undefined);
+  };
+
+  const handleRemoveTextFilter = (indexToRemove: number) => {
+    const updatedFilters = activeTextFilters.filter((_, index) => index !== indexToRemove);
+    setActiveTextFilters(updatedFilters);
+  };
+
+  const handleClearDateRange = () => {
     setDateRange(undefined);
   };
 
@@ -165,6 +175,51 @@ const SalesPage = () => {
             onApplyFilters={handleApplyFilters}
             onClearAllFilters={handleClearAllFilters}
           />
+
+          {/* Exibição dos Filtros Ativos */}
+          {(activeTextFilters.length > 0 || dateRange?.from) && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-2">
+              <span className="font-semibold">Filtros Ativos:</span>
+              {activeTextFilters.map((filter, index) => (
+                <span key={index} className="flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-primary-strong">
+                  {filter.type === 'client' ? 'Cliente' :
+                   filter.type === 'saleNumber' ? 'Nº Venda' :
+                   filter.type === 'status' ? 'Status' :
+                   filter.type === 'service' ? 'Serviço' :
+                   filter.type === 'paymentMethod' ? 'Forma Pagamento' :
+                   filter.type === 'vehicle' ? 'Veículo' : 'Busca'}: "{filter.value}"
+                  <button 
+                    onClick={() => handleRemoveTextFilter(index)} 
+                    className="ml-0.5 text-primary-strong/70 hover:text-primary-strong"
+                    title="Remover busca"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+              {dateRange?.from && (
+                <span className="flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-primary-strong">
+                  Período: {format(dateRange.from, "dd/MM/yyyy")}
+                  {dateRange.to && ` - ${format(dateRange.to, "dd/MM/yyyy")}`}
+                  <button 
+                    onClick={handleClearDateRange} 
+                    className="ml-0.5 text-primary-strong/70 hover:text-primary-strong"
+                    title="Remover filtro de data"
+                  >
+                    &times;
+                  </button>
+                </span>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClearAllFilters}
+                className="text-muted-foreground hover:text-foreground h-auto px-2 py-0.5 text-xs"
+              >
+                Limpar Todos
+              </Button>
+            </div>
+          )}
 
           {/* Resumo do Período */}
           <SalesSummaryCards summary={summary} />
