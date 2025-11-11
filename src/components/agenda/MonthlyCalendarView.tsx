@@ -236,7 +236,7 @@ export const MonthlyCalendarView = () => {
           variant="default"
           size="sm"
           className="absolute top-4 right-4"
-          onClick={() => navigate('/quote-generation')}
+          onClick={() => navigate('/generate-quote')}
         >
           <Plus className="mr-2 h-4 w-4" />
           Criar Orçamento
