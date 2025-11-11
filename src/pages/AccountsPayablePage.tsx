@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DateRange } from 'react-day-picker';
 import { PaymentEditDialog } from '@/components/costs/PaymentEditDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Banknote } from 'lucide-react';
 
 interface ExpenseInstance {
   id: string; // ID único para a instância (pode ser o original ou gerado)
@@ -343,143 +345,150 @@ const AccountsPayablePage = () => {
 
   return (
     <div className="flex flex-col space-y-6 p-4">
-      <h1 className="text-3xl font-bold">Contas a Pagar</h1>
+      <div className="flex items-center gap-2">
+        <Banknote className="h-6 w-6 text-primary" />
+        <h1 className="text-3xl font-bold">Contas a Pagar</h1>
+      </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <div className="relative w-full sm:w-1/3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar despesa..."
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto">
-              Status: {statusFilter === 'all' ? 'Todos' : statusFilter} <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setStatusFilter('all')}>Todos</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter('Paga')}>Paga</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter('Em aberto')}>Em aberto</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter('Atrasada')}>Atrasada</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              id="date"
-              variant={"outline"}
-              className={cn(
-                "w-full sm:w-[300px] justify-start text-left font-normal",
-                !dateRange.from && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "LLL dd, y", { locale: ptBR })} -{" "}
-                    {format(dateRange.to, "LLL dd, y", { locale: ptBR })}
-                  </>
-                ) : (
-                  format(dateRange.from, "LLL dd, y", { locale: ptBR })
-                )
-              ) : (
-                <span>Filtrar por data</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={tempDateRange.from || dateRange.from}
-              selected={tempDateRange}
-              onSelect={setTempDateRange}
-              numberOfMonths={2}
-              locale={ptBR}
-            />
-            <div className="flex justify-end gap-2 p-2 border-t">
-              <Button variant="outline" onClick={handleClearDateFilter}>Limpar</Button>
-              <Button onClick={handleConfirmDateFilter}>Confirmar</Button>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+            <div className="relative w-full sm:w-1/3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar despesa..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          </PopoverContent>
-        </Popover>
-      </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>Valor Original</TableHead>
-              <TableHead>Valor Pago</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredExpenses.length > 0 ? (
-              filteredExpenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell className="font-medium">{expense.description}</TableCell>
-                  <TableCell>{format(expense.due_date, 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>R$ {expense.value.toFixed(2)}</TableCell>
-                  <TableCell>
-                    {expense.is_paid && expense.paid_value !== undefined
-                      ? `R$ ${expense.paid_value.toFixed(2)}`
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "px-2 py-1 rounded-full text-xs font-semibold",
-                      expense.status === 'Paga' && "bg-green-100 text-green-800",
-                      expense.status === 'Em aberto' && "bg-yellow-100 text-yellow-800",
-                      expense.status === 'Atrasada' && "bg-red-100 text-red-800"
-                    )}>
-                      {expense.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {!expense.is_paid ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenPaymentDialog(expense)}
-                        disabled={markAsPaidMutation.isPending}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" /> Pagar
-                      </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Status: {statusFilter === 'all' ? 'Todos' : statusFilter} <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')}>Todos</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('Paga')}>Paga</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('Em aberto')}>Em aberto</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('Atrasada')}>Atrasada</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="date"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full sm:w-[300px] justify-start text-left font-normal",
+                    !dateRange.from && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y", { locale: ptBR })} -{" "}
+                        {format(dateRange.to, "LLL dd, y", { locale: ptBR })}
+                      </>
                     ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleOpenPaymentDialog(expense)}
-                        disabled={markAsPaidMutation.isPending}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" /> Editar
-                      </Button>
-                    )}
-                  </TableCell>
+                      format(dateRange.from, "LLL dd, y", { locale: ptBR })
+                    )
+                  ) : (
+                    <span>Filtrar por data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={tempDateRange.from || dateRange.from}
+                  selected={tempDateRange}
+                  onSelect={setTempDateRange}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                />
+                <div className="flex justify-end gap-2 p-2 border-t">
+                  <Button variant="outline" onClick={handleClearDateFilter}>Limpar</Button>
+                  <Button onClick={handleConfirmDateFilter}>Confirmar</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Valor Original</TableHead>
+                  <TableHead>Valor Pago</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  Nenhuma despesa encontrada.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredExpenses.length > 0 ? (
+                  filteredExpenses.map((expense) => (
+                    <TableRow key={expense.id}>
+                      <TableCell className="font-medium">{expense.description}</TableCell>
+                      <TableCell>{format(expense.due_date, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>R$ {expense.value.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {expense.is_paid && expense.paid_value !== undefined
+                          ? `R$ ${expense.paid_value.toFixed(2)}`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "px-2 py-1 rounded-full text-xs font-semibold",
+                          expense.status === 'Paga' && "bg-green-100 text-green-800",
+                          expense.status === 'Em aberto' && "bg-yellow-100 text-yellow-800",
+                          expense.status === 'Atrasada' && "bg-red-100 text-red-800"
+                        )}>
+                          {expense.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!expense.is_paid ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenPaymentDialog(expense)}
+                            disabled={markAsPaidMutation.isPending}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" /> Pagar
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleOpenPaymentDialog(expense)}
+                            disabled={markAsPaidMutation.isPending}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" /> Editar
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      Nenhuma despesa encontrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {selectedExpense && (
         <PaymentEditDialog
