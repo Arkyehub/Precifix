@@ -220,7 +220,7 @@ export const MonthlyCalendarView = () => {
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50 shadow-[var(--shadow-elegant)]">
-      <CardHeader>
+      <CardHeader className="relative">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
             <CalendarCheck className="h-5 w-5 text-primary-foreground" />
