@@ -6,60 +6,61 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { useQuery } from "@tanstack/react-query";
-import { MonthlyBilling, MonthlyExpense } from '@/pages/BillingPage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Sale } from '@/hooks/use-sales-data';
+import { OperationalCostPayment } from '@/types/costs';
 
 interface AnnualResultSummaryProps {
   year: number;
+}
+
+// Nova interface para os dados de venda usados especificamente neste componente
+interface AnnualSaleData {
+  id: string;
+  total_price: number;
+  created_at: string;
+  is_sale: boolean;
+  status: string;
 }
 
 export const AnnualResultSummary = ({ year }: AnnualResultSummaryProps) => {
   const { user } = useSession();
   const { toast } = useToast();
 
-  // Fetch all monthly billing records for the selected year
-  const { data: monthlyBillingRecords, isLoading: isLoadingBillingRecords, error: billingRecordsError } = useQuery<MonthlyBilling[]>({
-    queryKey: ['annualBillingRecords', user?.id, year],
+  // NEW QUERY: Fetch all sales for the selected year
+  const { data: annualSales, isLoading: isLoadingSales, error: salesError } = useQuery<AnnualSaleData[]>({
+    queryKey: ['annualSales', user?.id, year],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from('monthly_billing')
-        .select('*')
+        .from('quotes')
+        .select('id, total_price, created_at, is_sale, status') // Selecionar apenas os campos necessários
         .eq('user_id', user.id)
-        .eq('year', year)
-        .order('month', { ascending: true });
+        .eq('is_sale', true)
+        .in('status', ['accepted', 'closed']) // Considerar vendas atendidas
+        .gte('created_at', format(new Date(year, 0, 1), 'yyyy-MM-dd')) // Início do ano
+        .lte('created_at', format(new Date(year, 11, 31), 'yyyy-MM-dd')); // Fim do ano
       if (error) throw error;
-      return data;
+      return data as AnnualSaleData[];
     },
     enabled: !!user,
   });
 
-  // Fetch all monthly expenses for the selected year
-  const { data: allMonthlyExpenses, isLoading: isLoadingExpenses, error: expensesError } = useQuery<MonthlyExpense[]>({
-    queryKey: ['annualMonthlyExpenses', user?.id, year],
+  // NEW QUERY: Fetch all operational cost payments for the selected year
+  const { data: annualOperationalCostPayments, isLoading: isLoadingOperationalCostPayments, error: operationalCostPaymentsError } = useQuery<OperationalCostPayment[]>({
+    queryKey: ['annualOperationalCostPayments', user?.id, year],
     queryFn: async () => {
       if (!user) return [];
-      // First, get all monthly_billing_ids for the selected year
-      const { data: billingIds, error: billingIdsError } = await supabase
-        .from('monthly_billing')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('year', year);
-      
-      if (billingIdsError) throw billingIdsError;
-      const ids = billingIds.map(b => b.id);
-
-      if (ids.length === 0) return [];
-
-      // Then, fetch all expenses associated with those billing_ids
       const { data, error } = await supabase
-        .from('monthly_expenses')
-        .select('*')
-        .in('monthly_billing_id', ids);
+        .from('operational_cost_payments')
+        .select('id, due_date, paid_value')
+        .eq('user_id', user.id)
+        .gte('due_date', format(new Date(year, 0, 1), 'yyyy-MM-dd'))
+        .lte('due_date', format(new Date(year, 11, 31), 'yyyy-MM-dd'));
       if (error) throw error;
-      return data;
+      return data as OperationalCostPayment[];
     },
     enabled: !!user,
   });
@@ -75,13 +76,20 @@ export const AnnualResultSummary = ({ year }: AnnualResultSummaryProps) => {
 
     for (let i = 1; i <= 12; i++) {
       const monthName = format(new Date(year, i - 1, 1), 'MMM', { locale: ptBR });
-      const billingRecord = monthlyBillingRecords?.find(b => b.month === i);
-      const monthBillingAmount = billingRecord?.billing_amount || 0;
+      
+      // Calcular faturamento a partir das vendas
+      const monthSales = annualSales?.filter(sale => {
+        const saleDate = new Date(sale.created_at);
+        return saleDate.getMonth() + 1 === i && saleDate.getFullYear() === year;
+      }) || [];
+      const monthBillingAmount = monthSales.reduce((sum, sale) => sum + sale.total_price, 0);
 
-      const monthExpenses = allMonthlyExpenses?.filter(
-        exp => exp.monthly_billing_id === billingRecord?.id
-      ) || [];
-      const monthTotalExpenses = monthExpenses.reduce((sum, exp) => sum + exp.value, 0);
+      // Calcular despesas a partir dos pagamentos de custos operacionais
+      const monthExpenses = annualOperationalCostPayments?.filter(payment => {
+        const dueDate = new Date(payment.due_date);
+        return dueDate.getMonth() + 1 === i && dueDate.getFullYear() === year;
+      }) || [];
+      const monthTotalExpenses = monthExpenses.reduce((sum, payment) => sum + payment.paid_value, 0);
 
       const netRevenue = monthBillingAmount - monthTotalExpenses;
 
@@ -94,9 +102,9 @@ export const AnnualResultSummary = ({ year }: AnnualResultSummaryProps) => {
       });
     }
     return results;
-  }, [monthlyBillingRecords, allMonthlyExpenses, year]);
+  }, [annualSales, annualOperationalCostPayments, year]);
 
-  if (isLoadingBillingRecords || isLoadingExpenses) {
+  if (isLoadingSales || isLoadingOperationalCostPayments) {
     return (
       <Card className="bg-background border-border/50 shadow-sm">
         <CardHeader>
@@ -115,10 +123,10 @@ export const AnnualResultSummary = ({ year }: AnnualResultSummaryProps) => {
     );
   }
 
-  if (billingRecordsError || expensesError) {
+  if (salesError || operationalCostPaymentsError) {
     toast({
       title: "Erro ao carregar resultados anuais",
-      description: billingRecordsError?.message || expensesError?.message,
+      description: salesError?.message || operationalCostPaymentsError?.message,
       variant: "destructive",
     });
     return <p className="text-destructive">Erro ao carregar resultados anuais.</p>;
