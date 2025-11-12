@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
@@ -27,6 +27,8 @@ const AccountsPayablePage = () => {
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<ExpenseInstance | null>(null);
+
+  const notifiedExpenses = useRef(new Set<string>()); // Adiciona um ref para controlar as despesas já notificadas
 
   const { data: operationalCosts, isLoading, error } = useQuery<OperationalCost[]>({
     queryKey: ['operationalCosts', user?.id],
@@ -164,6 +166,31 @@ const AccountsPayablePage = () => {
 
     return filtered;
   }, [allExpenseInstances, searchQuery, statusFilter, dateRange]);
+
+  useEffect(() => {
+    if (!filteredExpenses || filteredExpenses.length === 0) return;
+
+    filteredExpenses.forEach(expense => {
+      // Notificação para "Vencendo Hoje"
+      if (isToday(expense.due_date) && expense.status === 'Em aberto' && !notifiedExpenses.current.has(`due-today-${expense.id}`)) {
+        toast({
+          title: 'Conta a Pagar Vencendo Hoje!',
+          description: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} vence hoje.`,
+        });
+        notifiedExpenses.current.add(`due-today-${expense.id}`);
+      }
+
+      // Notificação para "Atrasada"
+      if (expense.status === 'Atrasada' && !notifiedExpenses.current.has(`overdue-${expense.id}`)) {
+        toast({
+          title: 'Conta a Pagar Atrasada!',
+          description: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} está atrasada desde ${format(expense.due_date, 'dd/MM/yyyy', { locale: ptBR })}.`,
+          variant: 'destructive',
+        });
+        notifiedExpenses.current.add(`overdue-${expense.id}`);
+      }
+    });
+  }, [filteredExpenses, toast]);
 
   const handleOpenPaymentDialog = (expense: ExpenseInstance) => {
     setSelectedExpense(expense);
