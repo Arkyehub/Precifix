@@ -23,25 +23,27 @@ import NewSalePage from "./pages/NewSalePage"; // Importar NewSalePage
 import AccountsPayablePage from "./pages/AccountsPayablePage"; // Importar AccountsPayablePage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
-import { useExpenseNotifications } from './hooks/use-expense-notifications';
+import { useExpenseNotifications } from './hooks/use-expense-notifications'; // Importar o novo hook
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionContextProvider>
-        <AppContent />
-      </SessionContextProvider>
+      <BrowserRouter>
+        <SessionContextProvider>
+          <AppContent />
+        </SessionContextProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
 
 function AppContent() {
-  useExpenseNotifications();
+  useExpenseNotifications(); // Chamar o hook aqui
 
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         {/* Rota Pública para Visualização de Orçamento */}
         <Route path="/quote/view/:quoteId" element={<QuoteViewPage />} />
@@ -172,7 +174,7 @@ function AppContent() {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }
 
