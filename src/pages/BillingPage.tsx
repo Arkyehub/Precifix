@@ -170,18 +170,6 @@ const BillingPage = () => {
             </div>
           </div>
 
-          <MonthlyBillingCard
-            monthlyBilling={currentMonthlyBilling}
-            month={selectedMonth}
-            year={selectedYear}
-          />
-
-          <MonthlyExpensesDisplay
-            monthlyBillingId={currentMonthlyBilling?.id}
-            month={selectedMonth}
-            year={selectedYear}
-          />
-
           <AnnualResultSummary year={selectedYear} />
         </CardContent>
       </Card>
