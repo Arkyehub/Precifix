@@ -23,150 +23,157 @@ import NewSalePage from "./pages/NewSalePage"; // Importar NewSalePage
 import AccountsPayablePage from "./pages/AccountsPayablePage"; // Importar AccountsPayablePage
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
+import { useExpenseNotifications } from './hooks/use-expense-notifications';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SessionContextProvider> {/* Movido para envolver todas as rotas */}
-          <Routes>
-            {/* Rota Pública para Visualização de Orçamento */}
-            <Route path="/quote/view/:quoteId" element={<QuoteViewPage />} />
-            
-            <Route path="/login" element={<Login />} />
-            <Route 
-              path="/" 
-              element={
-                <DashboardLayout>
-                  <Dashboard />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/manage-costs"
-              element={
-                <DashboardLayout>
-                  <ManageCostsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/products"
-              element={
-                <DashboardLayout>
-                  <ProductCatalogPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/services" 
-              element={
-                <DashboardLayout>
-                  <ServicesPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/payment-methods" 
-              element={
-                <DashboardLayout>
-                  <PaymentMethodsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/clients"
-              element={
-                <DashboardLayout>
-                  <ClientsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/agenda" 
-              element={
-                <DashboardLayout>
-                  <CalendarPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/agenda/daily" 
-              element={
-                <DashboardLayout>
-                  <DailyAgendaPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/generate-quote" 
-              element={
-                <DashboardLayout>
-                  <QuoteGenerationPage />
-                </DashboardLayout>
-              } 
-            />
-            {/* Novas Rotas de Vendas */}
-            <Route 
-              path="/sales" 
-              element={
-                <DashboardLayout>
-                  <SalesPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/sales/new" 
-              element={
-                <DashboardLayout>
-                  <NewSalePage />
-                </DashboardLayout>
-              } 
-            />
-            {/* Nova Rota de Contas a Pagar */}
-            <Route 
-              path="/accounts-payable" 
-              element={
-                <DashboardLayout>
-                  <AccountsPayablePage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/profile"
-              element={
-                <DashboardLayout>
-                  <ProfilePage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/settings"
-              element={
-                <DashboardLayout>
-                  <SettingsPage />
-                </DashboardLayout>
-              } 
-            />
-            <Route 
-              path="/billing"
-              element={
-                <DashboardLayout>
-                  <BillingPage />
-                </DashboardLayout>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </SessionContextProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionContextProvider>
+        <AppContent />
+      </SessionContextProvider>
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
+  useExpenseNotifications();
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Rota Pública para Visualização de Orçamento */}
+        <Route path="/quote/view/:quoteId" element={<QuoteViewPage />} />
+        
+        <Route path="/login" element={<Login />} />
+        <Route 
+          path="/" 
+          element={
+            <DashboardLayout>
+              <Dashboard />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/manage-costs"
+          element={
+            <DashboardLayout>
+              <ManageCostsPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/products"
+          element={
+            <DashboardLayout>
+              <ProductCatalogPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/services" 
+          element={
+            <DashboardLayout>
+              <ServicesPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/payment-methods" 
+          element={
+            <DashboardLayout>
+              <PaymentMethodsPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/clients"
+          element={
+            <DashboardLayout>
+              <ClientsPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/agenda" 
+          element={
+            <DashboardLayout>
+              <CalendarPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/agenda/daily" 
+          element={
+            <DashboardLayout>
+              <DailyAgendaPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/generate-quote" 
+          element={
+            <DashboardLayout>
+              <QuoteGenerationPage />
+            </DashboardLayout>
+          } 
+        />
+        {/* Novas Rotas de Vendas */}
+        <Route 
+          path="/sales" 
+          element={
+            <DashboardLayout>
+              <SalesPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/sales/new" 
+          element={
+            <DashboardLayout>
+              <NewSalePage />
+            </DashboardLayout>
+          } 
+        />
+        {/* Nova Rota de Contas a Pagar */}
+        <Route 
+          path="/accounts-payable" 
+          element={
+            <DashboardLayout>
+              <AccountsPayablePage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/profile"
+          element={
+            <DashboardLayout>
+              <ProfilePage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/settings"
+          element={
+            <DashboardLayout>
+              <SettingsPage />
+            </DashboardLayout>
+          } 
+        />
+        <Route 
+          path="/billing"
+          element={
+            <DashboardLayout>
+              <BillingPage />
+            </DashboardLayout>
+          }
+        />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 export default App;

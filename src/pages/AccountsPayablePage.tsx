@@ -169,32 +169,6 @@ const AccountsPayablePage = () => {
     return filtered;
   }, [allExpenseInstances, searchQuery, statusFilter, dateRange]);
 
-  useEffect(() => {
-    if (!filteredExpenses || filteredExpenses.length === 0) return;
-
-    filteredExpenses.forEach(expense => {
-      // Notificação para "Vencendo Hoje"
-      if (isToday(expense.due_date) && expense.status === 'Em aberto' && !notifiedExpenses.current.has(`due-today-${expense.id}`)) {
-        createNotificationMutation.mutate({
-          message: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} vence hoje.`,
-          type: 'expense_due_today',
-          quote_id: null, // Não há quote_id para despesas
-        });
-        notifiedExpenses.current.add(`due-today-${expense.id}`);
-      }
-
-      // Notificação para "Atrasada"
-      if (expense.status === 'Atrasada' && !notifiedExpenses.current.has(`overdue-${expense.id}`)) {
-        createNotificationMutation.mutate({
-          message: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} está atrasada desde ${format(expense.due_date, 'dd/MM/yyyy', { locale: ptBR })}.`,
-          type: 'expense_overdue',
-          quote_id: null, // Não há quote_id para despesas
-        });
-        notifiedExpenses.current.add(`overdue-${expense.id}`);
-      }
-    });
-  }, [filteredExpenses, createNotificationMutation]);
-
   const handleOpenPaymentDialog = (expense: ExpenseInstance) => {
     setSelectedExpense(expense);
     setIsPaymentDialogOpen(true);
