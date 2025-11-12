@@ -13,6 +13,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react'; // Importar Loader2
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format, getMonth, getYear, setMonth, setYear, subMonths, addMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+
+// Novos componentes que serão criados
+import { DashboardStatsCards } from '@/components/dashboard/DashboardStatsCards';
+import { DailyRevenueChart } from '@/components/dashboard/DailyRevenueChart';
+import { PopularServicesChart } from '@/components/dashboard/PopularServicesChart';
+import { AppointmentSummaryCard } from '@/components/dashboard/AppointmentSummaryCard';
+import { UpcomingAppointmentsList } from '@/components/dashboard/UpcomingAppointmentsList';
 
 interface UserPreference {
   id: string;
@@ -37,123 +49,105 @@ const sectionComponents: { [key: string]: { component: React.ElementType; title:
 
 const Dashboard = () => {
   const { user } = useSession();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_SECTION_ORDER);
+  const [currentDate, setCurrentDate] = useState(new Date()); // Estado para o mês/ano selecionado
 
-  // Fetch saved order preference
-  const { data: savedOrderPreference, isLoading: isLoadingOrderPreference } = useQuery<UserPreference | null>({
-    queryKey: ['userPreference', user?.id, 'dashboardSectionOrder'],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('preference_key', 'dashboardSectionOrder')
-        .single();
-      if (error && (error as any).code !== 'PGRST116') throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
+  };
 
-  // Initialize section order from saved preference or default
-  useEffect(() => {
-    if (!isLoadingOrderPreference && savedOrderPreference !== undefined) {
-      if (savedOrderPreference && Array.isArray(savedOrderPreference.preference_value.order)) {
-        // Filter out any old/invalid keys and ensure all default keys are present
-        const validOrder = savedOrderPreference.preference_value.order.filter((key: string) =>
-          Object.keys(sectionComponents).includes(key)
-        );
-        const missingDefaults = Object.keys(sectionComponents).filter((key) => !validOrder.includes(key));
-        setSectionOrder([...validOrder, ...missingDefaults]);
-      } else {
-        setSectionOrder(DEFAULT_SECTION_ORDER);
-        // Also save the default order if none exists
-        upsertOrderPreferenceMutation.mutate({ order: DEFAULT_SECTION_ORDER });
-      }
-    }
-  }, [isLoadingOrderPreference, savedOrderPreference]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleMonthSelect = (monthIndex: number) => {
+    setCurrentDate(prev => setMonth(prev, monthIndex));
+  };
 
-  // Mutation to save/update order preference
-  const upsertOrderPreferenceMutation = useMutation({
-    mutationFn: async (order: { order: string[] }) => {
-      if (!user) throw new Error("Usuário não autenticado.");
-      const preferenceToSave = {
-        user_id: user.id,
-        preference_key: 'dashboardSectionOrder',
-        preference_value: order,
-      };
-      if (savedOrderPreference?.id) {
-        const { error } = await supabase
-          .from('user_preferences')
-          .update(preferenceToSave)
-          .eq('id', savedOrderPreference.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_preferences')
-          .insert(preferenceToSave);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userPreference', user?.id, 'dashboardSectionOrder'] });
-    },
-    onError: (err) => {
-      console.error("Error saving section order:", err);
-      toast({ title: "Erro ao salvar ordem das seções", description: err.message, variant: "destructive" });
-    },
-  });
+  const handleYearSelect = (year: number) => {
+    setCurrentDate(prev => setYear(prev, year));
+  };
 
-  const moveSection = useCallback((dragIndex: number, hoverIndex: number) => {
-    setSectionOrder((prevOrder) => {
-      const newOrder = [...prevOrder];
-      const [draggedItem] = newOrder.splice(dragIndex, 1);
-      newOrder.splice(hoverIndex, 0, draggedItem);
-      upsertOrderPreferenceMutation.mutate({ order: newOrder }); // Save new order
-      return newOrder;
-    });
-  }, [upsertOrderPreferenceMutation]);
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: i,
+    label: format(new Date(2000, i, 1), 'MMMM', { locale: ptBR }),
+  }));
 
-  if (isLoadingOrderPreference) {
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i); // Últimos 2 anos, ano atual, próximos 2 anos
+
+  if (!user) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Carregando layout do painel...</p>
+        <p className="ml-2 text-muted-foreground">Carregando usuário...</p>
       </div>
     );
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center gap-3 mb-6">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
           <Gauge className="h-6 w-6 text-foreground" />
-          <h1 className="text-2xl font-bold text-foreground">Painel Principal Precifix</h1>
+          <h1 className="text-2xl font-bold text-foreground">Painel Principal - {format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h1>
         </div>
-
-        {sectionOrder.map((key, index) => {
-          const { component: Component, title, icon, defaultOpen } = sectionComponents[key];
-          return (
-            <DraggableCollapsibleSection
-              key={key}
-              id={key}
-              index={index}
-              moveSection={moveSection}
-              title={title}
-              preferenceKey={key}
-              defaultOpen={defaultOpen}
-              icon={icon}
-            >
-              <Component />
-            </DraggableCollapsibleSection>
-          );
-        })}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => handleMonthChange('prev')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <Select
+            value={getMonth(currentDate).toString()}
+            onValueChange={(value) => handleMonthSelect(parseInt(value, 10))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value.toString()}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={getYear(currentDate).toString()}
+            onValueChange={(value) => handleYearSelect(parseInt(value, 10))}
+          >
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="icon" onClick={() => handleMonthChange('next')}>
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
-    </DndProvider>
+
+      {/* Cards Superiores */}
+      <DashboardStatsCards selectedDate={currentDate} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Gráfico de Faturamento Diário */}
+          <DailyRevenueChart selectedDate={currentDate} />
+        </div>
+        <div className="lg:col-span-1 space-y-8">
+          {/* Gráfico de Serviços Mais Populares */}
+          <PopularServicesChart selectedDate={currentDate} />
+
+          {/* Resumo de Agendamentos */}
+          <AppointmentSummaryCard selectedDate={currentDate} />
+        </div>
+      </div>
+
+      {/* Próximos Agendamentos */}
+      <UpcomingAppointmentsList selectedDate={currentDate} />
+    </div>
   );
 };
 
