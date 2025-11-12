@@ -132,21 +132,26 @@ const Dashboard = () => {
       <DashboardStatsCards selectedDate={currentDate} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2">
           {/* Gráfico de Faturamento Diário */}
           <DailyRevenueChart selectedDate={currentDate} />
         </div>
-        <div className="lg:col-span-1 space-y-8">
+        <div className="lg:col-span-1">
           {/* Gráfico de Serviços Mais Populares */}
           <PopularServicesChart selectedDate={currentDate} />
-
-          {/* Resumo de Agendamentos */}
-          <AppointmentSummaryCard selectedDate={currentDate} />
         </div>
       </div>
 
-      {/* Próximos Agendamentos */}
-      <UpcomingAppointmentsList selectedDate={currentDate} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          {/* Resumo de Agendamentos */}
+          <AppointmentSummaryCard selectedDate={currentDate} />
+        </div>
+        <div>
+          {/* Próximos Agendamentos */}
+          <UpcomingAppointmentsList selectedDate={currentDate} />
+        </div>
+      </div>
     </div>
   );
 };

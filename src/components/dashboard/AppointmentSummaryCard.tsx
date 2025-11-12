@@ -92,7 +92,7 @@ export const AppointmentSummaryCard = ({ selectedDate }: AppointmentSummaryCardP
           Status dos agendamentos para o mês de {format(selectedDate, 'MMMM', { locale: ptBR })}.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 min-h-[300px]">
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium text-green-600">Concluídos:</span>
           <span className="text-lg font-bold text-green-600">{getCount('closed')}</span>
