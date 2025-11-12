@@ -22,6 +22,10 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <CheckCircle className="h-4 w-4 text-success" />;
     case 'quote_rejected':
       return <XCircle className="h-4 w-4 text-destructive" />;
+    case 'expense_due_today': // Novo tipo
+      return <Bell className="h-4 w-4 text-yellow-500" />; // Ícone para despesa vencendo hoje
+    case 'expense_overdue': // Novo tipo
+      return <Trash2 className="h-4 w-4 text-red-500" />; // Ícone para despesa atrasada
     default:
       return <FileText className="h-4 w-4 text-primary" />;
   }
@@ -32,17 +36,17 @@ export const NotificationBell = () => {
   const navigate = useNavigate();
 
   const handleNotificationClick = (notification: Notification) => {
-    // Marcar como lida (apenas esta)
-    // Como o hook só tem markAllAsRead, vamos forçar a invalidação para simular a leitura
-    // Ou, se for mais simples, apenas navegar e deixar o refetch cuidar disso.
-    
-    // Navegar para a agenda ou para a edição do orçamento
-    if (notification.quote_id) {
-      navigate(`/agenda`); // Redireciona para a agenda, onde o usuário pode ver o status
-    }
-    
     // Marcar todas como lidas ao abrir o dropdown e clicar em uma
     markAllAsRead();
+
+    // Navegar para a página apropriada com base no tipo de notificação
+    if (notification.type === 'quote_accepted' || notification.type === 'quote_rejected') {
+      if (notification.quote_id) {
+        navigate(`/agenda`); // Redireciona para a agenda, onde o usuário pode ver o status do orçamento
+      }
+    } else if (notification.type === 'expense_due_today' || notification.type === 'expense_overdue') {
+      navigate(`/accounts-payable`); // Redireciona para a página de contas a pagar
+    }
   };
 
   return (

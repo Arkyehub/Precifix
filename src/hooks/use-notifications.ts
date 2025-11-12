@@ -6,10 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 export interface Notification {
   id: string;
   user_id: string;
-  quote_id: string;
+  quote_id: string | null; // Pode ser nulo para notificações não relacionadas a orçamentos
   message: string;
   is_read: boolean;
-  type: 'quote_accepted' | 'quote_rejected';
+  type: 'quote_accepted' | 'quote_rejected' | 'expense_due_today' | 'expense_overdue'; // Novos tipos adicionados
   created_at: string;
 }
 
@@ -65,6 +65,26 @@ export const useNotifications = () => {
     },
   });
 
+  // Nova mutação para criar notificações
+  const createNotificationMutation = useMutation({
+    mutationFn: async (newNotification: Omit<Notification, 'id' | 'created_at' | 'is_read' | 'user_id'>) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert({ ...newNotification, user_id: user.id, is_read: false });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    },
+    onError: (err) => {
+      console.error("Error creating notification:", err);
+      // Não exibe toast aqui para evitar spam, a notificação falha silenciosamente
+    },
+  });
+
   const markAllAsRead = () => {
     if (notifications && notifications.length > 0) {
       const ids = notifications.map(n => n.id);
@@ -78,5 +98,6 @@ export const useNotifications = () => {
     isLoading,
     markAllAsRead,
     markAsReadMutation,
+    createNotificationMutation, // Exportar a nova mutação
   };
 };

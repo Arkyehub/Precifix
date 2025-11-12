@@ -16,11 +16,13 @@ import { AccountsPayableHeader } from '../components/accounts-payable/AccountsPa
 import { AccountsPayableFilterBar } from '../components/accounts-payable/AccountsPayableFilterBar';
 import { AccountsPayableTable } from '../components/accounts-payable/AccountsPayableTable';
 import { generateExpenseInstances, ExpenseInstance } from '@/lib/expense-utils';
+import { useNotifications } from '@/hooks/use-notifications';
 
 const AccountsPayablePage = () => {
   const { user } = useSession();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { createNotificationMutation } = useNotifications();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Paga' | 'Em aberto' | 'Atrasada'>('all');
@@ -173,24 +175,25 @@ const AccountsPayablePage = () => {
     filteredExpenses.forEach(expense => {
       // Notificação para "Vencendo Hoje"
       if (isToday(expense.due_date) && expense.status === 'Em aberto' && !notifiedExpenses.current.has(`due-today-${expense.id}`)) {
-        toast({
-          title: 'Conta a Pagar Vencendo Hoje!',
-          description: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} vence hoje.`,
+        createNotificationMutation.mutate({
+          message: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} vence hoje.`,
+          type: 'expense_due_today',
+          quote_id: null, // Não há quote_id para despesas
         });
         notifiedExpenses.current.add(`due-today-${expense.id}`);
       }
 
       // Notificação para "Atrasada"
       if (expense.status === 'Atrasada' && !notifiedExpenses.current.has(`overdue-${expense.id}`)) {
-        toast({
-          title: 'Conta a Pagar Atrasada!',
-          description: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} está atrasada desde ${format(expense.due_date, 'dd/MM/yyyy', { locale: ptBR })}.`,
-          variant: 'destructive',
+        createNotificationMutation.mutate({
+          message: `A despesa "${expense.description}" no valor de ${expense.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} está atrasada desde ${format(expense.due_date, 'dd/MM/yyyy', { locale: ptBR })}.`,
+          type: 'expense_overdue',
+          quote_id: null, // Não há quote_id para despesas
         });
         notifiedExpenses.current.add(`overdue-${expense.id}`);
       }
     });
-  }, [filteredExpenses, toast]);
+  }, [filteredExpenses, createNotificationMutation]);
 
   const handleOpenPaymentDialog = (expense: ExpenseInstance) => {
     setSelectedExpense(expense);
