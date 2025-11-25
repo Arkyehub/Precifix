@@ -33,6 +33,12 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
   const startOfComparisonPeriod = startOfMonth(comparisonDate);
   const endOfComparisonPeriod = endOfMonth(comparisonDate);
 
+  // Use format(date, 'yyyy-MM-dd') for database comparisons with quote_date (which is a date column)
+  const currentStartStr = format(startOfCurrentPeriod, 'yyyy-MM-dd');
+  const currentEndStr = format(endOfCurrentPeriod, 'yyyy-MM-dd');
+  const comparisonStartStr = format(startOfComparisonPeriod, 'yyyy-MM-dd');
+  const comparisonEndStr = format(endOfComparisonPeriod, 'yyyy-MM-dd');
+
   // Fetch current month sales
   const { data: currentMonthSales, isLoading: isLoadingCurrentSales } = useQuery<any[]>({
     queryKey: ['dailyRevenueCurrentMonthSales', user?.id, format(selectedDate, 'yyyy-MM')],
@@ -40,12 +46,12 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('total_price, created_at')
+        .select('total_price, quote_date')
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('created_at', startOfCurrentPeriod.toISOString())
-        .lte('created_at', endOfCurrentPeriod.toISOString());
+        .gte('quote_date', currentStartStr)
+        .lte('quote_date', currentEndStr);
       if (error) throw error;
       return data;
     },
@@ -64,12 +70,12 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('total_price, created_at')
+        .select('total_price, quote_date')
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('created_at', startOfComparisonPeriod.toISOString())
-        .lte('created_at', endOfComparisonPeriod.toISOString());
+        .gte('quote_date', comparisonStartStr)
+        .lte('quote_date', comparisonEndStr);
       if (error) throw error;
       return data;
     },
@@ -81,6 +87,7 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
     const dataMap = new Map<string, DailyData>();
 
     daysInCurrentMonth.forEach(day => {
+      // Create keys based on local date string YYYY-MM-DD
       const dateKey = format(day, 'yyyy-MM-dd');
       dataMap.set(dateKey, {
         date: dateKey,
@@ -91,20 +98,28 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
     });
 
     currentMonthSales?.forEach(sale => {
-      const saleDate = new Date(sale.created_at);
-      const dateKey = format(saleDate, 'yyyy-MM-dd');
+      // quote_date is already 'YYYY-MM-DD', so no timezone conversion needed
+      const dateKey = sale.quote_date; 
       if (dataMap.has(dateKey)) {
         dataMap.get(dateKey)!.currentMonthRevenue += sale.total_price;
       }
     });
 
     comparisonPeriodSales?.forEach(sale => {
-      const saleDate = new Date(sale.created_at);
-      const dayOfMonth = getDate(saleDate);
+      // For comparison, we map the comparison date's day to the current month's day
+      // We parse the quote_date string to get the day
+      const [year, month, day] = sale.quote_date.split('-').map(Number);
+      const dayOfMonth = day; // This is the day of month (1-31)
+      
+      // Construct the key for the CURRENT month with THIS day
       const correspondingCurrentMonthDate = new Date(getYear(selectedDate), getMonth(selectedDate), dayOfMonth);
-      const dateKey = format(correspondingCurrentMonthDate, 'yyyy-MM-dd');
-      if (dataMap.has(dateKey)) {
-        dataMap.get(dateKey)!.comparisonRevenue += sale.total_price;
+      
+      // Handle edge cases (e.g., trying to map day 31 to a month with 30 days)
+      if (getMonth(correspondingCurrentMonthDate) === getMonth(selectedDate)) {
+          const dateKey = format(correspondingCurrentMonthDate, 'yyyy-MM-dd');
+          if (dataMap.has(dateKey)) {
+            dataMap.get(dateKey)!.comparisonRevenue += sale.total_price;
+          }
       }
     });
 

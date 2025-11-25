@@ -19,7 +19,12 @@ export const DashboardStatsCards = ({ selectedDate }: DashboardStatsCardsProps) 
   const startOfPreviousMonth = startOfMonth(subMonths(selectedDate, 1));
   const endOfPreviousMonth = endOfMonth(subMonths(selectedDate, 1));
 
-  // Query para Faturamento do Mês Atual
+  const startStr = format(startOfSelectedMonth, 'yyyy-MM-dd');
+  const endStr = format(endOfSelectedMonth, 'yyyy-MM-dd');
+  const prevStartStr = format(startOfPreviousMonth, 'yyyy-MM-dd');
+  const prevEndStr = format(endOfPreviousMonth, 'yyyy-MM-dd');
+
+  // Query para Faturamento do Mês Atual (usando quote_date)
   const { data: currentMonthRevenue, isLoading: isLoadingCurrentRevenue } = useQuery<number>({
     queryKey: ['dashboardCurrentMonthRevenue', user?.id, format(selectedDate, 'yyyy-MM')],
     queryFn: async () => {
@@ -30,15 +35,15 @@ export const DashboardStatsCards = ({ selectedDate }: DashboardStatsCardsProps) 
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('created_at', startOfSelectedMonth.toISOString())
-        .lte('created_at', endOfSelectedMonth.toISOString());
+        .gte('quote_date', startStr)
+        .lte('quote_date', endStr);
       if (error) throw error;
       return data.reduce((sum, sale) => sum + sale.total_price, 0);
     },
     enabled: !!user,
   });
 
-  // Query para Faturamento do Mês Anterior (para comparação)
+  // Query para Faturamento do Mês Anterior (para comparação) (usando quote_date)
   const { data: previousMonthRevenue, isLoading: isLoadingPreviousRevenue } = useQuery<number>({
     queryKey: ['dashboardPreviousMonthRevenue', user?.id, format(subMonths(selectedDate, 1), 'yyyy-MM')],
     queryFn: async () => {
@@ -49,8 +54,8 @@ export const DashboardStatsCards = ({ selectedDate }: DashboardStatsCardsProps) 
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('created_at', startOfPreviousMonth.toISOString())
-        .lte('created_at', endOfPreviousMonth.toISOString());
+        .gte('quote_date', prevStartStr)
+        .lte('quote_date', prevEndStr);
       if (error) throw error;
       return data.reduce((sum, sale) => sum + sale.total_price, 0);
     },
@@ -84,8 +89,8 @@ export const DashboardStatsCards = ({ selectedDate }: DashboardStatsCardsProps) 
         .select('id', { count: 'exact' })
         .eq('user_id', user.id)
         .eq('status', 'closed')
-        .gte('service_date', startOfSelectedMonth.toISOString())
-        .lte('service_date', endOfSelectedMonth.toISOString());
+        .gte('quote_date', startStr)
+        .lte('quote_date', endStr);
       if (error) throw error;
       return count || 0;
     },
@@ -102,8 +107,8 @@ export const DashboardStatsCards = ({ selectedDate }: DashboardStatsCardsProps) 
         .select('id', { count: 'exact' })
         .eq('user_id', user.id)
         .eq('status', 'closed')
-        .gte('service_date', startOfSelectedMonth.toISOString())
-        .lte('service_date', endOfSelectedMonth.toISOString());
+        .gte('quote_date', startStr)
+        .lte('quote_date', endStr);
       if (error) throw error;
       return count || 0;
     },

@@ -173,8 +173,13 @@ export const QuoteGenerator = ({
     }
   }, [vehicleDetails, isClientRequired, manualVehicleInput]);
 
+  // Lógica para garantir "Consumidor Final" se o nome estiver vazio e não for obrigatório
+  const effectiveClientName = (!isClientRequired && (!clientNameInput || clientNameInput.trim() === '')) 
+    ? "Consumidor Final" 
+    : clientNameInput;
+
   const quoteData = {
-    client_name: clientNameInput,
+    client_name: effectiveClientName,
     vehicle, 
     quote_date: quoteDate,
     selectedServices,
