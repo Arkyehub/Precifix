@@ -13,6 +13,8 @@ export interface Sale {
   client_name: string;
   total_price: number;
   created_at: string;
+  quote_date: string; // Adicionado
+  service_date: string | null; // Adicionado
   services_summary: any[];
   status: QuoteStatus;
   payment_method_id: string | null;
@@ -38,19 +40,25 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
     queryKey: ['closedSales', user?.id, JSON.stringify(activeTextFilters), dateRange],
     queryFn: async () => {
       if (!user) return [];
+      // Adicionado quote_date e service_date ao select
       let query = supabase
         .from('quotes')
-        .select('id, sale_number, client_name, total_price, created_at, services_summary, status, payment_method_id, installments, vehicle')
+        .select('id, sale_number, client_name, total_price, created_at, quote_date, service_date, services_summary, status, payment_method_id, installments, vehicle')
         .eq('user_id', user.id)
         .eq('is_sale', true);
 
+      // Usar quote_date para filtro de data, se disponível. Fallback para created_at se quote_date for nulo (improvável para vendas recentes)
+      // Mas para manter compatibilidade, vamos filtrar por quote_date se possível.
+      // Como quote_date é uma coluna DATE (YYYY-MM-DD), comparamos com a string de data.
+      
       if (dateRange?.from) {
-        const start = startOfDay(dateRange.from).toISOString();
-        query = query.gte('created_at', start);
+        // Formatar para YYYY-MM-DD para comparar com coluna date
+        const start = dateRange.from.toISOString().split('T')[0];
+        query = query.gte('quote_date', start);
       }
       if (dateRange?.to) {
-        const end = endOfDay(dateRange.to).toISOString();
-        query = query.lte('created_at', end);
+        const end = dateRange.to.toISOString().split('T')[0];
+        query = query.lte('quote_date', end);
       }
 
       // Aplicar filtros de texto do activeTextFilters (server-side)
@@ -76,7 +84,8 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
         query = query.or(vehicleOrConditions);
       }
 
-      query = query.order('created_at', { ascending: false });
+      // Ordenar por quote_date (mais recente primeiro) em vez de created_at
+      query = query.order('quote_date', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
@@ -98,11 +107,6 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
       }
 
       if (paymentMethodFilters.length > 0) {
-        // This part needs paymentMethods to be loaded first.
-        // For now, we'll assume paymentMethods are available or handle it in the component.
-        // A better approach might be to fetch paymentMethods inside this queryFn if they are always needed together.
-        // Or, pass paymentMethods as an argument to this hook if they are fetched elsewhere.
-        // For modularity, let's fetch them here as well.
         const { data: pMethods } = await supabase.from('payment_methods').select('id, name');
         const paymentMethodsMap = new Map(pMethods?.map(pm => [pm.id, pm.name]));
 

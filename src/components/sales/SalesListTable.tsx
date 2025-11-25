@@ -42,6 +42,17 @@ const selectableStatuses: { key: QuoteStatus; label: string }[] = [
   { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
 ];
 
+const formatDateSafe = (dateString: string | null) => {
+  if (!dateString) return '-';
+  // dateString is expected to be YYYY-MM-DD
+  // We split and reassemble to avoid any timezone shifts that happen with new Date()
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+  }
+  return dateString;
+};
+
 export const SalesListTable = ({
   sales,
   isLoadingMutations,
@@ -59,6 +70,7 @@ export const SalesListTable = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Número</TableHead>
+            <TableHead className="w-[100px]">Data</TableHead> {/* NOVA COLUNA */}
             <TableHead>Cliente</TableHead>
             <TableHead>Serviços/Produtos</TableHead>
             <TableHead className="text-right">Valor</TableHead>
@@ -75,11 +87,17 @@ export const SalesListTable = ({
 
               const canEdit = sale.status === 'pending' || sale.status === 'accepted';
               const canChangePayment = sale.status === 'closed' || sale.status === 'awaiting_payment';
+              
+              // Prefer service_date, fallback to quote_date
+              const displayDate = sale.service_date || sale.quote_date;
 
               return (
                 <TableRow key={sale.id}>
                   <TableCell className="font-medium text-primary-strong">
                     {sale.sale_number || `#${sale.id.substring(0, 8)}`}
+                  </TableCell>
+                  <TableCell>
+                    {formatDateSafe(displayDate)}
                   </TableCell>
                   <TableCell className="font-medium">{sale.client_name}</TableCell>
                   <TableCell>{sale.services_summary.length} serviço(s)</TableCell>
@@ -197,7 +215,7 @@ export const SalesListTable = ({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground"> {/* Updated colSpan */}
                 Nenhuma venda encontrada.
               </TableCell>
             </TableRow>
