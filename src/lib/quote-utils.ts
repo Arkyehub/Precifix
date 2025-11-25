@@ -150,6 +150,12 @@ export const prepareQuotePayload = (quoteData: QuoteData, status: 'pending' | 'a
     finalClientZipCode = undefined;
   }
   
+  // NOVA VERIFICAÇÃO DE SEGURANÇA:
+  // Se for venda e, por algum motivo, o nome ainda estiver vazio ou nulo, força "Consumidor Final"
+  if (isSale && (!finalClientName || finalClientName.trim() === '')) {
+    finalClientName = "Consumidor Final";
+  }
+  
   // CORREÇÃO: Converte string vazia para null para o Supabase
   const finalServiceTime = quoteData.serviceTime.trim() === '' ? null : quoteData.serviceTime;
 

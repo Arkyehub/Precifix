@@ -62,7 +62,10 @@ export const useQuoteMutations = () => {
 
       let saleNumber = null;
       if (quoteData.is_sale) {
-        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
+        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_user_sale_number', {
+          p_user_id: user.id
+        });
+        
         if (saleNumberError) {
           throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
         }
@@ -170,7 +173,10 @@ export const useQuoteMutations = () => {
       
       let saleNumber = existingQuote?.sale_number;
       if (!saleNumber) {
-        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_sale_number');
+        const { data: newSaleNumber, error: saleNumberError } = await supabase.rpc('get_next_user_sale_number', {
+          p_user_id: user.id
+        });
+        
         if (saleNumberError) {
           throw new Error(`Erro ao gerar número de venda: ${saleNumberError.message}`);
         }
