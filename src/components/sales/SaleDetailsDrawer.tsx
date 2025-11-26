@@ -75,6 +75,17 @@ const CostItem = ({ label, value, icon: Icon, isNegative = false, isTotal = fals
   </div>
 );
 
+// Helper safe format date
+const formatDateSafe = (dateString: string | null) => {
+  if (!dateString) return null;
+  // dateString is expected to be YYYY-MM-DD
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+  }
+  return dateString;
+};
+
 export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoadingDetails, paymentMethodDetails }: SaleDetailsDrawerProps) => {
   
   const currentStatus = sale ? statusColors[sale.status] || statusColors.pending : null;
@@ -111,7 +122,6 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
       displayStatus = statusColors.accepted; // Usa o mapeamento de 'accepted' que é 'Em Aberto'
     }
 
-    // Conteúdo normal da venda/agendamento
     return (
       <>
         <SheetHeader className="p-4 border-b border-border/50">
@@ -148,7 +158,7 @@ export const SaleDetailsDrawer = ({ isOpen, onClose, sale, profitDetails, isLoad
                 {sale.service_date && (
                   <>
                     <p className="text-muted-foreground">Data do Serviço:</p>
-                    <p className="font-medium text-right">{format(new Date(sale.service_date), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                    <p className="font-medium text-right">{formatDateSafe(sale.service_date)}</p>
                   </>
                 )}
                 {sale.service_time && (
