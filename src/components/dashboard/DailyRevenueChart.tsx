@@ -33,32 +33,32 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
   const startOfComparisonPeriod = startOfMonth(comparisonDate);
   const endOfComparisonPeriod = endOfMonth(comparisonDate);
 
-  // Use format(date, 'yyyy-MM-dd') for database comparisons with quote_date (which is a date column)
+  // Use format(date, 'yyyy-MM-dd') for database comparisons
   const currentStartStr = format(startOfCurrentPeriod, 'yyyy-MM-dd');
   const currentEndStr = format(endOfCurrentPeriod, 'yyyy-MM-dd');
   const comparisonStartStr = format(startOfComparisonPeriod, 'yyyy-MM-dd');
   const comparisonEndStr = format(endOfComparisonPeriod, 'yyyy-MM-dd');
 
-  // Fetch current month sales
+  // Fetch current month sales - UPDATED TO USE service_date
   const { data: currentMonthSales, isLoading: isLoadingCurrentSales } = useQuery<any[]>({
     queryKey: ['dailyRevenueCurrentMonthSales', user?.id, format(selectedDate, 'yyyy-MM')],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('total_price, quote_date')
+        .select('total_price, service_date, quote_date')
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('quote_date', currentStartStr)
-        .lte('quote_date', currentEndStr);
+        .gte('service_date', currentStartStr) // Filter by service_date
+        .lte('service_date', currentEndStr); // Filter by service_date
       if (error) throw error;
       return data;
     },
     enabled: !!user,
   });
 
-  // Fetch comparison period sales (previous month or previous year's same month)
+  // Fetch comparison period sales - UPDATED TO USE service_date
   const { data: comparisonPeriodSales, isLoading: isLoadingComparisonSales } = useQuery<any[]>({
     queryKey: [
       'dailyRevenueComparisonSales',
@@ -70,12 +70,12 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('quotes')
-        .select('total_price, quote_date')
+        .select('total_price, service_date, quote_date')
         .eq('user_id', user.id)
         .eq('is_sale', true)
         .in('status', ['accepted', 'closed'])
-        .gte('quote_date', comparisonStartStr)
-        .lte('quote_date', comparisonEndStr);
+        .gte('service_date', comparisonStartStr) // Filter by service_date
+        .lte('service_date', comparisonEndStr); // Filter by service_date
       if (error) throw error;
       return data;
     },
@@ -98,17 +98,19 @@ export const DailyRevenueChart = ({ selectedDate }: DailyRevenueChartProps) => {
     });
 
     currentMonthSales?.forEach(sale => {
-      // quote_date is already 'YYYY-MM-DD', so no timezone conversion needed
-      const dateKey = sale.quote_date; 
+      // Use service_date primarily, fallback to quote_date if somehow missing (though filter should catch it)
+      const dateKey = sale.service_date || sale.quote_date; 
       if (dataMap.has(dateKey)) {
         dataMap.get(dateKey)!.currentMonthRevenue += sale.total_price;
       }
     });
 
     comparisonPeriodSales?.forEach(sale => {
-      // For comparison, we map the comparison date's day to the current month's day
-      // We parse the quote_date string to get the day
-      const [year, month, day] = sale.quote_date.split('-').map(Number);
+      // Use service_date primarily
+      const dateStr = sale.service_date || sale.quote_date;
+      if (!dateStr) return;
+
+      const [year, month, day] = dateStr.split('-').map(Number);
       const dayOfMonth = day; // This is the day of month (1-31)
       
       // Construct the key for the CURRENT month with THIS day
