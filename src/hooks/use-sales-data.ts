@@ -85,7 +85,10 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
       }
 
       // Ordenar por quote_date (mais recente primeiro) em vez de created_at
-      query = query.order('quote_date', { ascending: false });
+      // Adicionado NULLS LAST para garantir que datas nulas fiquem no final se existirem
+      query = query.order('quote_date', { ascending: false, nullsFirst: false });
+      // Critério de desempate
+      query = query.order('created_at', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;

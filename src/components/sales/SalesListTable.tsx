@@ -70,7 +70,7 @@ export const SalesListTable = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Número</TableHead>
-            <TableHead className="w-[100px]">Data</TableHead> {/* NOVA COLUNA */}
+            <TableHead className="w-[120px]">Data do Serviço</TableHead> {/* Renomeado conforme solicitado */}
             <TableHead>Cliente</TableHead>
             <TableHead>Serviços/Produtos</TableHead>
             <TableHead className="text-right">Valor</TableHead>
@@ -215,7 +215,7 @@ export const SalesListTable = ({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground"> {/* Updated colSpan */}
+              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                 Nenhuma venda encontrada.
               </TableCell>
             </TableRow>
