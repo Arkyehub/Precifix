@@ -49,15 +49,15 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
         .eq('user_id', user.id)
         .eq('is_sale', true);
 
-      // Usar quote_date para filtro de data, se disponível. Fallback para created_at se quote_date para nulo (improvável para vendas recentes)
+      // Usar service_date para filtro de data, conforme solicitado pelo usuário
       if (dateRange?.from) {
         // Formatar para YYYY-MM-DD para comparar com coluna date
         const start = dateRange.from.toISOString().split('T')[0];
-        query = query.gte('quote_date', start);
+        query = query.gte('service_date', start);
       }
       if (dateRange?.to) {
         const end = dateRange.to.toISOString().split('T')[0];
-        query = query.lte('quote_date', end);
+        query = query.lte('service_date', end);
       }
 
       // Aplicar filtros de texto do activeTextFilters (server-side)
