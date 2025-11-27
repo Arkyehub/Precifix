@@ -25,36 +25,20 @@ export default async function handler(request, response) {
 
   console.log(`Webhook recebido. Status: ${status}, Email: ${email}`);
 
-  if (!email) {
-    return response.status(400).json({ message: 'Email não fornecido no payload' });
-  }
-
   try {
-    // BUSCA SEGURA: Recupera o ID do usuário diretamente da tabela auth.users
-    const { data: userId, error: userError } = await supabase
-      .rpc('get_user_id_by_email', { email_input: email });
-
-    if (userError) {
-      console.error('Erro ao buscar usuário:', userError);
-      throw userError;
-    }
-
-    if (!userId) {
-      console.log(`Usuário não encontrado para o email: ${email}`);
-      // Respondemos 200 para o Kiwify não reenviar, pois o usuário realmente não existe no nosso banco
-      return response.status(200).json({ message: 'Usuário não encontrado' });
-    }
-
     // CENÁRIO 1: COMPRA APROVADA
     if (status === 'paid') {
-      const { error } = await supabase
+      // Busca o usuário pelo email na tabela profiles e atualiza o status
+      // IMPORTANTE: Sua tabela 'profiles' PRECISA ter a coluna 'email' preenchida
+      const { data, error } = await supabase
         .from('profiles')
         .update({ subscription_status: 'pro' })
-        .eq('id', userId); // Agora atualizamos pelo ID seguro
+        .eq('email', email)
+        .select();
 
       if (error) throw error;
       
-      console.log(`Usuário ${email} (ID: ${userId}) atualizado para PRO.`);
+      console.log(`Usuário ${email} atualizado para PRO.`);
     }
 
     // CENÁRIO 2: REEMBOLSO (Chargeback ou devolução)
@@ -62,10 +46,10 @@ export default async function handler(request, response) {
       const { error } = await supabase
         .from('profiles')
         .update({ subscription_status: 'free' })
-        .eq('id', userId);
+        .eq('email', email);
 
       if (error) throw error;
-      console.log(`Usuário ${email} (ID: ${userId}) retornou para FREE (Reembolso).`);
+      console.log(`Usuário ${email} retornou para FREE (Reembolso).`);
     }
 
     // Responde para o Kiwify que deu tudo certo (200 OK)
