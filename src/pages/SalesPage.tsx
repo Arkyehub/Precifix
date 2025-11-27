@@ -63,6 +63,7 @@ const SalesPage = () => {
     accepted: 'Aceita',
     pending: 'Em Aberto',
     awaiting_payment: 'Aguardando Pagamento',
+    deleted: 'Excluída',
   };
 
   // --- Handlers for SalesListTable ---
@@ -114,12 +115,15 @@ const SalesPage = () => {
 
   // --- Summary Calculation ---
   const summary = useMemo(() => {
-    const totalSales = sales?.length || 0;
-    const attendedSales = sales?.filter(s => s.status === 'closed') || [];
-    const awaitingPaymentSales = sales?.filter(s => s.status === 'awaiting_payment') || [];
-    const openSales = sales?.filter(s => s.status === 'pending') || [];
-    const acceptedSales = sales?.filter(s => s.status === 'accepted') || [];
-    const canceledSales = sales?.filter(s => s.status === 'rejected') || [];
+    // Filtrar vendas excluídas para que não entrem no cálculo, mesmo que estejam na lista (ex: filtro ativo)
+    const activeSales = sales?.filter(s => s.status !== 'deleted') || [];
+
+    const totalSales = activeSales.length;
+    const attendedSales = activeSales.filter(s => s.status === 'closed');
+    const awaitingPaymentSales = activeSales.filter(s => s.status === 'awaiting_payment');
+    const openSales = activeSales.filter(s => s.status === 'pending');
+    const acceptedSales = activeSales.filter(s => s.status === 'accepted');
+    const canceledSales = activeSales.filter(s => s.status === 'rejected');
 
     const totalRevenue = attendedSales.reduce((sum, s) => sum + s.total_price, 0);
     const awaitingPaymentValue = awaitingPaymentSales.reduce((sum, s) => sum + s.total_price, 0);

@@ -37,14 +37,14 @@ export const useSalesMutations = () => {
     },
   });
 
-  // Mutation para deletar a venda
+  // Mutation para deletar a venda (SOFT DELETE - muda status para 'deleted')
   const deleteSaleMutation = useMutation({
     mutationFn: async (saleId: string) => {
       if (!user) throw new Error("Usuário não autenticado.");
       
       const { error } = await supabase
         .from('quotes')
-        .delete()
+        .update({ status: 'deleted' }) // Alterado de delete() para update status
         .eq('id', saleId)
         .eq('user_id', user.id);
       
@@ -56,7 +56,7 @@ export const useSalesMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['quotesCount', user?.id] });
       toast({
         title: "Venda excluída!",
-        description: "A venda foi removida com sucesso.",
+        description: "A venda foi marcada como excluída e removida da visualização principal.",
       });
     },
     onError: (err) => {

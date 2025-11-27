@@ -5,7 +5,7 @@ import { startOfDay, endOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 // Mapeamento de status do DB para rótulos de Venda
-export type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment';
+export type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'closed' | 'awaiting_payment' | 'deleted';
 
 export interface Sale {
   id: string;
@@ -47,10 +47,7 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
         .eq('user_id', user.id)
         .eq('is_sale', true);
 
-      // Usar quote_date para filtro de data, se disponível. Fallback para created_at se quote_date for nulo (improvável para vendas recentes)
-      // Mas para manter compatibilidade, vamos filtrar por quote_date se possível.
-      // Como quote_date é uma coluna DATE (YYYY-MM-DD), comparamos com a string de data.
-      
+      // Usar quote_date para filtro de data, se disponível. Fallback para created_at se quote_date para nulo (improvável para vendas recentes)
       if (dateRange?.from) {
         // Formatar para YYYY-MM-DD para comparar com coluna date
         const start = dateRange.from.toISOString().split('T')[0];
@@ -76,16 +73,19 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
         query = query.or(saleNumberOrConditions);
       }
       if (statusFilters.length > 0) {
-        const statusOrConditions = statusFilters.map(f => `status.eq.${f.value}`).join(','); // Assuming value is the actual status key
+        const statusOrConditions = statusFilters.map(f => `status.eq.${f.value}`).join(','); 
         if (statusOrConditions) query = query.or(statusOrConditions);
+      } else {
+        // Se NÃO houver filtro de status, excluímos as 'deleted' por padrão
+        query = query.neq('status', 'deleted');
       }
+      
       if (vehicleFilters.length > 0) {
         const vehicleOrConditions = vehicleFilters.map(f => `vehicle.ilike.%${f.value}%`).join(',');
         query = query.or(vehicleOrConditions);
       }
 
       // Ordenar por quote_date (mais recente primeiro) em vez de created_at
-      // Adicionado NULLS LAST para garantir que datas nulas fiquem no final se existirem
       query = query.order('quote_date', { ascending: false, nullsFirst: false });
       // Critério de desempate
       query = query.order('created_at', { ascending: false });

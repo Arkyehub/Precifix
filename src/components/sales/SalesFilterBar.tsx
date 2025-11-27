@@ -25,6 +25,7 @@ const statusLabels: Record<QuoteStatus, { label: string | React.ReactNode; color
   accepted: { label: 'Aceita', color: 'bg-primary/20 text-primary-strong' },
   pending: { label: 'Em Aberto', color: 'bg-orange-500/20 text-orange-500' },
   awaiting_payment: { label: 'Aguardando Pagamento', color: 'bg-info/20 text-info' },
+  deleted: { label: 'Excluída', color: 'bg-gray-500/20 text-gray-500' },
 };
 
 const selectableStatuses: { key: QuoteStatus; label: string }[] = [
@@ -33,6 +34,7 @@ const selectableStatuses: { key: QuoteStatus; label: string }[] = [
   { key: 'pending', label: 'Em Aberto' },
   { key: 'rejected', label: 'Cancelada' },
   { key: 'awaiting_payment', label: 'Aguardando Pagamento' },
+  { key: 'deleted', label: 'Excluída' },
 ];
 
 export const SalesFilterBar = ({
@@ -260,8 +262,6 @@ export const SalesFilterBar = ({
               </div>
           </PopoverContent>
       </Popover>
-
-      {/* REMOVED: Active filters display moved to SalesPage.tsx */}
     </div>
   );
 };
