@@ -93,12 +93,11 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
       if (!isClientSideSort && sortConfig) {
          // Apply server-side sort
          let column = sortConfig.key;
-         // Note: Mapping UI keys to DB columns if needed (already matching for most)
          
          query = query.order(column, { ascending: sortConfig.direction === 'asc', nullsFirst: false });
       } else {
-         // Default sort
-         query = query.order('quote_date', { ascending: false, nullsFirst: false });
+         // Default sort changed to service_date
+         query = query.order('service_date', { ascending: false, nullsFirst: false });
          query = query.order('created_at', { ascending: false });
       }
 

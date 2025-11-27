@@ -26,7 +26,8 @@ const SalesPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   
   // --- State for Sorting ---
-  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+  // Initial sort state set to service_date descending
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'service_date', direction: 'desc' });
 
   // --- State for Drawer and Dialogs ---
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
