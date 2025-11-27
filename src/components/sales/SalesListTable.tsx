@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Info, Loader2, MoreVertical, CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { Info, Loader2, MoreVertical, CreditCard, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sale, QuoteStatus } from '@/hooks/use-sales-data';
 
@@ -86,8 +86,9 @@ export const SalesListTable = ({
               const isUpdating = updateSaleStatusMutation.isPending;
               const isDeleting = deleteSaleMutation.isPending && deleteSaleMutation.variables === sale.id;
 
-              const canEdit = sale.status === 'pending' || sale.status === 'accepted';
-              const canChangePayment = sale.status === 'closed' || sale.status === 'awaiting_payment';
+              const isDeleted = sale.status === 'deleted';
+              const canEdit = !isDeleted && (sale.status === 'pending' || sale.status === 'accepted');
+              const canChangePayment = !isDeleted && (sale.status === 'closed' || sale.status === 'awaiting_payment');
               
               // Prefer service_date, fallback to quote_date
               const displayDate = sale.service_date || sale.quote_date;
@@ -104,36 +105,48 @@ export const SalesListTable = ({
                   <TableCell>{sale.services_summary.length} serviço(s)</TableCell>
                   <TableCell className="text-right font-bold">R$ {sale.total_price.toFixed(2)}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <span 
-                          className={cn(
-                            "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center",
-                            statusInfo.color
-                          )}
-                          title="Clique para mudar o status"
-                        >
-                          {statusInfo.label}
-                        </span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56 bg-card">
-                        <DropdownMenuLabel>Mudar Status da Venda</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {selectableStatuses.map(({ key, label }) => (
-                          <DropdownMenuItem 
-                            key={key} 
-                            onClick={() => onStatusChange(sale.id, key)}
-                            disabled={sale.status === key || isUpdating}
+                    {isDeleted ? (
+                      <span 
+                        className={cn(
+                          "px-2 py-1 rounded-full text-xs font-semibold inline-block text-center cursor-not-allowed opacity-80",
+                          statusInfo.color
+                        )}
+                        title="Venda excluída (não editável)"
+                      >
+                        {statusInfo.label}
+                      </span>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <span 
                             className={cn(
-                              "cursor-pointer",
-                              sale.status === key && "bg-muted/50 font-bold"
+                              "px-2 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors hover:opacity-80 inline-block text-center",
+                              statusInfo.color
                             )}
+                            title="Clique para mudar o status"
                           >
-                            {label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            {statusInfo.label}
+                          </span>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56 bg-card">
+                          <DropdownMenuLabel>Mudar Status da Venda</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {selectableStatuses.map(({ key, label }) => (
+                            <DropdownMenuItem 
+                              key={key} 
+                              onClick={() => onStatusChange(sale.id, key)}
+                              disabled={sale.status === key || isUpdating}
+                              className={cn(
+                                "cursor-pointer",
+                                sale.status === key && "bg-muted/50 font-bold"
+                              )}
+                            >
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                   <TableCell className="text-center flex justify-center gap-1">
                     <Button 
@@ -178,36 +191,47 @@ export const SalesListTable = ({
 
                         <DropdownMenuSeparator />
 
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              onSelect={(e) => e.preventDefault()}
-                              disabled={isDeleting}
-                              className={cn("cursor-pointer text-destructive focus:text-destructive", isDeleting && "opacity-50 cursor-not-allowed")}
-                            >
-                              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                              Excluir
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação excluirá permanentemente a venda "{sale.sale_number || `#${sale.id.substring(0, 8)}`}" e todos os seus registros associados.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => onDeleteSale(sale.id)} 
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        {isDeleted ? (
+                          <DropdownMenuItem 
+                            onClick={() => onStatusChange(sale.id, 'pending')}
+                            disabled={isUpdating}
+                            className={cn("cursor-pointer text-success focus:text-success", isUpdating && "opacity-50 cursor-not-allowed")}
+                          >
+                             {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                             Restaurar
+                          </DropdownMenuItem>
+                        ) : (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem 
+                                onSelect={(e) => e.preventDefault()}
                                 disabled={isDeleting}
+                                className={cn("cursor-pointer text-destructive focus:text-destructive", isDeleting && "opacity-50 cursor-not-allowed")}
                               >
-                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                Excluir
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-card">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação excluirá a venda "{sale.sale_number || `#${sale.id.substring(0, 8)}`}". Ela poderá ser restaurada posteriormente através do filtro de "Excluídas".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => onDeleteSale(sale.id)} 
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  disabled={isDeleting}
+                                >
+                                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
