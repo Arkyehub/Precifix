@@ -3,9 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Info, Loader2, MoreVertical, CreditCard, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { Info, Loader2, MoreVertical, CreditCard, Pencil, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Sale, QuoteStatus } from '@/hooks/use-sales-data';
+import { Sale, QuoteStatus, SortConfig } from '@/hooks/use-sales-data';
 
 interface SalesListTableProps {
   sales: Sale[];
@@ -17,6 +17,8 @@ interface SalesListTableProps {
   onEditSale: (saleId: string) => void;
   onOpenPaymentDialog: (sale: Sale) => void;
   onDeleteSale: (saleId: string) => void;
+  sortConfig?: SortConfig;
+  onSort?: (key: string) => void;
 }
 
 const AwaitingPaymentLabel = () => (
@@ -45,13 +47,45 @@ const selectableStatuses: { key: QuoteStatus; label: string }[] = [
 
 const formatDateSafe = (dateString: string | null) => {
   if (!dateString) return '-';
-  // dateString is expected to be YYYY-MM-DD
-  // We split and reassemble to avoid any timezone shifts that happen with new Date()
   const parts = dateString.split('-');
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
   }
   return dateString;
+};
+
+// Componente auxiliar para cabeçalho ordenável
+const SortableHead = ({ 
+  label, 
+  sortKey, 
+  currentSort, 
+  onSort, 
+  className 
+}: { 
+  label: string; 
+  sortKey: string; 
+  currentSort?: SortConfig; 
+  onSort?: (key: string) => void; 
+  className?: string;
+}) => {
+  const isActive = currentSort?.key === sortKey;
+  
+  return (
+    <TableHead 
+      className={cn("cursor-pointer hover:bg-muted/50 transition-colors select-none", className)} 
+      onClick={() => onSort && onSort(sortKey)}
+      title={`Ordenar por ${label}`}
+    >
+      <div className={cn("flex items-center gap-1", className?.includes("text-right") ? "justify-end" : "justify-start")}>
+        {label}
+        {isActive && (
+          currentSort.direction === 'asc' 
+            ? <ChevronUp className="h-4 w-4 text-primary" /> 
+            : <ChevronDown className="h-4 w-4 text-primary" />
+        )}
+      </div>
+    </TableHead>
+  );
 };
 
 export const SalesListTable = ({
@@ -64,18 +98,53 @@ export const SalesListTable = ({
   onEditSale,
   onOpenPaymentDialog,
   onDeleteSale,
+  sortConfig,
+  onSort,
 }: SalesListTableProps) => {
   return (
     <div className="rounded-md border bg-background">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Número</TableHead>
-            <TableHead className="w-[120px]">Data do Serviço</TableHead> {/* Renomeado conforme solicitado */}
-            <TableHead>Cliente</TableHead>
-            <TableHead>Serviços/Produtos</TableHead>
-            <TableHead className="text-right">Valor</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableHead 
+              label="Número" 
+              sortKey="sale_number" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+              className="w-[100px]" 
+            />
+            <SortableHead 
+              label="Data do Serviço" 
+              sortKey="service_date" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+              className="w-[140px]" 
+            />
+            <SortableHead 
+              label="Cliente" 
+              sortKey="client_name" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+            />
+            <SortableHead 
+              label="Serviços/Produtos" 
+              sortKey="services_summary" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+            />
+            <SortableHead 
+              label="Valor" 
+              sortKey="total_price" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+              className="text-right" 
+            />
+            <SortableHead 
+              label="Status" 
+              sortKey="status" 
+              currentSort={sortConfig} 
+              onSort={onSort} 
+            />
             <TableHead className="w-[100px] text-center">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,7 +159,6 @@ export const SalesListTable = ({
               const canEdit = !isDeleted && (sale.status === 'pending' || sale.status === 'accepted');
               const canChangePayment = !isDeleted && (sale.status === 'closed' || sale.status === 'awaiting_payment');
               
-              // Prefer service_date, fallback to quote_date
               const displayDate = sale.service_date || sale.quote_date;
 
               return (

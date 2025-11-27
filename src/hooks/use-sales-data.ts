@@ -32,12 +32,14 @@ export interface ActiveTextFilter {
   value: string;
 }
 
-export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: DateRange | undefined) => {
+export type SortConfig = { key: string; direction: 'asc' | 'desc' } | null;
+
+export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: DateRange | undefined, sortConfig: SortConfig = null) => {
   const { user } = useSession();
 
   // Fetch all sales (quotes with is_sale: true)
   const { data: sales, isLoading: isLoadingSales, error: salesError } = useQuery<Sale[]>({
-    queryKey: ['closedSales', user?.id, JSON.stringify(activeTextFilters), dateRange],
+    queryKey: ['closedSales', user?.id, JSON.stringify(activeTextFilters), dateRange, sortConfig],
     queryFn: async () => {
       if (!user) return [];
       // Adicionado quote_date e service_date ao select
@@ -85,15 +87,34 @@ export const useSalesData = (activeTextFilters: ActiveTextFilter[], dateRange: D
         query = query.or(vehicleOrConditions);
       }
 
-      // Ordenar por quote_date (mais recente primeiro) em vez de created_at
-      query = query.order('quote_date', { ascending: false, nullsFirst: false });
-      // Critério de desempate
-      query = query.order('created_at', { ascending: false });
+      // Sorting Logic
+      const isClientSideSort = sortConfig?.key === 'services_summary';
+      
+      if (!isClientSideSort && sortConfig) {
+         // Apply server-side sort
+         let column = sortConfig.key;
+         // Note: Mapping UI keys to DB columns if needed (already matching for most)
+         
+         query = query.order(column, { ascending: sortConfig.direction === 'asc', nullsFirst: false });
+      } else {
+         // Default sort
+         query = query.order('quote_date', { ascending: false, nullsFirst: false });
+         query = query.order('created_at', { ascending: false });
+      }
 
       const { data, error } = await query;
       if (error) throw error;
       
       let currentSales = data as Sale[];
+
+      // Client-side Sorting (for JSONB array length)
+      if (isClientSideSort && sortConfig) {
+          currentSales.sort((a, b) => {
+             const lenA = a.services_summary?.length || 0;
+             const lenB = b.services_summary?.length || 0;
+             return sortConfig.direction === 'asc' ? lenA - lenB : lenB - lenA;
+          });
+      }
 
       // Aplicar filtros de texto do activeTextFilters (client-side)
       const serviceFilters = activeTextFilters.filter(f => f.type === 'service');

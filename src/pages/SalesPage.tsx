@@ -11,7 +11,7 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 
 // Importar os novos hooks e componentes
-import { useSalesData, QuoteStatus, Sale, ActiveTextFilter } from '@/hooks/use-sales-data';
+import { useSalesData, QuoteStatus, Sale, ActiveTextFilter, SortConfig } from '@/hooks/use-sales-data';
 import { useSalesMutations } from '@/hooks/use-sales-mutations';
 import { SalesSummaryCards } from '@/components/sales/SalesSummaryCards';
 import { SalesFilterBar } from '@/components/sales/SalesFilterBar';
@@ -24,6 +24,9 @@ const SalesPage = () => {
   // --- State for Filters ---
   const [activeTextFilters, setActiveTextFilters] = useState<ActiveTextFilter[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  
+  // --- State for Sorting ---
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   // --- State for Drawer and Dialogs ---
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -32,7 +35,7 @@ const SalesPage = () => {
   const [saleToEditPayment, setSaleToEditPayment] = useState<Sale | null>(null);
 
   // --- Hooks for Data and Mutations ---
-  const { sales, isLoadingSales, paymentMethods } = useSalesData(activeTextFilters, dateRange);
+  const { sales, isLoadingSales, paymentMethods } = useSalesData(activeTextFilters, dateRange, sortConfig);
   const { updateSaleStatusMutation, deleteSaleMutation } = useSalesMutations();
   const { saleDetails, profitDetails, isLoadingDetails, paymentMethodDetails } = useSaleProfitDetails(selectedSaleId);
 
@@ -54,6 +57,18 @@ const SalesPage = () => {
 
   const handleClearDateRange = () => {
     setDateRange(undefined);
+  };
+
+  // --- Handler for Sorting ---
+  const handleSort = (key: string) => {
+    setSortConfig(current => {
+      if (current?.key === key) {
+        // Toggle direction
+        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      // Default to descending for new sort (as per user request for Number)
+      return { key, direction: 'desc' };
+    });
   };
 
   // Mapeamento para exibir os nomes amigáveis dos status
@@ -254,6 +269,8 @@ const SalesPage = () => {
             onEditSale={handleEditSale}
             onOpenPaymentDialog={handleOpenPaymentDialog}
             onDeleteSale={handleDeleteSale}
+            sortConfig={sortConfig}
+            onSort={handleSort}
           />
         </CardContent>
       </Card>
